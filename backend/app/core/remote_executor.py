@@ -4,6 +4,8 @@ import time
 from typing import Callable, Optional
 
 from app.services.ssh_account_service import ssh_account_service
+from app.core.ssh_pool import SSHConnectionPool
+from app.core.ssh_utils import resolve_remote_path
 
 
 class RemoteExecutorError(Exception):
@@ -39,6 +41,22 @@ class RemoteExecutor:
     @property
     def account_alias(self) -> str:
         return self._account_alias
+
+    def resolve_path(self, path: str) -> str:
+        if not path.startswith("~"):
+            return path
+        conn = None
+        try:
+            conn = self._pool.get_connection(self._account, timeout=10.0)
+            return resolve_remote_path(
+                conn.manager.client, path, self._account.username
+            )
+        except Exception:
+            fallback = f"/home/{self._account.username}" if self._account.username != "root" else "/root"
+            return path.replace("~", fallback, 1)
+        finally:
+            if conn:
+                self._pool.release_connection(conn)
 
     def exec_command(
         self,

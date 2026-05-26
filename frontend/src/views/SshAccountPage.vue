@@ -88,6 +88,14 @@
               {{ selectedAccount.private_key || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="分组">{{ selectedAccount.group || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="远程工作目录">
+              <div class="workplace-row">
+                <code>{{ selectedAccount.workplace_path || '~/projects' }}</code>
+                <el-button size="small" link type="primary" @click="initWorkplace" :loading="initWorkplaceLoading">
+                  <el-icon><FolderOpened /></el-icon> 初始化
+                </el-button>
+              </div>
+            </el-descriptions-item>
             <el-descriptions-item label="连接状态">
               <el-tag :type="selectedAccount.status === 'online' ? 'success' : 'info'" size="small" round>
                 {{ selectedAccount.status === 'online' ? '已连接' : '未连接' }}
@@ -211,6 +219,8 @@ import {
   Top, Tickets,
 } from '@element-plus/icons-vue'
 import { useSshAccountStore, type SshAccount } from '@/stores/sshAccountStore'
+import { request } from '@/api'
+import { ElMessage } from 'element-plus'
 
 const sshStore = useSshAccountStore()
 
@@ -307,6 +317,21 @@ function createGroup() {
   sshStore.groups.push({ name: newGroupName.value, accounts: [] })
   showNewGroupDialog.value = false
   newGroupName.value = ''
+}
+
+const initWorkplaceLoading = ref(false)
+
+async function initWorkplace() {
+  if (!selectedAccount.value) return
+  initWorkplaceLoading.value = true
+  try {
+    const res = await request.post('/accounts/workplace/init', null, { params: { alias: selectedAccount.value.alias } })
+    ElMessage.success(res.message)
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.detail || '初始化失败')
+  } finally {
+    initWorkplaceLoading.value = false
+  }
 }
 
 onMounted(() => {
@@ -431,6 +456,20 @@ onMounted(() => {
   gap: 8px;
   margin-top: 16px;
   flex-wrap: wrap;
+}
+
+.workplace-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workplace-row code {
+  font-size: 12px;
+  background: #f5f7fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #409eff;
 }
 
 .permission-card {

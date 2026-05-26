@@ -190,7 +190,9 @@ async def environment_status_ws(websocket: WebSocket):
 class CompileRequest(BaseModel):
     account_alias: str = Field(..., description="SSH 账户别名")
     project_path: str = Field(..., description="远程项目路径")
+    local_path: Optional[str] = Field(default=None, description="本地项目路径（用于自动拼接项目文件夹名）")
     command: str = Field(default="mvn clean compile", description="Maven 编译命令")
+    jdk_version: Optional[str] = Field(default=None, description="JDK 版本号，如 8/11/17/21，留空自动检测")
 
 
 class PackageRequest(BaseModel):
@@ -248,7 +250,9 @@ async def api_compile(data: CompileRequest):
         task = build_service.compile_project(
             account_alias=data.account_alias,
             project_path=data.project_path,
+            local_path=data.local_path,
             command=data.command,
+            jdk_version=data.jdk_version,
         )
         return BuildTaskResponse(**task.to_dict())
     except Exception as e:
@@ -313,10 +317,7 @@ async def api_run_exec_java(data: RunExecJavaRequest):
         raise HTTPException(status_code=500, detail=f"启动 exec:java 失败: {e}")
 
 
-@build_router.post("/stop/{task_id}", response_model=dict)
-async def api_stop_task(
-    task_id: str = Path(..., description="构建任务 ID"),
-):
+def _stop_task(task_id: str) -> dict:
     task = build_service.get_build_task(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail=f"任务 '{task_id}' 不存在")
@@ -328,6 +329,22 @@ async def api_stop_task(
             detail=f"任务 '{task_id}' 当前状态为 '{task.status}'，无法停止",
         )
     return {"task_id": task_id, "status": "stopped", "message": "停止请求已发送"}
+
+
+@build_router.post("/stop/{task_id}", response_model=dict)
+async def api_stop_task(
+    task_id: str = Path(..., description="构建任务 ID"),
+):
+    return _stop_task(task_id)
+
+
+class StopRequest(BaseModel):
+    task_id: str = Field(..., description="构建任务 ID")
+
+
+@build_router.post("/stop", response_model=dict)
+async def api_stop_task_body(data: StopRequest):
+    return _stop_task(data.task_id)
 
 
 @build_router.get("/status/{task_id}", response_model=BuildTaskResponse)

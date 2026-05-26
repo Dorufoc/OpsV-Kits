@@ -15,6 +15,7 @@ export interface SshAccount {
   default?: boolean
   status?: 'online' | 'offline' | 'unknown'
   last_connected?: string
+  workplace_path?: string
 }
 
 export interface SshGroup {

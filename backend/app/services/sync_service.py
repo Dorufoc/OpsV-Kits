@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -13,6 +14,7 @@ from fastapi import WebSocket
 
 from app.core.file_sync import FileSyncEngine, SyncProgressCallback
 from app.core.gitignore_parser import GitignoreParser
+from app.core.ssh_utils import resolve_remote_path
 from app.core.ssh_pool import SSHConnectionPool
 from app.models.ssh_account import SSHAccount
 from app.services.ssh_account_service import ssh_account_service
@@ -158,6 +160,11 @@ class SyncService:
         conn = None
         try:
             conn = self._pool.get_connection(account, timeout=15.0)
+            task.remote_path = resolve_remote_path(
+                conn.manager.client, task.remote_path, account.username
+            )
+            project_folder = os.path.basename(os.path.abspath(task.local_path))
+            task.remote_path = task.remote_path.rstrip("/") + "/" + project_folder
             sftp = conn.manager.open_sftp()
 
             gitignore_parser = GitignoreParser(task.local_path)
@@ -197,10 +204,13 @@ class SyncService:
                 task.status = SyncStatus.COMPLETED
                 task.progress = 1.0
                 task.completed_at = datetime.now(timezone.utc).isoformat()
+                tree = self._get_remote_tree(conn.manager.client, task.remote_path)
                 self._push_progress_to_ws(sync_id, {
                     "type": "completed",
                     "sync_id": sync_id,
                     "message": "同步完成",
+                    "tree": tree,
+                    "remote_path": task.remote_path,
                 })
 
         except Exception as e:
@@ -245,6 +255,29 @@ class SyncService:
                     )
                 except Exception:
                     pass
+
+    def _get_remote_tree(self, ssh: paramiko.SSHClient, remote_path: str) -> str:
+        try:
+            _, stdout, _ = ssh.exec_command(
+                f"find {remote_path} -not -path '*/.*' 2>/dev/null | sort | head -200",
+                timeout=10.0,
+            )
+            output = stdout.read().decode("utf-8", errors="replace").strip()
+            if not output:
+                return remote_path
+            lines = output.split("\n")
+            result = []
+            for line in lines:
+                if line == remote_path.rstrip("/"):
+                    result.append(line)
+                else:
+                    indent = line[len(remote_path.rstrip("/")):].count("/")
+                    name = line.rsplit("/", 1)[-1]
+                    prefix = "  " * indent + "└─ "
+                    result.append(prefix + name)
+            return "\n".join(result)
+        except Exception:
+            return f"(无法获取目录树: {remote_path})"
 
     def _get_loop(self) -> asyncio.AbstractEventLoop:
         if self._loop is not None:

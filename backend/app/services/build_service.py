@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import threading
 import time
@@ -354,13 +355,20 @@ class BuildService:
         self,
         account_alias: str,
         project_path: str,
+        local_path: Optional[str] = None,
         command: str = "mvn clean compile",
+        jdk_version: Optional[str] = None,
     ) -> BuildTask:
+        config = {"command": command}
+        if jdk_version:
+            config["jdk_version"] = jdk_version
+        if local_path:
+            config["local_path"] = local_path
         return self.create_build_task(
             account_alias=account_alias,
             project_path=project_path,
             action="compile",
-            config={"command": command},
+            config=config,
         )
 
     def package_project(
@@ -519,15 +527,125 @@ class BuildService:
             task.append_log(f"[{task.completed_at}] 任务结束 (状态: {task.status})\n")
             task._notify()
 
+    def _detect_maven_root(self, executor: RemoteExecutor, base_path: str) -> Optional[str]:
+        result = executor.exec_command(
+            f"bash -c 'if [ -f {base_path}/pom.xml ]; then echo {base_path}; "
+            f"else d=$(find {base_path} -maxdepth 3 -name pom.xml -not -path \"*/target/*\" 2>/dev/null | head -1); "
+            f"if [ -n \"$d\" ]; then dirname \"$d\"; fi; fi'",
+            timeout=10.0,
+        )
+        if result.success and result.stdout.strip():
+            return result.stdout.strip().split("\n")[-1].strip()
+        return None
+
+    def _ensure_java(self, executor: RemoteExecutor, task: BuildTask) -> bool:
+        jdk_version = task.config.get("jdk_version", "")
+        if not jdk_version:
+            required = self._parse_pom_java_version(executor, task.project_path)
+            jdk_version = required or ""
+
+        check = executor.exec_command("java -version 2>&1", timeout=10.0)
+        if check.success:
+            match = _JAVA_VERSION_PATTERN.search(check.stdout)
+            if match:
+                installed = match.group(2)
+                if jdk_version:
+                    try:
+                        if int(installed.split(".")[0]) >= int(jdk_version):
+                            task.append_log(f"\x1b[32mJava {installed} 已就绪\x1b[0m\n")
+                            return True
+                    except (ValueError, IndexError):
+                        pass
+                else:
+                    task.append_log(f"\x1b[32mJava {installed} 已就绪\x1b[0m\n")
+                    return True
+
+        target_ver = jdk_version or "17"
+        task.append_log(f"\x1b[33m正在安装 OpenJDK {target_ver} (java-{target_ver}-openjdk-devel)...\x1b[0m\n")
+
+        install = executor.exec_command(
+            f"sudo dnf install -y java-{target_ver}-openjdk-devel 2>&1",
+            timeout=180.0,
+        )
+        if not install.success:
+            install = executor.exec_command(
+                f"sudo yum install -y java-{target_ver}-openjdk-devel 2>&1",
+                timeout=180.0,
+            )
+
+        verify = executor.exec_command("java -version 2>&1", timeout=10.0)
+        if verify.success:
+            task.append_log(f"\x1b[32mOpenJDK {target_ver} 安装成功\x1b[0m\n")
+            return True
+
+        task.append_log(f"\x1b[31mJDK 安装失败: {install.stderr or install.stdout}\x1b[0m\n")
+        return False
+
+    def _ensure_maven(self, executor: RemoteExecutor, task: BuildTask) -> bool:
+        check = executor.exec_command("mvn --version 2>&1 | head -1", timeout=10.0)
+        if check.success and "Apache Maven" in check.stdout:
+            task.append_log(f"\x1b[32mMaven 已就绪: {check.stdout.strip()}\x1b[0m\n")
+            return True
+
+        def _log(t: str) -> None:
+            task.append_log(t)
+
+        task.append_log("\x1b[33mmvn 未安装，正在安装...\x1b[0m\n")
+
+        install_cmd = "sudo dnf install -y maven 2>&1"
+        exit_code = executor.exec_command_stream(install_cmd, output_callback=_log, timeout=180.0)
+        if exit_code != 0:
+            task.append_log("\x1b[33mdnf 失败，尝试 yum...\x1b[0m\n")
+            exit_code = executor.exec_command_stream(
+                "sudo yum install -y maven 2>&1", output_callback=_log, timeout=180.0
+            )
+
+        verify = executor.exec_command("mvn --version 2>&1 | head -1", timeout=10.0)
+        if verify.success:
+            task.append_log(f"\x1b[32mMaven 安装成功: {verify.stdout.strip()}\x1b[0m\n")
+            return True
+
+        task.append_log("\x1b[31mMaven 安装失败，请检查网络或手动安装\x1b[0m\n")
+        return False
+
     def _execute_maven_task(self, task: BuildTask) -> None:
         command = task.config.get("command", "mvn clean compile")
         action_label = "编译" if task.action == "compile" else "打包"
         task.append_log(f"执行 Maven {action_label}: {command}\n")
-        task.append_log(f"工作目录: {task.project_path}\n\n")
-
-        full_cmd = f"cd {task.project_path} && {command} 2>&1"
 
         executor = RemoteExecutor(task.account_alias)
+        resolved_path = executor.resolve_path(task.project_path)
+        local_path = task.config.get("local_path")
+        if local_path:
+            project_folder = os.path.basename(os.path.abspath(local_path))
+            resolved_path = resolved_path.rstrip("/") + "/" + project_folder
+        work_dir = self._detect_maven_root(executor, resolved_path)
+
+        if work_dir is None:
+            ls_out = executor.exec_command(f"ls -A {resolved_path} 2>&1 | head -20", timeout=10.0)
+            dir_contents = ls_out.stdout.strip() if ls_out.success else "(无法列出)"
+            task.append_log(
+                f"工作目录: {resolved_path}\n"
+                f"\x1b[31m未找到 pom.xml (搜索深度 3 层)\x1b[0m\n"
+                f"\x1b[33m远程目录内容:\x1b[0m\n{dir_contents}\n"
+                f"\x1b[33m请先同步文件到该目录，或检查项目路径配置\x1b[0m\n"
+            )
+            task.status = "failed"
+            return
+
+        task.append_log(f"工作目录: {work_dir}\n\n")
+
+        if not self._ensure_java(executor, task):
+            task.status = "failed"
+            task.append_log("Java 环境不可用，编译终止\n")
+            return
+
+        if not self._ensure_maven(executor, task):
+            task.status = "failed"
+            task.append_log("Maven 环境不可用，编译终止\n")
+            return
+
+        full_cmd = f"mkdir -p {work_dir} && cd {work_dir} && {command} 2>&1"
 
         def _on_output(text: str) -> None:
             task.append_log(text)
@@ -569,18 +687,21 @@ class BuildService:
         jvm_args = task.config.get("jvm_args", "")
         app_args = task.config.get("app_args", "")
 
+        executor = RemoteExecutor(task.account_alias)
+        resolved_path = executor.resolve_path(task.project_path)
+
         full_jar_path = jar_path
         if not jar_path.startswith("/"):
-            full_jar_path = f"{task.project_path.rstrip('/')}/{jar_path}"
+            full_jar_path = f"{resolved_path.rstrip('/')}/{jar_path}"
 
         java_cmd = f"java {jvm_args} -jar {full_jar_path} {app_args}".strip()
-        log_file = f"{task.project_path.rstrip('/')}/nohup-{task.task_id}.log"
+        log_file = f"{resolved_path.rstrip('/')}/nohup-{task.task_id}.log"
 
         task.append_log(f"运行模式: java -jar\n")
         task.append_log(f"JAR 路径: {full_jar_path}\n")
         task.append_log(f"日志文件: {log_file}\n\n")
 
-        nohup_cmd = f"nohup {java_cmd} > {log_file} 2>&1 & echo $!"
+        nohup_cmd = f"mkdir -p {task.project_path} && nohup {java_cmd} > {log_file} 2>&1 & echo $!"
 
         executor = RemoteExecutor(task.account_alias)
         result = executor.exec_command(nohup_cmd, timeout=15.0)
@@ -601,17 +722,23 @@ class BuildService:
 
     def _run_spring_boot_internal(self, task: BuildTask) -> None:
         main_class = task.config.get("main_class")
-        log_file = f"{task.project_path.rstrip('/')}/nohup-{task.task_id}.log"
+        executor = RemoteExecutor(task.account_alias)
+        resolved_path = executor.resolve_path(task.project_path)
+        work_dir = self._detect_maven_root(executor, resolved_path)
+        if work_dir is None:
+            task.status = "failed"
+            task.append_log(f"\x1b[31m未找到 pom.xml，请先同步文件\x1b[0m\n")
+            return
+        log_file = f"{work_dir.rstrip('/')}/nohup-{task.task_id}.log"
 
         task.append_log("运行模式: mvn spring-boot:run\n")
         if main_class:
             task.append_log(f"主类: {main_class}\n")
         task.append_log(f"日志文件: {log_file}\n\n")
 
-        mvn_cmd = f"cd {task.project_path} && mvn spring-boot:run"
+        mvn_cmd = f"mkdir -p {work_dir} && cd {work_dir} && mvn spring-boot:run"
         nohup_cmd = f"nohup {mvn_cmd} > {log_file} 2>&1 & echo $!"
 
-        executor = RemoteExecutor(task.account_alias)
         result = executor.exec_command(nohup_cmd, timeout=15.0)
 
         if result.success and result.stdout.strip():
@@ -629,19 +756,25 @@ class BuildService:
 
     def _run_exec_java_internal(self, task: BuildTask) -> None:
         main_class = task.config.get("main_class", "")
-        log_file = f"{task.project_path.rstrip('/')}/nohup-{task.task_id}.log"
+        executor = RemoteExecutor(task.account_alias)
+        resolved_path = executor.resolve_path(task.project_path)
+        work_dir = self._detect_maven_root(executor, resolved_path)
+        if work_dir is None:
+            task.status = "failed"
+            task.append_log(f"\x1b[31m未找到 pom.xml，请先同步文件\x1b[0m\n")
+            return
+        log_file = f"{work_dir.rstrip('/')}/nohup-{task.task_id}.log"
 
         task.append_log("运行模式: mvn exec:java\n")
         task.append_log(f"主类: {main_class}\n")
         task.append_log(f"日志文件: {log_file}\n\n")
 
         mvn_cmd = (
-            f"cd {task.project_path} "
+            f"mkdir -p {work_dir} && cd {work_dir} "
             f"&& mvn exec:java -Dexec.mainClass=\"{main_class}\""
         )
         nohup_cmd = f"nohup {mvn_cmd} > {log_file} 2>&1 & echo $!"
 
-        executor = RemoteExecutor(task.account_alias)
         result = executor.exec_command(nohup_cmd, timeout=15.0)
 
         if result.success and result.stdout.strip():

@@ -63,8 +63,8 @@ const statusText = computed(() => {
 })
 
 const syncPercentage = computed(() => {
-  if (props.progress.total === 0) return 0
-  return Math.round((props.progress.transferred / props.progress.total) * 100)
+  if (props.progress.total === 0 && props.syncStatus === 'idle') return 0
+  return props.progress.total
 })
 </script>
 

@@ -77,6 +77,15 @@
               <el-tag v-if="currentUser" type="info" size="small">{{ currentUser }}</el-tag>
               <span v-else class="text-muted">请选择 SSH 账户</span>
             </el-form-item>
+            <el-form-item label="JDK 版本">
+              <el-select v-model="projectConfig.jdk_version" placeholder="自动检测" style="width: 160px" clearable>
+                <el-option label="JDK 8 (1.8)" value="8" />
+                <el-option label="JDK 11" value="11" />
+                <el-option label="JDK 17" value="17" />
+                <el-option label="JDK 21" value="21" />
+              </el-select>
+              <span style="margin-left: 8px; color: #909399; font-size: 12px;">留空则自动检测 pom.xml</span>
+            </el-form-item>
           </el-form>
         </el-card>
 
@@ -97,7 +106,6 @@
             <BuildPanel
               :build-status="buildStore.buildStatus"
               :run-status="buildStore.runStatus"
-              :logs="buildStore.logs"
             />
           </div>
           <div class="status-terminal">
@@ -135,6 +143,14 @@
             </el-option>
           </el-select>
         </el-form-item>
+        <el-form-item label="JDK 版本">
+          <el-select v-model="newProjectForm.jdk_version" placeholder="自动检测" style="width: 160px" clearable>
+            <el-option label="JDK 8 (1.8)" value="8" />
+            <el-option label="JDK 11" value="11" />
+            <el-option label="JDK 17" value="17" />
+            <el-option label="JDK 21" value="21" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showNewProject = false">取消</el-button>
@@ -145,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Folder, Plus, Delete, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSyncStore } from '@/stores/syncStore'
@@ -173,6 +189,7 @@ const projectConfig = ref<ProjectItem>({
   local_path: '',
   remote_path: '',
   ssh_alias: '',
+  jdk_version: '',
 })
 
 const newProjectForm = ref({
@@ -180,6 +197,7 @@ const newProjectForm = ref({
   local_path: '',
   remote_path: '',
   ssh_alias: '',
+  jdk_version: '',
 })
 
 const isRunning = computed(() =>
@@ -212,6 +230,14 @@ const sshAccounts = computed(() => sshStore.accounts)
 const currentUser = computed(() => {
   const acc = sshAccounts.value.find(a => a.alias === projectConfig.value.ssh_alias)
   return acc ? `${acc.username} (${acc.host})` : ''
+})
+
+watch(() => projectConfig.value.ssh_alias, (newAlias) => {
+  if (!newAlias) return
+  const acc = sshAccounts.value.find(a => a.alias === newAlias)
+  if (acc && acc.workplace_path && !projectConfig.value.remote_path) {
+    projectConfig.value.remote_path = acc.workplace_path
+  }
 })
 
 function selectProject(proj: ProjectItem) {
@@ -249,7 +275,7 @@ async function confirmDelete() {
     await projectStore.deleteProject(selectedProject.value.alias)
     selectedProject.value = null
     currentProject.value = ''
-    projectConfig.value = { alias: '', local_path: '', remote_path: '', ssh_alias: '' }
+    projectConfig.value = { alias: '', local_path: '', remote_path: '', ssh_alias: '', jdk_version: '' }
     ElMessage.success('项目已删除')
   } catch {
     // cancelled
@@ -269,7 +295,7 @@ async function handleCreateProject() {
   try {
     const project = await projectStore.createProject(newProjectForm.value)
     showNewProject.value = false
-    newProjectForm.value = { alias: '', local_path: '', remote_path: '', ssh_alias: '' }
+    newProjectForm.value = { alias: '', local_path: '', remote_path: '', ssh_alias: '', jdk_version: '' }
     selectProject(project)
     ElMessage.success('项目已创建')
   } catch {
@@ -292,7 +318,7 @@ async function handleSync() {
     await syncStore.startSync({
       local_path: projectConfig.value.local_path,
       remote_path: projectConfig.value.remote_path,
-      ssh_alias: projectConfig.value.ssh_alias,
+      account_alias: projectConfig.value.ssh_alias,
     })
   } catch {
     terminalRef.value?.writeln('\x1b[31m文件同步失败\x1b[0m')
@@ -301,11 +327,14 @@ async function handleSync() {
 
 async function handleBuild() {
   if (!canBuild.value) return
+  terminalRef.value?.clear()
   terminalRef.value?.writeln('开始编译项目...')
   try {
     await buildStore.startBuild({
       remote_path: projectConfig.value.remote_path,
-      ssh_alias: projectConfig.value.ssh_alias,
+      account_alias: projectConfig.value.ssh_alias,
+      local_path: projectConfig.value.local_path || undefined,
+      jdk_version: projectConfig.value.jdk_version || undefined,
     })
   } catch {
     terminalRef.value?.writeln('\x1b[31m编译失败\x1b[0m')
@@ -318,7 +347,7 @@ async function handleRun() {
   try {
     await buildStore.startRun({
       remote_path: projectConfig.value.remote_path,
-      ssh_alias: projectConfig.value.ssh_alias,
+      account_alias: projectConfig.value.ssh_alias,
     })
   } catch {
     terminalRef.value?.writeln('\x1b[31m启动失败\x1b[0m')
@@ -336,9 +365,14 @@ async function handleStop() {
 }
 
 onMounted(async () => {
+  buildStore.setLogCallback((text: string) => {
+    terminalRef.value?.write(text)
+  })
+  syncStore.setLogCallback((text: string) => {
+    terminalRef.value?.write(text)
+  })
   await sshStore.fetchAccounts()
   await projectStore.fetchProjects()
-  // Auto-select first project if exists
   if (projectStore.projects.length > 0) {
     selectProject(projectStore.projects[0])
   }

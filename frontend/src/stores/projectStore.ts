@@ -7,6 +7,7 @@ export interface ProjectItem {
   local_path: string
   remote_path: string
   ssh_alias: string
+  jdk_version?: string
   created_at?: string
   updated_at?: string
 }

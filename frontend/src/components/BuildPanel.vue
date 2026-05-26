@@ -12,37 +12,17 @@
         <el-tag :type="runTagType" size="small">{{ runText }}</el-tag>
       </div>
     </div>
-    <div class="panel-section task-logs" v-if="logs.length > 0">
-      <div class="panel-header">
-        <span class="panel-title">运行日志</span>
-      </div>
-      <div class="logs-container" ref="logContainer">
-        <div
-          v-for="(log, index) in logs"
-          :key="index"
-          class="log-entry"
-          :class="log.level.toLowerCase()"
-        >
-          <span class="log-time">{{ log.timestamp }}</span>
-          <span class="log-level">[{{ log.level }}]</span>
-          <span class="log-msg">{{ log.message }}</span>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue'
-import type { BuildStatus, RunStatus, BuildLog } from '@/stores/buildStore'
+import { computed } from 'vue'
+import type { BuildStatus, RunStatus } from '@/stores/buildStore'
 
 const props = defineProps<{
   buildStatus: BuildStatus
   runStatus: RunStatus
-  logs: BuildLog[]
 }>()
-
-const logContainer = ref<HTMLElement>()
 
 const buildTagType = computed(() => {
   const map: Record<string, string> = {
@@ -81,13 +61,6 @@ const runText = computed(() => {
   }
   return map[props.runStatus] || '未知'
 })
-
-watch(() => props.logs.length, async () => {
-  await nextTick()
-  if (logContainer.value) {
-    logContainer.value.scrollTop = logContainer.value.scrollHeight
-  }
-})
 </script>
 
 <style scoped>
@@ -113,54 +86,5 @@ watch(() => props.logs.length, async () => {
 .panel-title {
   font-weight: 600;
   font-size: 14px;
-}
-
-.task-logs {
-  flex: 1;
-}
-
-.logs-container {
-  max-height: 200px;
-  overflow-y: auto;
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 8px;
-  border-radius: 4px;
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.log-entry {
-  display: flex;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.log-entry.info {
-  color: #d4d4d4;
-}
-
-.log-entry.warn {
-  color: #ce9178;
-}
-
-.log-entry.error {
-  color: #f44747;
-}
-
-.log-time {
-  color: #6a9955;
-  flex-shrink: 0;
-}
-
-.log-level {
-  flex-shrink: 0;
-  min-width: 48px;
-}
-
-.log-msg {
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 </style>

@@ -11,6 +11,7 @@ from app.api.routes import docker
 from app.api.routes import file_manager
 from app.api.routes import health
 from app.api.routes import project
+from app.api.routes import remote_drive
 from app.api.routes import settings as settings_route
 from app.api.routes import ssh_account
 from app.api.routes import sync as sync_route
@@ -51,6 +52,7 @@ app.include_router(docker.router, prefix="/api", tags=["docker"])
 app.include_router(system.router, prefix="/api", tags=["system"])
 app.include_router(project.router, prefix="/api", tags=["projects"])
 app.include_router(webssh.router, prefix="/api", tags=["webssh"])
+app.include_router(remote_drive.router, prefix="/api", tags=["remote-drive"])
 
 
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
@@ -80,8 +82,18 @@ async def startup_event():
     loop = asyncio.get_running_loop()
     sync_service.set_event_loop(loop)
 
+    from app.services.remote_drive_service import remote_drive_service
+    from app.services.settings_service import settings_service
+    enabled = settings_service.get("remote_drive_enabled", True)
+    if enabled:
+        port = settings_service.get("remote_drive_port", 8081)
+        remote_drive_service.start(port=port)
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
     from app.services.webssh_service import webssh_service
     webssh_service.shutdown()
+
+    from app.services.remote_drive_service import remote_drive_service
+    remote_drive_service.stop()

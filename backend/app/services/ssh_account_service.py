@@ -200,6 +200,24 @@ class SSHAccountService:
                 return None
             return self._decrypt_account(account)
 
+    def init_workplace(self, alias: str) -> str:
+        account = self.get_account(alias)
+        if account is None:
+            raise ValueError(f"账户 '{alias}' 不存在")
+        conn = self._pool.get_connection(account)
+        try:
+            mgr = conn.manager
+            path = account.workplace_path
+            cmd = f"mkdir -p '{path}' 2>/dev/null && chmod 755 '{path}' 2>/dev/null && echo OK"
+            exit_code, stdout, stderr = mgr.exec_command(cmd, timeout=10.0)
+            if isinstance(stdout, bytes):
+                stdout = stdout.decode("utf-8", errors="replace")
+            if exit_code == 0 and stdout.strip() == "OK":
+                return f"工作目录已初始化: {path}"
+            raise RuntimeError(f"初始化失败: {stderr}")
+        finally:
+            self._pool.release_connection(conn)
+
     # ── 分组管理 ────────────────────────────────────────────────────
 
     def create_group(self, name: str, accounts: Optional[list[str]] = None) -> AccountGroup:

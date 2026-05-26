@@ -55,9 +55,19 @@ async def stop_sync(data: SyncStopRequest):
     return SyncStopResponse(success=False, message="任务不存在或已完成")
 
 
+@router.get("/status/{sync_id}")
+async def get_sync_status_path(
+    sync_id: str,
+):
+    result = sync_service.get_status(sync_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="同步任务不存在")
+    return result
+
+
 @router.get("/status")
 async def get_sync_status(
-    sync_id: Optional[str] = Query(None, description="同步任务 ID，为空时返回所有任务"),
+    sync_id: Optional[str] = Query(None, description="同步任务 ID"),
 ):
     result = sync_service.get_status(sync_id)
     if result is None:

@@ -78,6 +78,19 @@ async def accounts_exist():
     return {"exists": len(accounts) > 0, "count": len(accounts)}
 
 
+@router.post("/workplace/init")
+async def init_workplace(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        message = ssh_account_service.init_workplace(alias)
+        return {"message": message}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/default/info", response_model=Optional[SSHAccount])
 async def get_default_account():
     return ssh_account_service.get_default()

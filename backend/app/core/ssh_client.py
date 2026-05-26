@@ -47,6 +47,10 @@ class SSHClientManager:
     def transport(self) -> Optional[paramiko.Transport]:
         return self._transport
 
+    @property
+    def client(self) -> Optional[paramiko.SSHClient]:
+        return self._client
+
     def connect(self, timeout: float = 15.0) -> None:
         with self._lock:
             if self._connected:

@@ -30,8 +30,7 @@ FRONTEND_DIR = PROJECT_ROOT / "frontend"
 
 def print_banner():
     print(r"""
-
-
+================================================
  ::::::::   :::::::::    ::::::::   :::     :::
 :+:    :+:  :+:    :+:  :+:    :+:  :+:     :+:
 +:+    +:+  +:+    +:+  +:+         +:+     +:+
@@ -39,9 +38,76 @@ def print_banner():
 +#+    +#+  +#+               +#+    +#+   +#+
 #+#    #+#  #+#         #+#    #+#    #+#+#+#
  ########   ###          ########       ###
-
-
+================================================
     """)
+
+
+def check_python():
+    if sys.version_info < (3, 10):
+        print(f"  ❌ Python 3.10+ required, current: {sys.version.split()[0]}")
+        sys.exit(1)
+    print(f"  ✅ Python {sys.version.split()[0]}")
+
+
+def install_nodejs_windows():
+    print("  ⏳ Installing Node.js via winget...")
+    result = subprocess.run(
+        ["winget", "install", "--id", "OpenJS.NodeJS.LTS", "--accept-package-agreements", "--accept-source-agreements", "--silent"],
+        capture_output=True, text=True,
+        timeout=300,
+    )
+    if result.returncode == 0:
+        print("  ✅ Node.js installed via winget")
+        return True
+    print(f"  ⚠ winget install failed (exit={result.returncode}), trying direct download...")
+    return False
+
+
+def install_nodejs_linux():
+    print("  ⏳ Installing Node.js via apt...")
+    subprocess.run(["sudo", "mkdir", "-p", "/etc/apt/keyrings"], capture_output=True)
+    result = subprocess.run(
+        "curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -",
+        shell=True, capture_output=True, text=True, timeout=300,
+    )
+    if result.returncode != 0:
+        print("  ⚠ NodeSource setup failed, trying apt directly...")
+        result = subprocess.run(["sudo", "apt", "install", "-y", "nodejs"], capture_output=True, text=True, timeout=300)
+    else:
+        result = subprocess.run(["sudo", "apt", "install", "-y", "nodejs"], capture_output=True, text=True, timeout=300)
+    if result.returncode == 0:
+        print("  ✅ Node.js installed via apt")
+        return True
+    print("  ⚠ Linux install failed")
+    return False
+
+
+def ensure_nodejs():
+    node_check = subprocess.run(["node", "--version"], capture_output=True, text=True)
+    if node_check.returncode == 0:
+        print(f"  ✅ Node.js {node_check.stdout.strip()}")
+        return
+
+    print("  ⚠ Node.js not found, attempting auto-install...")
+    if sys.platform == "win32":
+        ok = install_nodejs_windows()
+    elif sys.platform == "linux":
+        ok = install_nodejs_linux()
+    else:
+        ok = False
+
+    if not ok:
+        print("  ❌ Auto-install failed. Please install Node.js 18+ manually:")
+        print("     Windows: winget install OpenJS.NodeJS.LTS")
+        print("     Linux:   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt install -y nodejs")
+        print("     macOS:   brew install node")
+        sys.exit(1)
+
+    node_check = subprocess.run(["node", "--version"], capture_output=True, text=True)
+    if node_check.returncode != 0:
+        print("  ❌ Node.js still not found after install. Please install manually.")
+        sys.exit(1)
+    print(f"  ✅ Node.js {node_check.stdout.strip()}")
 
 
 def start_backend(port: int = 8000, reload: bool = True, log_level: str = "info") -> subprocess.Popen:
@@ -55,7 +121,7 @@ def start_backend(port: int = 8000, reload: bool = True, log_level: str = "info"
     if reload:
         backend_cmd.append("--reload")
 
-    print(f"  \u25b6 Backend starting on http://localhost:{port}")
+    print(f"  ▶ Backend starting on http://localhost:{port}")
     if reload:
         print(f"    Auto-reload: enabled")
     print()
@@ -70,7 +136,7 @@ def start_backend(port: int = 8000, reload: bool = True, log_level: str = "info"
 
 
 def start_frontend_dev(port: int = 3000) -> subprocess.Popen:
-    print(f"  \u25b6 Frontend dev server starting on http://localhost:{port}")
+    print(f"  ▶ Frontend dev server starting on http://localhost:{port}")
     print(f"    API proxy: http://localhost:{port} -> http://localhost:8000")
     print()
 
@@ -85,7 +151,7 @@ def start_frontend_dev(port: int = 3000) -> subprocess.Popen:
 
 
 def install_dependencies():
-    print("  \u2139\ufe0f Checking dependencies...")
+    print("  ℹ Checking dependencies...")
 
     pip_install_done = False
     if not pip_install_done:
@@ -95,10 +161,10 @@ def install_dependencies():
             capture_output=True, text=True,
         )
         if result.returncode == 0:
-            print("    \u2705 Backend dependencies installed")
+            print("    ✅ Backend dependencies installed")
             pip_install_done = True
         else:
-            print(f"    \u26a0\ufe0f Backend pip install warning (continue anyway)")
+            print("    ⚠ Backend pip install warning (continue anyway)")
 
     npm_install_done = (FRONTEND_DIR / "node_modules").is_dir()
     if not npm_install_done:
@@ -108,24 +174,24 @@ def install_dependencies():
             capture_output=True, text=True,
         )
         if result.returncode == 0:
-            print("    \u2705 Frontend dependencies installed")
+            print("    ✅ Frontend dependencies installed")
         else:
-            print(f"    \u26a0\ufe0f Frontend npm install warning (continue anyway)")
+            print("    ⚠ Frontend npm install warning (continue anyway)")
 
     print()
 
 
 def build_frontend():
-    print("  \u25b6 Building frontend for production...")
+    print("  ▶ Building frontend for production...")
     result = subprocess.run(
         ["npm", "run", "build"],
         cwd=str(FRONTEND_DIR),
         capture_output=True, text=True,
     )
     if result.returncode == 0:
-        print("    \u2705 Frontend built successfully")
+        print("    ✅ Frontend built successfully")
     else:
-        print(f"    \u274c Frontend build failed:")
+        print("    ❌ Frontend build failed:")
         for line in result.stdout.splitlines()[-5:]:
             print(f"      {line}")
         for line in result.stderr.splitlines()[-5:]:
@@ -140,17 +206,17 @@ def delayed_open_browser(url: str, delay: float = 2.0) -> None:
         try:
             webbrowser.open(url)
         except Exception as e:
-            print(f"    \u26a0\ufe0f Could not open browser: {e}")
+            print(f"    ⚠ Could not open browser: {e}")
 
     thread = threading.Thread(target=_open, daemon=True)
     thread.start()
 
 
 def wait_for_shutdown(processes: list[subprocess.Popen]):
-    print("  \u25b6 All services started. Press Ctrl+C to stop all services.\n")
+    print("  ▶ All services started. Press Ctrl+C to stop all services.\n")
 
     def signal_handler(sig, frame):
-        print("\n  \u23f9 Stopping all services...")
+        print("\n  ⏹ Stopping all services...")
         for proc in processes:
             if proc and proc.poll() is None:
                 if sys.platform == "win32":
@@ -162,7 +228,7 @@ def wait_for_shutdown(processes: list[subprocess.Popen]):
                 proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 proc.kill()
-        print("  \u2705 All services stopped.")
+        print("  ✅ All services stopped.")
         sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
@@ -173,7 +239,7 @@ def wait_for_shutdown(processes: list[subprocess.Popen]):
             time.sleep(1)
             for proc in processes:
                 if proc.poll() is not None:
-                    print(f"  \u26a0\ufe0f A process exited unexpectedly (code={proc.returncode}).")
+                    print(f"  ⚠ A process exited unexpectedly (code={proc.returncode}).")
                     signal_handler(None, None)
     except KeyboardInterrupt:
         signal_handler(None, None)
@@ -203,10 +269,16 @@ def main():
     parser.add_argument("--no-reload", action="store_true", help="Disable backend auto-reload")
     parser.add_argument("--no-browser", action="store_true", help="Don't automatically open browser on startup")
     parser.add_argument("--browser-delay", type=float, default=2.0, help="Seconds to wait before opening browser (default: 2.0)")
+    parser.add_argument("--skip-node-check", action="store_true", help="Skip Node.js version check")
 
     args = parser.parse_args()
 
     print_banner()
+
+    check_python()
+
+    if not args.skip_node_check:
+        ensure_nodejs()
 
     if not args.skip_deps:
         install_dependencies()
@@ -237,7 +309,7 @@ def main():
         if not dist_dir.is_dir():
             build_frontend()
 
-        print(f"  \u25b6 Frontend static file served by backend on http://localhost:{args.port}")
+        print(f"  ▶ Frontend static file served by backend on http://localhost:{args.port}")
         print()
         frontend_url = backend_url
 

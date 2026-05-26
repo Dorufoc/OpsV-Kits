@@ -19,6 +19,7 @@ class SSHAccount(BaseModel):
     totp_secret: Optional[str] = Field(default=None, description="TOTP 密钥（加密存储）")
     is_default: bool = Field(default=False, description="是否默认账户")
     group: Optional[str] = Field(default=None, description="所属分组")
+    workplace_path: str = Field(default="~/projects", description="远程工作目录")
 
 
 class SSHAccountCreate(BaseModel):
@@ -35,6 +36,7 @@ class SSHAccountCreate(BaseModel):
     totp_secret: Optional[str] = Field(default=None, description="TOTP 密钥")
     is_default: bool = Field(default=False, description="是否默认账户")
     group: Optional[str] = Field(default=None, description="所属分组")
+    workplace_path: str = Field(default="~/projects", description="远程工作目录")
 
 
 class SSHAccountUpdate(BaseModel):
@@ -50,6 +52,7 @@ class SSHAccountUpdate(BaseModel):
     totp_secret: Optional[str] = Field(default=None, description="TOTP 密钥")
     is_default: Optional[bool] = Field(default=None, description="是否默认账户")
     group: Optional[str] = Field(default=None, description="所属分组")
+    workplace_path: Optional[str] = Field(default=None, description="远程工作目录")
 
 
 class AccountGroup(BaseModel):
