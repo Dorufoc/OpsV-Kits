@@ -83,10 +83,13 @@ def install_nodejs_linux():
 
 
 def ensure_nodejs():
-    node_check = subprocess.run(["node", "--version"], capture_output=True, text=True)
-    if node_check.returncode == 0:
-        print(f"  ✅ Node.js {node_check.stdout.strip()}")
-        return
+    try:
+        node_check = subprocess.run(["node", "--version"], capture_output=True, text=True)
+        if node_check.returncode == 0:
+            print(f"  ✅ Node.js {node_check.stdout.strip()}")
+            return
+    except FileNotFoundError:
+        pass
 
     print("  ⚠ Node.js not found, attempting auto-install...")
     if sys.platform == "win32":

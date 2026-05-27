@@ -195,8 +195,12 @@ async function testConnection() {
         ElMessage.error(res.message || '连接测试失败')
       }
     } else {
-      const res = await request.post<any>('/webssh/test', config)
-      ElMessage.success(res.message || '连接测试成功')
+      const res = await request.post<{ success: boolean; message: string }>('/webssh/test', config)
+      if (res.success) {
+        ElMessage.success(res.message || '连接测试成功')
+      } else {
+        ElMessage.error(res.message || '连接测试失败')
+      }
     }
   } catch (e: any) {
     const msg = e?.response?.data?.detail || e?.message || '连接测试失败'

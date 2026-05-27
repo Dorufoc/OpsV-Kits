@@ -150,14 +150,21 @@ class WebSSHService:
             host = account.host
             port = account.port
             username = account.username
-            if account.auth_type == "password":
-                password = account.password
-            elif account.auth_type == "key":
-                private_key = account.private_key
-                key_passphrase = account.key_passphrase
+            # 优先使用用户传入的凭证，如果没有则使用账户保存的凭证
+            # 不限制认证类型，用户可以用密码覆盖密钥账户，反之亦然
+            password = password or account.password
+            private_key = private_key or account.private_key
+            key_passphrase = key_passphrase or account.key_passphrase
 
         if not host or not username:
             raise ValueError("未提供 host/username 连接参数")
+
+        # 验证至少有一种认证方式可用
+        has_credential = bool(password) or bool(private_key)
+        if not has_credential:
+            raise ValueError(
+                "未提供有效的认证凭证，请提供密码或私钥进行连接"
+            )
 
         logger.info(f"[{session_id}] connecting SSH: {username}@{host}:{port}")
         adapter = WebSSHSession(

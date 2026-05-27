@@ -270,7 +270,12 @@ async function loadAccounts() {
 
 async function testConnection() {
   if (!selectedAccount.value) return
-  await sshStore.testConnection(selectedAccount.value.alias)
+  const res = await sshStore.testConnection(selectedAccount.value.alias)
+  if (res.success) {
+    ElMessage.success(res.message || '连接测试成功')
+  } else {
+    ElMessage.error(res.message || '连接测试失败')
+  }
 }
 
 function editAccount() {

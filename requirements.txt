@@ -1,0 +1,30 @@
+# OpsV-Kits - Python Dependencies
+# 安装命令: pip install -r requirements.txt
+
+# Web Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+starlette>=0.27.0
+python-multipart>=0.0.6
+
+# Data Validation & Settings
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# SSH & Remote Operations
+paramiko>=3.3.0
+
+# WebSocket Support
+websockets>=12.0
+tornado>=6.5.1
+
+# File & Path Handling
+watchdog>=3.0.0
+pathspec>=0.11.0
+pyyaml>=6.0.1
+
+# Encryption (Optional but recommended)
+cryptography>=41.0.0
+
+# Third-party WebSSH (local package)
+-e ./third_party/webssh

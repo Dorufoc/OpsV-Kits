@@ -277,3 +277,5 @@ def _read_channel(stream: io.IOBase) -> str:
 
 def _ensure_known_hosts_dir() -> None:
     _KNOWN_HOSTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not _KNOWN_HOSTS_PATH.exists():
+        _KNOWN_HOSTS_PATH.touch(exist_ok=True)
