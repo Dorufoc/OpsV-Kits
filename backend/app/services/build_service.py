@@ -77,12 +77,19 @@ class BuildService:
     # ── 环境检查方法 ──────────────────────────────────────────────
 
     def check_java(
-        self, account_alias: str, project_path: str
+        self, account_alias: str, project_path: str, jdk_version: Optional[str] = None
     ) -> dict:
         executor = RemoteExecutor(account_alias)
         java_result = {"installed": False, "version": "", "required": "", "compatible": False}
 
-        java_check = executor.exec_command("java -version 2>&1")
+        # 如果指定了 JDK 版本，通过 JAVA_HOME 设置检查该特定版本
+        if jdk_version:
+            java_home_setup = self._build_java_home_setup(jdk_version)
+            java_check_cmd = f"{java_home_setup} && java -version 2>&1"
+        else:
+            java_check_cmd = "java -version 2>&1"
+
+        java_check = executor.exec_command(java_check_cmd)
         if java_check.success:
             match = _JAVA_VERSION_PATTERN.search(java_check.stdout)
             if match:
@@ -96,13 +103,16 @@ class BuildService:
                 java_result["installed"] = True
                 java_result["version"] = match.group(2)
 
-        required_version = self._parse_pom_java_version(executor, project_path)
-        java_result["required"] = required_version
+        # 如果指定了 jdk_version，用其作为 required 版本；否则默认 JDK 21
+        if jdk_version:
+            java_result["required"] = jdk_version
+        else:
+            java_result["required"] = "21"
 
-        if java_result["installed"] and required_version:
+        if java_result["installed"] and java_result["required"]:
             try:
                 installed_major = int(java_result["version"].split(".")[0])
-                required_major = int(required_version.split(".")[0])
+                required_major = int(java_result["required"].split(".")[0])
                 java_result["compatible"] = installed_major >= required_major
             except (ValueError, IndexError):
                 java_result["compatible"] = False
@@ -145,7 +155,7 @@ class BuildService:
     def install_java(
         self,
         account_alias: str,
-        version: str = "17",
+        version: str = "21",
         dnf_mirror: Optional[str] = None,
         proxy: Optional[str] = None,
         status_callback: Optional[Callable[[str], None]] = None,
@@ -164,7 +174,13 @@ class BuildService:
         if proxy:
             base_cmd += f" --setopt=proxy={proxy}"
 
-        dnf_cmd = f"{base_cmd} java-{version}-openjdk"
+        # 处理 JDK 8 的特殊包名 (java-1.8.0-openjdk)
+        if version == "8":
+            package_name = "java-1.8.0-openjdk"
+        else:
+            package_name = f"java-{version}-openjdk"
+
+        dnf_cmd = f"{base_cmd} {package_name}"
 
         self._try_sudo(executor, dnf_cmd, _emit)
 
@@ -313,9 +329,9 @@ class BuildService:
     # ── 状态方法 ──────────────────────────────────────────────────
 
     def check_environment(
-        self, account_alias: str, project_path: str
+        self, account_alias: str, project_path: str, jdk_version: Optional[str] = None
     ) -> dict:
-        java_info = self.check_java(account_alias, project_path)
+        java_info = self.check_java(account_alias, project_path, jdk_version)
         maven_info = self.check_maven(account_alias, project_path)
 
         java_ok = java_info["installed"] and java_info["compatible"]
@@ -356,7 +372,7 @@ class BuildService:
         account_alias: str,
         project_path: str,
         local_path: Optional[str] = None,
-        command: str = "mvn clean compile",
+        command: str = "mvn clean -U compile",
         jdk_version: Optional[str] = None,
     ) -> BuildTask:
         config = {"command": command}
@@ -375,7 +391,7 @@ class BuildService:
         self,
         account_alias: str,
         project_path: str,
-        command: str = "mvn clean package -DskipTests",
+        command: str = "mvn clean -U package -DskipTests",
     ) -> BuildTask:
         return self.create_build_task(
             account_alias=account_alias,
@@ -389,7 +405,7 @@ class BuildService:
         account_alias: str,
         project_path: str,
         local_path: Optional[str] = None,
-        command: str = "mvn clean test",
+        command: str = "mvn clean -U test",
         jdk_version: Optional[str] = None,
     ) -> BuildTask:
         config = {"command": command}
@@ -414,6 +430,8 @@ class BuildService:
         jvm_args: str = "",
         app_args: str = "",
         local_path: Optional[str] = None,
+        jdk_version: Optional[str] = None,
+        server_port: Optional[str] = None,
     ) -> BuildTask:
         config = {
             "run_mode": "jar",
@@ -421,6 +439,10 @@ class BuildService:
             "jvm_args": jvm_args,
             "app_args": app_args,
         }
+        if jdk_version:
+            config["jdk_version"] = jdk_version
+        if server_port:
+            config["server_port"] = server_port
         return self.create_build_task(
             account_alias=account_alias,
             project_path=project_path,
@@ -435,12 +457,18 @@ class BuildService:
         project_path: str,
         main_class: Optional[str] = None,
         local_path: Optional[str] = None,
+        jdk_version: Optional[str] = None,
+        server_port: Optional[str] = None,
     ) -> BuildTask:
         config: dict = {
             "run_mode": "spring-boot",
         }
         if main_class:
             config["main_class"] = main_class
+        if jdk_version:
+            config["jdk_version"] = jdk_version
+        if server_port:
+            config["server_port"] = server_port
         return self.create_build_task(
             account_alias=account_alias,
             project_path=project_path,
@@ -455,11 +483,14 @@ class BuildService:
         project_path: str,
         main_class: str,
         local_path: Optional[str] = None,
+        jdk_version: Optional[str] = None,
     ) -> BuildTask:
         config = {
             "run_mode": "exec",
             "main_class": main_class,
         }
+        if jdk_version:
+            config["jdk_version"] = jdk_version
         return self.create_build_task(
             account_alias=account_alias,
             project_path=project_path,
@@ -512,7 +543,51 @@ class BuildService:
             return False
 
         task.request_stop()
+
+        # 如果有 PID，尝试终止远程进程及其子进程
+        if task.pid is not None:
+            try:
+                executor = RemoteExecutor(task.account_alias)
+                self._kill_process_tree(executor, task.pid, task)
+            except Exception as e:
+                task.append_log(f"\n终止进程时出错: {e}\n")
+
         return True
+
+    def _kill_process_tree(self, executor: RemoteExecutor, pid: int, task: BuildTask) -> None:
+        """终止进程及其所有子进程"""
+        try:
+            # 获取进程树（所有子进程）
+            result = executor.exec_command(
+                rf"pstree -p {pid} 2>/dev/null | grep -oP '\(\K[0-9]+(?=\))' || echo ''",
+                timeout=5.0
+            )
+            pids_to_kill = [pid]  # 包含主进程
+            if result.success and result.stdout.strip():
+                try:
+                    child_pids = [int(p.strip()) for p in result.stdout.strip().split('\n') if p.strip()]
+                    pids_to_kill.extend(child_pids)
+                except ValueError:
+                    pass
+
+            # 先尝试优雅终止所有进程 (SIGTERM)
+            for p in pids_to_kill:
+                executor.exec_command(f"kill {p} 2>/dev/null || true", timeout=3.0)
+
+            # 等待 1 秒
+            time.sleep(1)
+
+            # 检查哪些进程仍在运行，然后强制终止 (SIGKILL)
+            for p in pids_to_kill:
+                check = executor.exec_command(f"kill -0 {p} 2>/dev/null && echo 'running' || echo 'stopped'", timeout=3.0)
+                if check.success and 'running' in check.stdout:
+                    executor.exec_command(f"kill -9 {p} 2>/dev/null || true", timeout=3.0)
+
+            task.append_log(f"\n进程 PID {pid} 及其子进程已终止\n")
+        except Exception as e:
+            # 如果 pstree 不可用，回退到简单 kill
+            executor.exec_command(f"kill -9 {pid} 2>/dev/null || true", timeout=3.0)
+            task.append_log(f"\n进程 PID {pid} 已强制终止\n")
 
     def get_build_history(
         self,
@@ -560,16 +635,10 @@ class BuildService:
             task._notify()
 
     def _detect_maven_root(self, executor: RemoteExecutor, base_path: str) -> Optional[str]:
-        # 首先检查直接路径
         result = executor.exec_command(
             f"bash -c 'if [ -f {base_path}/pom.xml ]; then echo {base_path}; "
-            # 如果没有，在 base_path 下最多 3 层深度查找
             f"else d=$(find {base_path} -maxdepth 3 -name pom.xml -not -path \"*/target/*\" 2>/dev/null | head -1); "
-            f"if [ -n \"$d\" ]; then dirname \"$d\"; "
-            # 如果还没有，检查是否在 base_path 的父目录下有同名文件夹（处理旧同步位置）
-            f"else parent=$(dirname {base_path}); folder=$(basename {base_path}); "
-            f"d2=$(find \"$parent\" -maxdepth 2 -name pom.xml -path \"*$folder*\" -not -path \"*/target/*\" 2>/dev/null | head -1); "
-            f"if [ -n \"$d2\" ]; then dirname \"$d2\"; fi; fi; fi'",
+            f"if [ -n \"$d\" ]; then dirname \"$d\"; fi; fi'",
             timeout=10.0,
         )
         if result.success and result.stdout.strip():
@@ -579,10 +648,7 @@ class BuildService:
     def _ensure_java(self, executor: RemoteExecutor, task: BuildTask, work_dir: Optional[str] = None) -> bool:
         jdk_version = task.config.get("jdk_version", "")
         if not jdk_version:
-            # 使用正确的工作目录来解析 pom.xml
-            parse_path = work_dir if work_dir else task.project_path
-            required = self._parse_pom_java_version(executor, parse_path)
-            jdk_version = required or ""
+            jdk_version = "21"
 
         check = executor.exec_command("java -version 2>&1", timeout=10.0)
         if check.success:
@@ -600,21 +666,27 @@ class BuildService:
                     task.append_log(f"\x1b[32mJava {installed} 已就绪\x1b[0m\n")
                     return True
 
-        target_ver = jdk_version or "17"
-        task.append_log(f"\x1b[33m正在安装 OpenJDK {target_ver} (java-{target_ver}-openjdk-devel)...\x1b[0m\n")
+        target_ver = jdk_version or "21"
+        # 处理 JDK 8 的特殊包名 (java-1.8.0-openjdk)
+        if target_ver == "8":
+            package_name = "java-1.8.0-openjdk java-1.8.0-openjdk-devel"
+        else:
+            package_name = f"java-{target_ver}-openjdk java-{target_ver}-openjdk-devel"
+
+        task.append_log(f"\x1b[33m正在安装 OpenJDK {target_ver} ({package_name})...\x1b[0m\n")
 
         # 使用流式执行来实时显示安装日志
         def _log(t: str) -> None:
             task.append_log(t)
 
         # 先尝试 dnf
-        install_cmd = f"sudo dnf install -y java-{target_ver}-openjdk java-{target_ver}-openjdk-devel 2>&1"
+        install_cmd = f"sudo dnf install -y {package_name} 2>&1"
         exit_code = executor.exec_command_stream(install_cmd, output_callback=_log, timeout=300.0)
-        
+
         # 如果 dnf 失败，尝试 yum
         if exit_code != 0:
             task.append_log("\x1b[33mdnf 失败，尝试 yum...\x1b[0m\n")
-            install_cmd = f"sudo yum install -y java-{target_ver}-openjdk java-{target_ver}-openjdk-devel 2>&1"
+            install_cmd = f"sudo yum install -y {package_name} 2>&1"
             exit_code = executor.exec_command_stream(install_cmd, output_callback=_log, timeout=300.0)
 
         # 验证安装
@@ -654,7 +726,7 @@ class BuildService:
         return False
 
     def _execute_maven_task(self, task: BuildTask) -> None:
-        command = task.config.get("command", "mvn clean compile")
+        command = task.config.get("command", "mvn clean -U compile")
         if task.action == "compile":
             action_label = "编译"
         elif task.action == "package":
@@ -712,29 +784,55 @@ class BuildService:
 
         # 构建完整的命令，确保使用正确的 Java 版本
         cmd_parts = [f"mkdir -p {work_dir}", f"cd {work_dir}"]
-        
+
         # 如果需要特定的 JDK 版本，设置 JAVA_HOME
         jdk_version = task.config.get("jdk_version", "")
         if not jdk_version:
-            required = self._parse_pom_java_version(executor, work_dir)
-            jdk_version = required or ""
-        
+            jdk_version = "21"
+
         if jdk_version:
-            # 检测并设置 JAVA_HOME
+            # 处理 JDK 8 的特殊目录命名 (java-1.8.0-openjdk)
+            if jdk_version == "8":
+                jdk_dir_patterns = [
+                    "/usr/lib/jvm/java-1.8.0-openjdk",
+                    "/usr/lib/jvm/java-1.8.0-openjdk-*",
+                    "/usr/lib/jvm/java-8-openjdk",
+                    "/usr/lib/jvm/jre-1.8.0-openjdk",
+                    "/usr/lib/jvm/jre-1.8.0-openjdk-*",
+                ]
+            else:
+                jdk_dir_patterns = [
+                    f"/usr/lib/jvm/java-{jdk_version}-openjdk",
+                    f"/usr/lib/jvm/java-{jdk_version}-openjdk-*",
+                    f"/usr/lib/jvm/java-{jdk_version}",
+                    f"/usr/lib/jvm/jre-{jdk_version}-openjdk",
+                    f"/usr/lib/jvm/jre-{jdk_version}-openjdk-*",
+                ]
+
+            # 构建查找 JDK 目录的命令
+            dir_checks = ""
+            for pattern in jdk_dir_patterns:
+                if "*" in pattern:
+                    # 使用通配符查找
+                    dir_checks += f"for d in {pattern}; do [ -d \"$d\" ] && {{ JAVA_HOME=\"$d\"; break; }}; done; "
+                else:
+                    dir_checks += f"[ -z \"$JAVA_HOME\" ] && [ -d '{pattern}' ] && JAVA_HOME='{pattern}'; "
+
+            # 检测并设置 JAVA_HOME，并验证 Java 版本
             java_home_cmd = (
-                f"for dir in '/usr/lib/jvm/java-{jdk_version}-openjdk' "
-                f"'/usr/lib/jvm/java-{jdk_version}' "
-                f"'/usr/lib/jvm/jre-{jdk_version}-openjdk'; do "
-                f"if [ -d \"$dir\" ]; then "
-                f"export JAVA_HOME=\"$dir\" && "
+                f"JAVA_HOME=\"\"; "
+                f"{dir_checks}"
+                f"if [ -n \"$JAVA_HOME\" ]; then "
+                f"export JAVA_HOME && "
                 f"export PATH=\"$JAVA_HOME/bin:$PATH\" && "
-                f"echo \"使用 JAVA_HOME: $JAVA_HOME\" && "
-                f"break; "
-                f"fi; "
-                f"done"
+                f"echo \"已设置 JAVA_HOME: $JAVA_HOME\"; "
+                f"else "
+                f"echo \"警告: 未找到 JDK {jdk_version} 的安装目录\"; "
+                f"fi && "
+                f"echo \"当前 Java 版本: $(java -version 2>&1 | head -1)\""
             )
             cmd_parts.append(java_home_cmd)
-            
+
             # 覆盖 Maven 编译器配置，使用指定的 JDK 版本
             # 这会覆盖 pom.xml 中的 maven.compiler.source 和 maven.compiler.target
             if "mvn " in command:
@@ -742,11 +840,13 @@ class BuildService:
                 base_cmd = command
                 if base_cmd.strip().endswith(" 2>&1"):
                     base_cmd = base_cmd[:-6].strip()
-                
+
                 # 检查是否已有版本参数，如果没有则添加
                 if "-Dmaven.compiler.source" not in base_cmd and "-Dmaven.compiler.target" not in base_cmd:
-                    base_cmd = f"{base_cmd} -Dmaven.compiler.source={jdk_version} -Dmaven.compiler.target={jdk_version}"
-                
+                    # 对于 JDK 8，Maven 编译器版本应该是 1.8 而不是 8
+                    compiler_version = "1.8" if jdk_version == "8" else jdk_version
+                    base_cmd = f"{base_cmd} -Dmaven.compiler.source={compiler_version} -Dmaven.compiler.target={compiler_version}"
+
                 # 重新添加 2>&1
                 command = f"{base_cmd} 2>&1"
             else:
@@ -757,7 +857,7 @@ class BuildService:
             # 没有指定 JDK 版本，确保有 2>&1
             if not command.strip().endswith(" 2>&1"):
                 command = f"{command} 2>&1"
-        
+
         cmd_parts.append(command)
         full_cmd = " && ".join(cmd_parts)
 
@@ -851,11 +951,51 @@ class BuildService:
             )
             t.start()
 
+    def _build_java_home_setup(self, jdk_version: str) -> str:
+        """构建设置 JAVA_HOME 的命令片段"""
+        if jdk_version == "8":
+            jdk_dir_patterns = [
+                "/usr/lib/jvm/java-1.8.0-openjdk",
+                "/usr/lib/jvm/java-1.8.0-openjdk-*",
+                "/usr/lib/jvm/java-8-openjdk",
+                "/usr/lib/jvm/jre-1.8.0-openjdk",
+                "/usr/lib/jvm/jre-1.8.0-openjdk-*",
+            ]
+        else:
+            jdk_dir_patterns = [
+                f"/usr/lib/jvm/java-{jdk_version}-openjdk",
+                f"/usr/lib/jvm/java-{jdk_version}-openjdk-*",
+                f"/usr/lib/jvm/java-{jdk_version}",
+                f"/usr/lib/jvm/jre-{jdk_version}-openjdk",
+                f"/usr/lib/jvm/jre-{jdk_version}-openjdk-*",
+            ]
+
+        dir_checks = ""
+        for pattern in jdk_dir_patterns:
+            if "*" in pattern:
+                dir_checks += f"for d in {pattern}; do [ -d \"$d\" ] && {{ JAVA_HOME=\"$d\"; break; }}; done; "
+            else:
+                dir_checks += f"[ -z \"$JAVA_HOME\" ] && [ -d '{pattern}' ] && JAVA_HOME='{pattern}'; "
+
+        return (
+            f"JAVA_HOME=\"\"; "
+            f"{dir_checks}"
+            f"if [ -n \"$JAVA_HOME\" ]; then "
+            f"export JAVA_HOME && "
+            f"export PATH=\"$JAVA_HOME/bin:$PATH\" && "
+            f"echo \"已设置 JAVA_HOME: $JAVA_HOME\"; "
+            f"else "
+            f"echo \"警告: 未找到 JDK {jdk_version} 的安装目录，使用系统默认 Java\"; "
+            f"fi"
+        )
+
     def _run_jar_internal(self, task: BuildTask) -> Optional[str]:
         jar_path = task.config.get("jar_path", "")
         jvm_args = task.config.get("jvm_args", "")
         app_args = task.config.get("app_args", "")
         local_path = task.config.get("local_path", "")
+        jdk_version = task.config.get("jdk_version", "")
+        server_port = task.config.get("server_port", "")
 
         executor = RemoteExecutor(task.account_alias)
         resolved_path = executor.resolve_path(task.project_path)
@@ -867,14 +1007,38 @@ class BuildService:
         if not jar_path.startswith("/"):
             full_jar_path = f"{resolved_path.rstrip('/')}/{jar_path}"
 
-        java_cmd = f"java {jvm_args} -jar {full_jar_path} {app_args}".strip()
+        # 构建 Java 命令，包含 JAVA_HOME 设置
+        java_cmd_parts = []
+        if jdk_version:
+            java_cmd_parts.append(self._build_java_home_setup(jdk_version))
+            java_cmd_parts.append(f"echo \"当前 Java 版本: $(java -version 2>&1 | head -1)\"")
+
+        java_cmd_parts.append(f"java {jvm_args} -jar {full_jar_path} {app_args}".strip())
+        java_cmd = " && ".join(java_cmd_parts)
+
         log_file = f"{resolved_path.rstrip('/')}/nohup-{task.task_id}.log"
 
         task.append_log(f"运行模式: java -jar\n")
+        if jdk_version:
+            task.append_log(f"指定 JDK 版本: {jdk_version}\n")
         task.append_log(f"JAR 路径: {full_jar_path}\n")
+        if server_port:
+            task.append_log(f"服务端口: {server_port}\n")
         task.append_log(f"日志文件: {log_file}\n\n")
 
-        nohup_cmd = f"mkdir -p {resolved_path} && nohup {java_cmd} > {log_file} 2>&1 & echo $!"
+        # 如果指定了端口，启动前自动清理旧进程
+        setup_parts = [f"mkdir -p {resolved_path}"]
+        if server_port:
+            kill_port = (
+                f"echo \"检查端口 {server_port}...\" && "
+                f"(fuser -k {server_port}/tcp 2>/dev/null || "
+                f"lsof -ti:{server_port} 2>/dev/null | xargs kill -9 2>/dev/null || true) && "
+                f"echo \"端口 {server_port} 已就绪\""
+            )
+            setup_parts.append(kill_port)
+
+        full_setup = " && ".join(setup_parts)
+        nohup_cmd = f"{full_setup} && nohup bash -c '{java_cmd}' > {log_file} 2>&1 & echo $!"
 
         result = executor.exec_command(nohup_cmd, timeout=15.0)
 
@@ -911,8 +1075,13 @@ class BuildService:
     def _run_spring_boot_internal(self, task: BuildTask) -> Optional[str]:
         main_class = task.config.get("main_class")
         local_path = task.config.get("local_path", "")
+        jdk_version = task.config.get("jdk_version", "")
+        server_port = task.config.get("server_port", "8080")
         executor = RemoteExecutor(task.account_alias)
         resolved_path = executor.resolve_path(task.project_path)
+        if local_path:
+            project_folder = os.path.basename(os.path.abspath(local_path))
+            resolved_path = resolved_path.rstrip('/') + '/' + project_folder
         work_dir = self._detect_maven_root(executor, resolved_path)
         if work_dir is None:
             task.status = "failed"
@@ -921,12 +1090,34 @@ class BuildService:
         log_file = f"{work_dir.rstrip('/')}/nohup-{task.task_id}.log"
 
         task.append_log("运行模式: mvn spring-boot:run\n")
+        task.append_log(f"服务端口: {server_port}\n")
+        if jdk_version:
+            task.append_log(f"指定 JDK 版本: {jdk_version}\n")
         if main_class:
             task.append_log(f"主类: {main_class}\n")
         task.append_log(f"日志文件: {log_file}\n\n")
 
-        mvn_cmd = f"mkdir -p {work_dir} && cd {work_dir} && mvn spring-boot:run"
-        nohup_cmd = f"nohup {mvn_cmd} > {log_file} 2>&1 & echo $!"
+        # 启动前自动清理旧进程，释放端口
+        kill_port_cmd = (
+            f"echo \"检查端口 {server_port}...\" && "
+            f"(fuser -k {server_port}/tcp 2>/dev/null || "
+            f"lsof -ti:{server_port} 2>/dev/null | xargs kill -9 2>/dev/null || true) && "
+            f"echo \"端口 {server_port} 已就绪\""
+        )
+
+        # 构建 Maven 命令，包含 JAVA_HOME 设置
+        mvn_cmd_parts = [f"mkdir -p {work_dir}", f"cd {work_dir}", kill_port_cmd]
+        if jdk_version:
+            mvn_cmd_parts.append(self._build_java_home_setup(jdk_version))
+            mvn_cmd_parts.append(f"echo \"当前 Java 版本: $(java -version 2>&1 | head -1)\"")
+            # 添加 Maven 编译器版本参数
+            compiler_version = "1.8" if jdk_version == "8" else jdk_version
+            mvn_cmd_parts.append(f"mvn clean -U org.springframework.boot:spring-boot-maven-plugin:run -Dmaven.compiler.source={compiler_version} -Dmaven.compiler.target={compiler_version}")
+        else:
+            mvn_cmd_parts.append("mvn clean -U org.springframework.boot:spring-boot-maven-plugin:run")
+
+        mvn_cmd = " && ".join(mvn_cmd_parts)
+        nohup_cmd = f"nohup bash -c '{mvn_cmd}' > {log_file} 2>&1 & echo $!"
 
         result = executor.exec_command(nohup_cmd, timeout=15.0)
 
@@ -963,8 +1154,12 @@ class BuildService:
     def _run_exec_java_internal(self, task: BuildTask) -> Optional[str]:
         main_class = task.config.get("main_class", "")
         local_path = task.config.get("local_path", "")
+        jdk_version = task.config.get("jdk_version", "")
         executor = RemoteExecutor(task.account_alias)
         resolved_path = executor.resolve_path(task.project_path)
+        if local_path:
+            project_folder = os.path.basename(os.path.abspath(local_path))
+            resolved_path = resolved_path.rstrip('/') + '/' + project_folder
         work_dir = self._detect_maven_root(executor, resolved_path)
         if work_dir is None:
             task.status = "failed"
@@ -973,14 +1168,24 @@ class BuildService:
         log_file = f"{work_dir.rstrip('/')}/nohup-{task.task_id}.log"
 
         task.append_log("运行模式: mvn exec:java\n")
+        if jdk_version:
+            task.append_log(f"指定 JDK 版本: {jdk_version}\n")
         task.append_log(f"主类: {main_class}\n")
         task.append_log(f"日志文件: {log_file}\n\n")
 
-        mvn_cmd = (
-            f"mkdir -p {work_dir} && cd {work_dir} "
-            f"&& mvn exec:java -Dexec.mainClass=\"{main_class}\""
-        )
-        nohup_cmd = f"nohup {mvn_cmd} > {log_file} 2>&1 & echo $!"
+        # 构建 Maven 命令，包含 JAVA_HOME 设置
+        mvn_cmd_parts = [f"mkdir -p {work_dir}", f"cd {work_dir}"]
+        if jdk_version:
+            mvn_cmd_parts.append(self._build_java_home_setup(jdk_version))
+            mvn_cmd_parts.append(f"echo \"当前 Java 版本: $(java -version 2>&1 | head -1)\"")
+            # 添加 Maven 编译器版本参数
+            compiler_version = "1.8" if jdk_version == "8" else jdk_version
+            mvn_cmd_parts.append(f"mvn clean -U exec:java -Dexec.mainClass=\"{main_class}\" -Dmaven.compiler.source={compiler_version} -Dmaven.compiler.target={compiler_version}")
+        else:
+            mvn_cmd_parts.append(f"mvn clean -U exec:java -Dexec.mainClass=\"{main_class}\"")
+
+        mvn_cmd = " && ".join(mvn_cmd_parts)
+        nohup_cmd = f"nohup bash -c '{mvn_cmd}' > {log_file} 2>&1 & echo $!"
 
         result = executor.exec_command(nohup_cmd, timeout=15.0)
 

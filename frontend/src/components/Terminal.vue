@@ -9,7 +9,11 @@
       <div class="toolbar-right">
         <el-button size="small" text @click="handleCopy">
           <el-icon><DocumentCopy /></el-icon>
-          复制
+          复制选中
+        </el-button>
+        <el-button size="small" text @click="handleCopyAll">
+          <el-icon><CopyDocument /></el-icon>
+          复制全部
         </el-button>
         <el-button size="small" text @click="handlePaste">
           <el-icon><Upload /></el-icon>
@@ -18,6 +22,10 @@
         <el-button size="small" text @click="handleClear">
           <el-icon><Delete /></el-icon>
           清屏
+        </el-button>
+        <el-button size="small" text @click="handleFreeze" :type="isFrozen ? 'warning' : ''">
+          <el-icon><VideoPause v-if="!isFrozen" /><VideoPlay v-else /></el-icon>
+          {{ isFrozen ? '已冻结' : '冻结' }}
         </el-button>
         <el-button size="small" text @click="handleFullscreen">
           <el-icon><FullScreen /></el-icon>
@@ -34,7 +42,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
-import { DocumentCopy, Upload, Delete, FullScreen } from '@element-plus/icons-vue'
+import { DocumentCopy, CopyDocument, Upload, Delete, FullScreen, VideoPause, VideoPlay } from '@element-plus/icons-vue'
 
 const props = defineProps<{
   sessionName?: string
@@ -52,6 +60,8 @@ const containerRef = ref<HTMLElement>()
 const terminalContainer = ref<HTMLElement>()
 const terminalRef = ref<Terminal>()
 const fitAddonRef = ref<FitAddon>()
+const isFrozen = ref(false)
+const frozenBuffer = ref<string[]>([])
 
 function initTerminal() {
   if (!containerRef.value) return
@@ -93,7 +103,11 @@ function initTerminal() {
 }
 
 function write(data: string) {
-  terminalRef.value?.write(data)
+  if (isFrozen.value) {
+    frozenBuffer.value.push(data)
+  } else {
+    terminalRef.value?.write(data)
+  }
 }
 
 function writeln(data: string) {
@@ -122,6 +136,41 @@ function handleCopy() {
   }
 }
 
+function handleCopyAll() {
+  const term = terminalRef.value
+  if (!term) return
+
+  const buffer = term.buffer
+  const lines: string[] = []
+  const activeBuffer = buffer.active
+
+  for (let i = 0; i < activeBuffer.length; i++) {
+    const line = activeBuffer.getLine(i)
+    if (line) {
+      lines.push(line.translateToString(false))
+    }
+  }
+
+  const allText = lines.join('\n').trimEnd()
+  if (allText) {
+    navigator.clipboard.writeText(allText)
+  }
+}
+
+function handleFreeze() {
+  isFrozen.value = !isFrozen.value
+
+  if (!isFrozen.value && frozenBuffer.value.length > 0) {
+    const term = terminalRef.value
+    if (term) {
+      for (const data of frozenBuffer.value) {
+        term.write(data)
+      }
+    }
+    frozenBuffer.value = []
+  }
+}
+
 function handlePaste() {
   navigator.clipboard.readText().then(text => {
     emit('data', text)
@@ -145,6 +194,22 @@ function getTerminal(): Terminal | undefined {
   return terminalRef.value
 }
 
+function getIsFrozen(): boolean {
+  return isFrozen.value
+}
+
+function syncFrozenData() {
+  if (!isFrozen.value && frozenBuffer.value.length > 0) {
+    const term = terminalRef.value
+    if (term) {
+      for (const data of frozenBuffer.value) {
+        term.write(data)
+      }
+    }
+    frozenBuffer.value = []
+  }
+}
+
 defineExpose({
   write,
   writeln,
@@ -152,6 +217,8 @@ defineExpose({
   resize,
   focus,
   getTerminal,
+  getIsFrozen,
+  syncFrozenData,
 })
 
 onMounted(() => {

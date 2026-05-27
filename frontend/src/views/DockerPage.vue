@@ -259,6 +259,19 @@
         <el-button type="primary" @click="createVolume">创建</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="showErrorLogDialog" title="容器启动失败日志" width="700px">
+      <el-input
+        v-model="errorLogContent"
+        type="textarea"
+        :rows="15"
+        readonly
+        class="error-log-textarea"
+      />
+      <template #footer>
+        <el-button @click="showErrorLogDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -286,11 +299,13 @@ const showPullDialog = ref(false)
 const showBuildDialog = ref(false)
 const showNetworkDialog = ref(false)
 const showVolumeDialog = ref(false)
+const showErrorLogDialog = ref(false)
 
 const pullForm = ref({ repository: '', tag: 'latest' })
 const buildForm = ref({ dockerfile_path: '', tag: '' })
 const networkForm = ref({ name: '', driver: 'bridge' })
 const volumeForm = ref({ name: '' })
+const errorLogContent = ref('')
 
 const dockerInfo = computed(() => dockerStore.dockerInfo)
 const sshAccounts = computed(() => sshStore.accounts)
@@ -309,8 +324,12 @@ function refreshAll() {
   dockerStore.fetchComposeProjects()
 }
 
-function handleStart(container: DockerContainer) {
-  dockerStore.startContainer(container.id)
+async function handleStart(container: DockerContainer) {
+  const result = await dockerStore.startContainer(container.id)
+  if (!result.success && result.errorLogs) {
+    errorLogContent.value = result.errorLogs
+    showErrorLogDialog.value = true
+  }
 }
 
 function handleStop(container: DockerContainer) {
@@ -456,5 +475,13 @@ onMounted(async () => {
 .batch-label {
   font-size: 12px;
   color: #909399;
+}
+
+.error-log-textarea :deep(.el-textarea__inner) {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  border: 1px solid #3c3c3c;
 }
 </style>

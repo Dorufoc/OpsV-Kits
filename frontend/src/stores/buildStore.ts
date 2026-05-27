@@ -124,7 +124,7 @@ export const useBuildStore = defineStore('build', () => {
     }
   }
 
-  async function startRun(params: { remote_path: string; account_alias: string; local_path?: string; jar_path?: string; run_mode?: string }) {
+  async function startRun(params: { remote_path: string; account_alias: string; local_path?: string; jar_path?: string; run_mode?: string; jdk_version?: string }) {
     runStatus.value = 'running'
     rawLog.value = ""
     stopPolling()
@@ -135,6 +135,7 @@ export const useBuildStore = defineStore('build', () => {
         local_path: params.local_path || undefined,
         jar_path: params.jar_path || undefined,
         run_mode: params.run_mode || "spring-boot",
+        jdk_version: params.jdk_version || undefined,
       })
       currentTaskId.value = res.task_id || res.taskId
       startPolling()
@@ -147,7 +148,11 @@ export const useBuildStore = defineStore('build', () => {
   }
 
   async function stopTask() {
-    await request.post('/build/stop', { task_id: currentTaskId.value })
+    try {
+      await request.post('/build/stop', { task_id: currentTaskId.value })
+    } catch (e) {
+      pipeToTerminal(`\r\n\x1b[33m停止请求发送失败: ${e}\x1b[0m\r\n`)
+    }
     stopPolling()
     if (buildStatus.value === 'building') {
       buildStatus.value = 'idle'

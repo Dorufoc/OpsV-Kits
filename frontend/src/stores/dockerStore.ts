@@ -96,7 +96,7 @@ export const useDockerStore = defineStore('docker', () => {
     if (!a) return
     loading.value = true
     try {
-      const res = await request.get<DockerContainer[]>('/docker/containers', { params: { account_alias: a } })
+      const res = await request.get<DockerContainer[]>('/docker/containers', { params: { account_alias: a, all: true } })
       containers.value = res
       return res
     } finally {
@@ -104,11 +104,23 @@ export const useDockerStore = defineStore('docker', () => {
     }
   }
 
-  async function startContainer(id: string, alias?: string) {
+  async function startContainer(id: string, alias?: string): Promise<{ success: boolean; errorLogs?: string }> {
     const a = alias || currentAlias.value
-    if (!a) return
+    if (!a) return { success: false }
+
     await request.post(`/docker/containers/${id}/start`, null, { params: { account_alias: a } })
     await fetchContainers(a)
+
+    await new Promise(resolve => setTimeout(resolve, 10000))
+    await fetchContainers(a)
+
+    const container = containers.value.find(c => c.id === id)
+    if (container && container.state === 'exited') {
+      const logs = await getContainerLogs(id, 50, a)
+      return { success: false, errorLogs: Array.isArray(logs) ? logs.join('\n') : String(logs) }
+    }
+
+    return { success: true }
   }
 
   async function stopContainer(id: string, alias?: string) {

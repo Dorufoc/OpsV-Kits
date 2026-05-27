@@ -78,13 +78,13 @@
               <span v-else class="text-muted">请选择 SSH 账户</span>
             </el-form-item>
             <el-form-item label="JDK 版本">
-              <el-select v-model="projectConfig.jdk_version" placeholder="自动检测" style="width: 160px" clearable>
+              <el-select v-model="projectConfig.jdk_version" placeholder="JDK 21" style="width: 160px">
                 <el-option label="JDK 8 (1.8)" value="8" />
                 <el-option label="JDK 11" value="11" />
                 <el-option label="JDK 17" value="17" />
                 <el-option label="JDK 21" value="21" />
               </el-select>
-              <span style="margin-left: 8px; color: #909399; font-size: 12px;">留空则自动检测 pom.xml</span>
+              <span style="margin-left: 8px; color: #909399; font-size: 12px;">默认 JDK 21</span>
             </el-form-item>
           </el-form>
         </el-card>
@@ -145,7 +145,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="JDK 版本">
-          <el-select v-model="newProjectForm.jdk_version" placeholder="自动检测" style="width: 160px" clearable>
+          <el-select v-model="newProjectForm.jdk_version" placeholder="JDK 21" style="width: 160px">
             <el-option label="JDK 8 (1.8)" value="8" />
             <el-option label="JDK 11" value="11" />
             <el-option label="JDK 17" value="17" />
@@ -190,7 +190,7 @@ const projectConfig = ref<ProjectItem>({
   local_path: '',
   remote_path: '',
   ssh_alias: '',
-  jdk_version: '',
+  jdk_version: '21',
 })
 
 const newProjectForm = ref({
@@ -198,7 +198,7 @@ const newProjectForm = ref({
   local_path: '',
   remote_path: '',
   ssh_alias: '',
-  jdk_version: '',
+  jdk_version: '21',
 })
 
 const isRunning = computed(() =>
@@ -367,6 +367,7 @@ async function handleRun() {
       remote_path: projectConfig.value.remote_path,
       account_alias: projectConfig.value.ssh_alias,
       local_path: projectConfig.value.local_path || undefined,
+      jdk_version: projectConfig.value.jdk_version || undefined,
     })
   } catch {
     terminalRef.value?.writeln('\x1b[31m启动失败\x1b[0m')
@@ -374,11 +375,15 @@ async function handleRun() {
 }
 
 async function handleStop() {
-  if (syncStore.syncStatus !== 'idle') {
-    await syncStore.stopSync()
-  }
-  if (buildStore.buildStatus === 'building' || buildStore.runStatus === 'running') {
-    await buildStore.stopTask()
+  try {
+    if (syncStore.syncStatus !== 'idle') {
+      await syncStore.stopSync()
+    }
+    if (buildStore.buildStatus === 'building' || buildStore.runStatus === 'running') {
+      await buildStore.stopTask()
+    }
+  } catch {
+    // 子函数已有内部异常保护，此处仅作兜底
   }
   terminalRef.value?.writeln('\x1b[33m任务已停止\x1b[0m')
 }

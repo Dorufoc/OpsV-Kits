@@ -4,6 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.core.ssh_client import SSHClientManager
 from app.models.audit_log import AuditLog
 from app.models.ssh_account import (
     AccountGroup,
@@ -106,6 +107,28 @@ async def get_audit_logs(
     )
 
 
+@router.post("/test-connection")
+async def test_connection_direct(data: SSHAccountCreate):
+    """直接测试SSH连接，不保存账户信息"""
+    try:
+        account = SSHAccount(
+            alias="__temp_test__",
+            host=data.host,
+            port=data.port,
+            username=data.username,
+            auth_type=data.auth_type,
+            password=data.password,
+            private_key=data.private_key,
+            key_passphrase=data.key_passphrase,
+            totp_secret=data.totp_secret,
+        )
+        manager = SSHClientManager(account)
+        success, message = manager.test_connection(timeout=10.0)
+        return {"success": success, "message": message}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"测试连接失败: {e}")
+
+
 @router.post("/groups", response_model=AccountGroup, status_code=201)
 async def create_group(name: str, accounts: Optional[list[str]] = None):
     try:
@@ -130,3 +153,30 @@ async def delete_group(name: str):
         ssh_account_service.delete_group(name)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/clear-all", status_code=204)
+async def clear_all_accounts(confirm: str = Query(..., description="确认删除所有账户，传入 'yes' 确认")):
+    """清空所有SSH账户（用于异常情况下的清理）"""
+    if confirm != "yes":
+        raise HTTPException(status_code=400, detail="请传入 confirm=yes 确认删除所有账户")
+    try:
+        ssh_account_service.clear_all_accounts()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"清理账户失败: {e}")
+
+
+@router.get("/storage/info")
+async def get_storage_info():
+    """获取数据存储路径和状态（用于诊断）"""
+    from pathlib import Path
+    persist_dir = Path.home() / ".opsv-kits"
+    accounts_path = persist_dir / "accounts.json"
+    return {
+        "home_directory": str(Path.home()),
+        "persist_directory": str(persist_dir),
+        "accounts_file_path": str(accounts_path),
+        "persist_dir_exists": persist_dir.exists(),
+        "accounts_file_exists": accounts_path.exists(),
+        "accounts_count": len(ssh_account_service.list_accounts()),
+    }

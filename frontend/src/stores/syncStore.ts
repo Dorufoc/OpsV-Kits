@@ -62,7 +62,15 @@ export const useSyncStore = defineStore('sync', () => {
           const msg = res.message || res.phase || ''
           if (msg && msg !== lastSyncMessage) {
             if (logCallback) {
-              logCallback(`\r\n${msg}`)
+              let coloredMsg = msg
+              if (msg.startsWith('新增:')) {
+                coloredMsg = `\x1b[32m${msg}\x1b[0m`
+              } else if (msg.startsWith('修改:')) {
+                coloredMsg = `\x1b[33m${msg}\x1b[0m`
+              } else if (msg.startsWith('删除:')) {
+                coloredMsg = `\x1b[31m${msg}\x1b[0m`
+              }
+              logCallback(`\r\n${coloredMsg}`)
             }
           }
           lastSyncMessage = msg
@@ -87,7 +95,10 @@ export const useSyncStore = defineStore('sync', () => {
             if (res.remote_path) {
               logCallback(`\r\n\x1b[36m同步目录: ${res.remote_path}\x1b[0m`)
             }
-            if (res.tree) {
+            if (res.diff_tree) {
+              logCallback(`\r\n${res.diff_tree}\r\n`)
+            }
+            if (res.tree && !isNoop) {
               logCallback(`\r\n\x1b[36m远程目录结构:\x1b[0m\r\n${res.tree}\r\n`)
             }
             logCallback('\r\n')
@@ -114,7 +125,11 @@ export const useSyncStore = defineStore('sync', () => {
   }
 
   async function stopSync() {
-    await request.post('/sync/stop', { sync_id: currentTaskId.value })
+    try {
+      await request.post('/sync/stop', { sync_id: currentTaskId.value })
+    } catch (e) {
+      if (logCallback) logCallback(`\r\n\x1b[33m停止同步请求发送失败\x1b[0m\r\n`)
+    }
     stopPolling()
     syncStatus.value = 'idle'
     currentTaskId.value = ''

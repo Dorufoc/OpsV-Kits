@@ -49,6 +49,9 @@ class SyncTaskInfo:
         self.started_at: Optional[str] = None
         self.completed_at: Optional[str] = None
         self.error: Optional[str] = None
+        self.file_changes: Optional[dict[str, list[str]]] = None
+        self.diff_tree: str = ""
+        self.tree: str = ""
 
 
 class SyncService:
@@ -135,7 +138,7 @@ class SyncService:
             ]
 
     def _task_to_dict(self, task: SyncTaskInfo) -> dict:
-        return {
+        result = {
             "sync_id": task.sync_id,
             "local_path": task.local_path,
             "remote_path": task.remote_path,
@@ -149,6 +152,11 @@ class SyncService:
             "completed_at": task.completed_at,
             "error": task.error,
         }
+        if task.file_changes:
+            result["file_changes"] = task.file_changes
+        result["diff_tree"] = task.diff_tree
+        result["tree"] = task.tree
+        return result
 
     def _run_sync(
         self, sync_id: str, task: SyncTaskInfo, account: SSHAccount
@@ -205,12 +213,29 @@ class SyncService:
                 task.status = SyncStatus.COMPLETED
                 task.progress = 1.0
                 task.completed_at = datetime.now(timezone.utc).isoformat()
+
+                # 收集差异文件信息
+                task.file_changes = {
+                    "new": sorted(engine.new_files),
+                    "modified": sorted(engine.modified_files),
+                    "deleted": sorted(engine.deleted_files),
+                }
+                task.diff_tree = self._build_diff_tree(
+                    engine.new_files,
+                    engine.modified_files,
+                    engine.deleted_files,
+                    task.remote_path,
+                )
+
                 tree = self._get_remote_tree(conn.manager.client, task.remote_path)
+                task.tree = tree
                 self._push_progress_to_ws(sync_id, {
                     "type": "completed",
                     "sync_id": sync_id,
                     "message": "同步完成",
                     "tree": tree,
+                    "diff_tree": task.diff_tree,
+                    "file_changes": task.file_changes,
                     "remote_path": task.remote_path,
                 })
 
@@ -279,6 +304,76 @@ class SyncService:
             return "\n".join(result)
         except Exception:
             return f"(无法获取目录树: {remote_path})"
+
+    @staticmethod
+    def _build_diff_tree(
+        new_files: set[str],
+        modified_files: set[str],
+        deleted_files: set[str],
+        remote_path: str,
+    ) -> str:
+        if not new_files and not modified_files and not deleted_files:
+            return ""
+
+        lines: list[str] = []
+        project_name = os.path.basename(remote_path.rstrip("/")) or remote_path
+
+        # 构建层级文件树
+        tree_nodes: dict[str, dict] = {}
+
+        def add_to_tree(path: str, status: str) -> None:
+            parts = path.split("/")
+            node = tree_nodes
+            for i, part in enumerate(parts):
+                is_file = (i == len(parts) - 1)
+                if part not in node:
+                    node[part] = {} if not is_file else None
+                if is_file:
+                    node[part] = status
+                else:
+                    node = node[part]
+
+        for f in new_files:
+            add_to_tree(f, "new")
+        for f in modified_files:
+            add_to_tree(f, "modified")
+        for f in deleted_files:
+            add_to_tree(f, "deleted")
+
+        def render_tree(node: dict, indent: str = "") -> None:
+            items = sorted(node.items(), key=lambda x: (0 if isinstance(x[1], dict) else 1, x[0]))
+            for i, (name, value) in enumerate(items):
+                is_last = (i == len(items) - 1)
+                connector = "└─ " if is_last else "├─ "
+                if isinstance(value, dict):
+                    lines.append(f"{indent}{connector}{name}/")
+                    ext = "  " if is_last else "│ "
+                    render_tree(value, indent + ext)
+                else:
+                    status_symbols = {
+                        "new": ("\x1b[32m", "新增"),
+                        "modified": ("\x1b[33m", "修改"),
+                        "deleted": ("\x1b[31m\x1b[9m", "删除"),
+                    }
+                    color, label = status_symbols.get(value, ("\x1b[0m", ""))
+                    lines.append(f"{indent}{connector}{name}  {color}[{label}]\x1b[0m")
+
+        project_label = f"\x1b[36m{project_name}/\x1b[0m"
+        lines.append(f"  {project_label}")
+        render_tree(tree_nodes)
+
+        # 统计汇总
+        stats_parts = []
+        if new_files:
+            stats_parts.append(f"\x1b[32m新增 {len(new_files)}\x1b[0m")
+        if modified_files:
+            stats_parts.append(f"\x1b[33m修改 {len(modified_files)}\x1b[0m")
+        if deleted_files:
+            stats_parts.append(f"\x1b[31m\x1b[9m删除 {len(deleted_files)}\x1b[0m")
+
+        summary = "  " + "  ".join(stats_parts)
+        result_parts = [summary, "", *lines]
+        return "\n".join(result_parts)
 
     def _get_loop(self) -> asyncio.AbstractEventLoop:
         if self._loop is not None:

@@ -32,10 +32,25 @@ class FileSyncEngine:
         self._progress_callback = progress_callback
         self._lock = RLock()
         self._stopped = False
+        self._new_files: set[str] = set()
+        self._modified_files: set[str] = set()
+        self._deleted_files: set[str] = set()
 
     @property
     def stopped(self) -> bool:
         return self._stopped
+
+    @property
+    def new_files(self) -> set[str]:
+        return set(self._new_files)
+
+    @property
+    def modified_files(self) -> set[str]:
+        return set(self._modified_files)
+
+    @property
+    def deleted_files(self) -> set[str]:
+        return set(self._deleted_files)
 
     def stop(self) -> None:
         self._stopped = True
@@ -68,6 +83,9 @@ class FileSyncEngine:
         files_to_delete = remote_files - local_files
         files_to_check = local_files & remote_files
 
+        self._new_files = files_to_upload.copy()
+        self._deleted_files = files_to_delete.copy()
+
         needs_upload = set()
         if not force:
             checked = 0
@@ -83,6 +101,7 @@ class FileSyncEngine:
                     self._report("diff", 0.7 + (checked / max(len(files_to_check), 1)) * 0.2,
                                  f"检查更新: {checked}/{len(files_to_check)}")
 
+        self._modified_files = needs_upload.copy()
         files_to_upload |= needs_upload
 
         self._report("diff", 0.9,
@@ -231,7 +250,11 @@ class FileSyncEngine:
 
             if ok:
                 uploaded += 1
-                self._report("upload", uploaded / total, f"上传: {rel_path}")
+                if rel_path in self._modified_files:
+                    label = "修改"
+                else:
+                    label = "新增"
+                self._report("upload", uploaded / total, f"{label}: {rel_path}")
             else:
                 failed.append(rel_path)
 

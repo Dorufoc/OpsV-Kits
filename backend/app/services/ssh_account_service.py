@@ -22,6 +22,9 @@ from app.models.ssh_account import (
 _PERSIST_DIR = Path.home() / ".opsv-kits"
 _PERSIST_PATH = _PERSIST_DIR / "accounts.json"
 
+# 最大账户数量限制，防止异常情况下创建过多账户
+_MAX_ACCOUNTS_LIMIT = 100
+
 
 class SSHAccountService:
     def __init__(self):
@@ -40,7 +43,9 @@ class SSHAccountService:
 
     def _load_from_disk(self) -> None:
         path = self._persist_path()
+        print(f"[SSHAccountService] 尝试加载账户数据 from: {path}")
         if not path.is_file():
+            print(f"[SSHAccountService] 数据文件不存在: {path}")
             return
         try:
             raw = path.read_text(encoding="utf-8")
@@ -62,7 +67,9 @@ class SSHAccountService:
                     self._groups[group.name] = group
                 except Exception:
                     continue
-        except Exception:
+            print(f"[SSHAccountService] 成功加载 {len(self._accounts)} 个账户")
+        except Exception as e:
+            print(f"[SSHAccountService] 加载数据失败: {e}")
             self._accounts.clear()
             self._groups.clear()
             self._default_alias = None
@@ -84,8 +91,9 @@ class SSHAccountService:
                 "default_alias": self._default_alias,
             }
             path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        except Exception:
-            pass
+            print(f"[SSHAccountService] 成功保存 {len(accounts_data)} 个账户到: {path}")
+        except Exception as e:
+            print(f"[SSHAccountService] 保存数据失败: {e}, 路径: {path}")
 
     # ── CRUD ────────────────────────────────────────────────────────
 
@@ -93,6 +101,9 @@ class SSHAccountService:
         with self._lock:
             if data.alias in self._accounts:
                 raise ValueError(f"账户别名 '{data.alias}' 已存在")
+            # 检查账户数量限制，防止异常情况下创建过多账户
+            if len(self._accounts) >= _MAX_ACCOUNTS_LIMIT:
+                raise ValueError(f"账户数量已达到上限 ({_MAX_ACCOUNTS_LIMIT})，请先删除部分账户")
             encrypted = self._encrypt_sensitive(data)
             account = SSHAccount(
                 alias=encrypted.alias,
@@ -162,6 +173,21 @@ class SSHAccountService:
                 self._default_alias = None
             self._add_audit_log(alias, "delete", "success", "账户删除成功")
             self._save_to_disk()
+
+    def clear_all_accounts(self) -> int:
+        """清空所有账户，返回删除的账户数量"""
+        with self._lock:
+            count = len(self._accounts)
+            # 关闭所有连接池中的连接
+            for alias in list(self._accounts.keys()):
+                self._pool.remove_connection(alias)
+            # 清空账户数据
+            self._accounts.clear()
+            self._groups.clear()
+            self._default_alias = None
+            self._add_audit_log("__system__", "clear_all", "success", f"清空了 {count} 个账户")
+            self._save_to_disk()
+            return count
 
     def test_account(self, alias: str, timeout: float = 10.0) -> tuple[bool, str]:
         with self._lock:

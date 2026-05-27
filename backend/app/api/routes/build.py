@@ -54,10 +54,11 @@ def _verify_account(account_alias: str) -> None:
 async def check_environment(
     account_alias: str = Query(..., description="SSH 账户别名"),
     project_path: str = Query(..., description="远程项目路径"),
+    jdk_version: Optional[str] = Query(default=None, description="指定 JDK 版本号，如 8/11/17/21，留空则检测系统默认 JDK"),
 ):
     _verify_account(account_alias)
     try:
-        result = build_service.check_environment(account_alias, project_path)
+        result = build_service.check_environment(account_alias, project_path, jdk_version)
         return result
     except Exception as e:
         raise HTTPException(
@@ -191,7 +192,7 @@ class CompileRequest(BaseModel):
     account_alias: str = Field(..., description="SSH 账户别名")
     project_path: str = Field(..., description="远程项目路径")
     local_path: Optional[str] = Field(default=None, description="本地项目路径（用于自动拼接项目文件夹名）")
-    command: str = Field(default="mvn clean compile", description="Maven 编译命令")
+    command: str = Field(default="mvn clean -U compile", description="Maven 编译命令")
     jdk_version: Optional[str] = Field(default=None, description="JDK 版本号，如 8/11/17/21，留空自动检测")
 
 
@@ -199,7 +200,7 @@ class TestRequest(BaseModel):
     account_alias: str = Field(..., description="SSH 账户别名")
     project_path: str = Field(..., description="远程项目路径")
     local_path: Optional[str] = Field(default=None, description="本地项目路径（用于自动拼接项目文件夹名）")
-    command: str = Field(default="mvn clean test", description="Maven 测试命令")
+    command: str = Field(default="mvn clean -U test", description="Maven 测试命令")
     jdk_version: Optional[str] = Field(default=None, description="JDK 版本号，如 8/11/17/21，留空自动检测")
 
 
@@ -207,7 +208,7 @@ class PackageRequest(BaseModel):
     account_alias: str = Field(..., description="SSH 账户别名")
     project_path: str = Field(..., description="远程项目路径")
     command: str = Field(
-        default="mvn clean package -DskipTests", description="Maven 打包命令"
+        default="mvn clean -U package -DskipTests", description="Maven 打包命令"
     )
 
 
@@ -217,12 +218,18 @@ class RunJarRequest(BaseModel):
     jar_path: str = Field(..., description="JAR 文件相对/绝对路径")
     jvm_args: str = Field(default="", description="JVM 参数")
     app_args: str = Field(default="", description="应用参数")
+    local_path: Optional[str] = Field(default=None, description="本地项目路径")
+    jdk_version: Optional[str] = Field(default=None, description="JDK 版本号")
+    server_port: Optional[str] = Field(default=None, description="服务端口，指定后启动前自动清理旧进程")
 
 
 class RunSpringBootRequest(BaseModel):
     account_alias: str = Field(..., description="SSH 账户别名")
     project_path: str = Field(..., description="远程项目路径")
     main_class: Optional[str] = Field(default=None, description="Spring Boot 主类")
+    local_path: Optional[str] = Field(default=None, description="本地项目路径")
+    jdk_version: Optional[str] = Field(default=None, description="JDK 版本号")
+    server_port: Optional[str] = Field(default=None, description="服务端口，默认 8080，启动前自动清理旧进程")
 
 
 class RunExecJavaRequest(BaseModel):
@@ -312,6 +319,9 @@ async def api_run_jar(data: RunJarRequest):
             jar_path=data.jar_path,
             jvm_args=data.jvm_args,
             app_args=data.app_args,
+            local_path=data.local_path,
+            jdk_version=data.jdk_version,
+            server_port=data.server_port,
         )
         return BuildTaskResponse(**task.to_dict())
     except Exception as e:
@@ -326,6 +336,9 @@ async def api_run_spring_boot(data: RunSpringBootRequest):
             account_alias=data.account_alias,
             project_path=data.project_path,
             main_class=data.main_class,
+            local_path=data.local_path,
+            jdk_version=data.jdk_version,
+            server_port=data.server_port,
         )
         return BuildTaskResponse(**task.to_dict())
     except Exception as e:
@@ -355,6 +368,8 @@ class GenericRunRequest(BaseModel):
     main_class: Optional[str] = Field(default=None, description="主类（仅 exec 模式需要）")
     jvm_args: Optional[str] = Field(default="", description="JVM 参数（仅 jar 模式）")
     app_args: Optional[str] = Field(default="", description="应用参数（仅 jar 模式）")
+    jdk_version: Optional[str] = Field(default=None, description="JDK 版本号，如 8/11/17/21，留空自动检测")
+    server_port: Optional[str] = Field(default=None, description="服务端口，spring-boot 模式默认 8080，jar 模式可选")
 
 
 @build_router.post("/run", response_model=BuildTaskResponse)
@@ -369,6 +384,8 @@ async def api_generic_run(data: GenericRunRequest):
                 jvm_args=data.jvm_args or "",
                 app_args=data.app_args or "",
                 local_path=data.local_path,
+                jdk_version=data.jdk_version,
+                server_port=data.server_port,
             )
         elif data.run_mode == "exec":
             task = build_service.run_exec_java(
@@ -376,6 +393,7 @@ async def api_generic_run(data: GenericRunRequest):
                 project_path=data.project_path,
                 main_class=data.main_class or "",
                 local_path=data.local_path,
+                jdk_version=data.jdk_version,
             )
         else:
             task = build_service.run_spring_boot(
@@ -383,6 +401,8 @@ async def api_generic_run(data: GenericRunRequest):
                 project_path=data.project_path,
                 main_class=data.main_class,
                 local_path=data.local_path,
+                jdk_version=data.jdk_version,
+                server_port=data.server_port,
             )
         return BuildTaskResponse(**task.to_dict())
     except Exception as e:

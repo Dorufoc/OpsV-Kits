@@ -12,8 +12,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import signal
+import socket
 import subprocess
 import sys
 import textwrap
@@ -23,9 +25,49 @@ import webbrowser
 from pathlib import Path
 
 
+def find_available_port(start_port: int, max_attempts: int = 10) -> int | None:
+    """查找可用端口，从 start_port 开始尝试，最多尝试 max_attempts 个端口"""
+    for port in range(start_port, start_port + max_attempts):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind(('0.0.0.0', port))
+                return port
+            except OSError:
+                continue
+    return None
+
+
 PROJECT_ROOT = Path(__file__).resolve().parent
 BACKEND_DIR = PROJECT_ROOT / "backend"
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
+
+# 用于前后端端口通信的临时配置文件
+_PORT_CONFIG_PATH = PROJECT_ROOT / ".port_config.json"
+
+def _save_backend_port(port: int) -> None:
+    """保存后端实际端口到配置文件，供前端读取"""
+    try:
+        _PORT_CONFIG_PATH.write_text(json.dumps({"backend_port": port}), encoding="utf-8")
+    except Exception:
+        pass
+
+def _get_backend_port() -> int:
+    """从配置文件读取后端实际端口"""
+    try:
+        if _PORT_CONFIG_PATH.exists():
+            data = json.loads(_PORT_CONFIG_PATH.read_text(encoding="utf-8"))
+            return data.get("backend_port", 8000)
+    except Exception:
+        pass
+    return 8000
+
+def _clear_port_config() -> None:
+    """清理端口配置文件"""
+    try:
+        if _PORT_CONFIG_PATH.exists():
+            _PORT_CONFIG_PATH.unlink()
+    except Exception:
+        pass
 
 
 def print_banner():
@@ -151,38 +193,53 @@ def ensure_nodejs():
     print(f"  ✅ Node.js {node_check.stdout.strip()}")
 
 
-def start_backend(port: int = 8000, reload: bool = True, log_level: str = "info") -> subprocess.Popen:
+def start_backend(port: int = 8000, reload: bool = True, log_level: str = "info") -> tuple[subprocess.Popen, int]:
+    # 检查端口是否可用，如果被占用则自动寻找可用端口
+    actual_port = find_available_port(port)
+    if actual_port is None:
+        print(f"  ❌ 无法找到可用端口（尝试了 {port} 到 {port + 9}）")
+        sys.exit(1)
+
+    if actual_port != port:
+        print(f"  ⚠ 端口 {port} 已被占用，自动切换到端口 {actual_port}")
+
+    # 保存实际端口到配置文件，供前端读取
+    _save_backend_port(actual_port)
+
     backend_cmd = [
         sys.executable, "-m", "uvicorn",
         "app.main:app",
         "--host", "0.0.0.0",
-        "--port", str(port),
+        "--port", str(actual_port),
         "--log-level", log_level,
     ]
     if reload:
         backend_cmd.append("--reload")
 
-    print(f"  ▶ Backend starting on http://localhost:{port}")
+    print(f"  ▶ Backend starting on http://localhost:{actual_port}")
     if reload:
         print(f"    Auto-reload: enabled")
     print()
 
-    return subprocess.Popen(
+    proc = subprocess.Popen(
         backend_cmd,
         cwd=str(BACKEND_DIR),
         stdout=None,
         stderr=None,
         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
     )
+    return proc, actual_port
 
 
 def start_frontend_dev(port: int = 3000) -> subprocess.Popen:
-    print(f"  ▶ Frontend dev server starting on http://localhost:{port}")
-    print(f"    API proxy: http://localhost:{port} -> http://localhost:8000")
+    # 读取后端实际端口
+    actual_backend_port = _get_backend_port()
+    print(f"  ▶ Frontend dev server starting (default port: {port})")
+    print(f"    API proxy: http://localhost:{port} -> http://localhost:{actual_backend_port}")
     print()
 
     return subprocess.Popen(
-        ["npm", "run", "dev", "--", "--port", str(port)],
+        ["npm", "run", "dev"],
         cwd=str(FRONTEND_DIR),
         stdout=None,
         stderr=None,
@@ -264,6 +321,8 @@ def wait_for_shutdown(processes: list[subprocess.Popen]):
 
     def signal_handler(sig, frame):
         print("\n  ⏹ Stopping all services...")
+        # 清理端口配置文件
+        _clear_port_config()
         for proc in processes:
             if proc and proc.poll() is None:
                 if sys.platform == "win32":
@@ -338,14 +397,15 @@ def main():
     frontend_url = None
     backend_url = None
 
+    actual_backend_port = args.port
     if start_backend_svc:
-        proc = start_backend(
+        proc, actual_backend_port = start_backend(
             port=args.port,
             reload=not args.no_reload and not args.prod,
             log_level="warning" if args.prod else "info",
         )
         processes.append(proc)
-        backend_url = f"http://localhost:{args.port}"
+        backend_url = f"http://localhost:{actual_backend_port}"
 
     if start_frontend_svc and not args.prod:
         proc = start_frontend_dev(port=args.frontend_port)
@@ -355,7 +415,7 @@ def main():
         dist_dir = FRONTEND_DIR / "dist"
         if not dist_dir.is_dir():
             build_frontend()
-        print(f"  ▶ Frontend static file served by backend on http://localhost:{args.port}")
+        print(f"  ▶ Frontend static file served by backend on http://localhost:{actual_backend_port}")
         print()
         frontend_url = backend_url
 
