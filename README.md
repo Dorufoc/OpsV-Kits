@@ -5,13 +5,13 @@
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![Vue](https://img.shields.io/badge/Vue-3.3+-orange.svg)](https://vuejs.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License--AGPL--3.0-yellow.svg)](LICENSE)
 
 ---
 
 ## 项目简介
 
-OpsV-Kits 是一个面向 Java 开发者的远程开发自动化平台，通过 Web 界面和 CLI 工具，实现从本地到远程 Linux 主机的文件同步、环境自动检查安装、项目编译运行，同时内置远程文件管理、SSH 多账户管理、Docker 容器管理、WebSSH 终端等完整运维能力。
+OpsV-Kits 是一个面向 Java 开发者的远程开发自动化平台，通过 Web 界面实现从本地到远程 Linux 主机的文件同步、环境自动检查安装、项目编译运行，同时内置远程文件管理、SSH 多账户管理、Docker 容器管理、WebSSH 终端等完整运维能力。
 
 核心特性：
 
@@ -203,7 +203,7 @@ OpsV-Kits/
 | LGPL-2.1 | Paramiko |
 | MPL-2.0 | Pathspec |
 
-> 本项目所有依赖均采用商业友好型开源协议，未使用 GPL / AGPL 等强 copyleft 协议组件。
+> 本项目所有依赖均采用商业友好型开源协议，未使用 GPL / AGPL 等强 copyleft 协议组件，依赖本身可独立于本项目协议使用。
 >
 > webssh 项目为本项目本地 fork，基于其架构和代码实现 WebSSH 终端功能。原始项目作者为 Shengdun Hua（https://github.com/huashengdun/webssh），采用 MIT 许可证。
 
@@ -274,38 +274,6 @@ OpsV-Kits/
 
 ---
 
-## CLI 命令行
-
-除了 Web 界面，OpsV-Kits 还提供完整的 CLI 工具：
-
-```bash
-# 完整流程：同步 -> 环境检查 -> 编译 -> 运行
-python -m app.cli run
-
-# 子命令
-python -m app.cli sync          # 仅同步文件
-python -m app.cli build         # 仅编译
-python -m app.cli start         # 仅运行
-python -m app.cli setup         # 仅环境检查安装
-
-# SSH 账户管理
-python -m app.cli account list
-python -m app.cli account test <alias>
-python -m app.cli account default <alias>
-
-# 远程文件管理
-python -m app.cli remote ls [path]
-python -m app.cli remote upload <local> <remote>
-python -m app.cli remote download <remote> [local]
-
-# Docker 管理
-python -m app.cli docker ps
-python -m app.cli docker logs <container>
-python -m app.cli docker exec <container> <command>
-```
-
----
-
 ## 安全特性
 
 - 凭证加密：所有 SSH 密码、私钥密码、TOTP 密钥使用 AES-256 加密存储
@@ -345,9 +313,7 @@ npm run dev
 
 ## 开源协议
 
-本项目采用 MIT License - 允许商业使用、修改、分发，仅需保留版权声明。
-
-详见 LICENSE 文件。
+本项目采用 GNU Affero General Public License v3.0 (AGPL-3.0) - 详见 LICENSE 文件。
 
 ---
 

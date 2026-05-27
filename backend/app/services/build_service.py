@@ -384,6 +384,26 @@ class BuildService:
             config={"command": command},
         )
 
+    def test_project(
+        self,
+        account_alias: str,
+        project_path: str,
+        local_path: Optional[str] = None,
+        command: str = "mvn clean test",
+        jdk_version: Optional[str] = None,
+    ) -> BuildTask:
+        config = {"command": command}
+        if jdk_version:
+            config["jdk_version"] = jdk_version
+        if local_path:
+            config["local_path"] = local_path
+        return self.create_build_task(
+            account_alias=account_alias,
+            project_path=project_path,
+            action="test",
+            config=config,
+        )
+
     # ── 运行方法 ────────────────────────────────────────────────
 
     def run_jar(
@@ -393,6 +413,7 @@ class BuildService:
         jar_path: str,
         jvm_args: str = "",
         app_args: str = "",
+        local_path: Optional[str] = None,
     ) -> BuildTask:
         config = {
             "run_mode": "jar",
@@ -405,6 +426,7 @@ class BuildService:
             project_path=project_path,
             action="run",
             config=config,
+            local_path=local_path,
         )
 
     def run_spring_boot(
@@ -412,6 +434,7 @@ class BuildService:
         account_alias: str,
         project_path: str,
         main_class: Optional[str] = None,
+        local_path: Optional[str] = None,
     ) -> BuildTask:
         config: dict = {
             "run_mode": "spring-boot",
@@ -423,6 +446,7 @@ class BuildService:
             project_path=project_path,
             action="run",
             config=config,
+            local_path=local_path,
         )
 
     def run_exec_java(
@@ -430,6 +454,7 @@ class BuildService:
         account_alias: str,
         project_path: str,
         main_class: str,
+        local_path: Optional[str] = None,
     ) -> BuildTask:
         config = {
             "run_mode": "exec",
@@ -440,6 +465,7 @@ class BuildService:
             project_path=project_path,
             action="run",
             config=config,
+            local_path=local_path,
         )
 
     # ── 任务管理 ────────────────────────────────────────────────
@@ -450,12 +476,16 @@ class BuildService:
         project_path: str,
         action: str,
         config: Optional[dict] = None,
+        local_path: Optional[str] = None,
     ) -> BuildTask:
+        final_config = config.copy() if config else {}
+        if local_path:
+            final_config["local_path"] = local_path
         task = new_build_task(
             account_alias=account_alias,
             project_path=project_path,
             action=action,
-            config=config,
+            config=final_config,
         )
 
         with self._build_tasks_lock:
@@ -510,7 +540,7 @@ class BuildService:
 
         try:
             action = task.action
-            if action in ("compile", "package"):
+            if action in ("compile", "package", "test"):
                 self._execute_maven_task(task)
             elif action == "run":
                 self._execute_run_task(task)
@@ -521,27 +551,37 @@ class BuildService:
             task.status = "failed"
             task.append_log(f"任务执行异常: {e}\n")
         finally:
-            if task.status == "running":
-                task.status = "completed"
-            task.completed_at = datetime.now(timezone.utc).isoformat()
-            task.append_log(f"[{task.completed_at}] 任务结束 (状态: {task.status})\n")
+            if task.action != "run":
+                # 只有非运行任务才自动结束
+                if task.status == "running":
+                    task.status = "completed"
+                task.completed_at = datetime.now(timezone.utc).isoformat()
+                task.append_log(f"[{task.completed_at}] 任务结束 (状态: {task.status})\n")
             task._notify()
 
     def _detect_maven_root(self, executor: RemoteExecutor, base_path: str) -> Optional[str]:
+        # 首先检查直接路径
         result = executor.exec_command(
             f"bash -c 'if [ -f {base_path}/pom.xml ]; then echo {base_path}; "
+            # 如果没有，在 base_path 下最多 3 层深度查找
             f"else d=$(find {base_path} -maxdepth 3 -name pom.xml -not -path \"*/target/*\" 2>/dev/null | head -1); "
-            f"if [ -n \"$d\" ]; then dirname \"$d\"; fi; fi'",
+            f"if [ -n \"$d\" ]; then dirname \"$d\"; "
+            # 如果还没有，检查是否在 base_path 的父目录下有同名文件夹（处理旧同步位置）
+            f"else parent=$(dirname {base_path}); folder=$(basename {base_path}); "
+            f"d2=$(find \"$parent\" -maxdepth 2 -name pom.xml -path \"*$folder*\" -not -path \"*/target/*\" 2>/dev/null | head -1); "
+            f"if [ -n \"$d2\" ]; then dirname \"$d2\"; fi; fi; fi'",
             timeout=10.0,
         )
         if result.success and result.stdout.strip():
             return result.stdout.strip().split("\n")[-1].strip()
         return None
 
-    def _ensure_java(self, executor: RemoteExecutor, task: BuildTask) -> bool:
+    def _ensure_java(self, executor: RemoteExecutor, task: BuildTask, work_dir: Optional[str] = None) -> bool:
         jdk_version = task.config.get("jdk_version", "")
         if not jdk_version:
-            required = self._parse_pom_java_version(executor, task.project_path)
+            # 使用正确的工作目录来解析 pom.xml
+            parse_path = work_dir if work_dir else task.project_path
+            required = self._parse_pom_java_version(executor, parse_path)
             jdk_version = required or ""
 
         check = executor.exec_command("java -version 2>&1", timeout=10.0)
@@ -563,22 +603,27 @@ class BuildService:
         target_ver = jdk_version or "17"
         task.append_log(f"\x1b[33m正在安装 OpenJDK {target_ver} (java-{target_ver}-openjdk-devel)...\x1b[0m\n")
 
-        install = executor.exec_command(
-            f"sudo dnf install -y java-{target_ver}-openjdk-devel 2>&1",
-            timeout=180.0,
-        )
-        if not install.success:
-            install = executor.exec_command(
-                f"sudo yum install -y java-{target_ver}-openjdk-devel 2>&1",
-                timeout=180.0,
-            )
+        # 使用流式执行来实时显示安装日志
+        def _log(t: str) -> None:
+            task.append_log(t)
 
+        # 先尝试 dnf
+        install_cmd = f"sudo dnf install -y java-{target_ver}-openjdk java-{target_ver}-openjdk-devel 2>&1"
+        exit_code = executor.exec_command_stream(install_cmd, output_callback=_log, timeout=300.0)
+        
+        # 如果 dnf 失败，尝试 yum
+        if exit_code != 0:
+            task.append_log("\x1b[33mdnf 失败，尝试 yum...\x1b[0m\n")
+            install_cmd = f"sudo yum install -y java-{target_ver}-openjdk java-{target_ver}-openjdk-devel 2>&1"
+            exit_code = executor.exec_command_stream(install_cmd, output_callback=_log, timeout=300.0)
+
+        # 验证安装
         verify = executor.exec_command("java -version 2>&1", timeout=10.0)
         if verify.success:
             task.append_log(f"\x1b[32mOpenJDK {target_ver} 安装成功\x1b[0m\n")
             return True
 
-        task.append_log(f"\x1b[31mJDK 安装失败: {install.stderr or install.stdout}\x1b[0m\n")
+        task.append_log(f"\x1b[31mJDK 安装失败，退出码: {exit_code}\x1b[0m\n")
         return False
 
     def _ensure_maven(self, executor: RemoteExecutor, task: BuildTask) -> bool:
@@ -610,11 +655,19 @@ class BuildService:
 
     def _execute_maven_task(self, task: BuildTask) -> None:
         command = task.config.get("command", "mvn clean compile")
-        action_label = "编译" if task.action == "compile" else "打包"
+        if task.action == "compile":
+            action_label = "编译"
+        elif task.action == "package":
+            action_label = "打包"
+        elif task.action == "test":
+            action_label = "测试"
+        else:
+            action_label = "执行"
         task.append_log(f"执行 Maven {action_label}: {command}\n")
 
         executor = RemoteExecutor(task.account_alias)
         resolved_path = executor.resolve_path(task.project_path)
+        # 添加项目文件夹名称，确保和同步服务使用一致的逻辑
         local_path = task.config.get("local_path")
         if local_path:
             project_folder = os.path.basename(os.path.abspath(local_path))
@@ -622,20 +675,32 @@ class BuildService:
         work_dir = self._detect_maven_root(executor, resolved_path)
 
         if work_dir is None:
-            ls_out = executor.exec_command(f"ls -A {resolved_path} 2>&1 | head -20", timeout=10.0)
-            dir_contents = ls_out.stdout.strip() if ls_out.success else "(无法列出)"
+            # 尝试列出更多位置的目录内容，帮助调试
+            debug_info = []
+            # 1. 列出配置的远程路径
+            ls1 = executor.exec_command(f"ls -LA {resolved_path} 2>&1 | head -30", timeout=10.0)
+            debug_info.append(f"--- 配置路径 {resolved_path} 的内容 ---")
+            debug_info.append(ls1.stdout.strip() if ls1.success else f"无法列出: {ls1.stderr}")
+            
+            # 2. 检查父目录
+            parent_path = "/".join(resolved_path.rstrip("/").split("/")[:-1])
+            if parent_path:
+                ls2 = executor.exec_command(f"ls -LA {parent_path} 2>&1 | head -30", timeout=10.0)
+                debug_info.append(f"\n--- 父目录 {parent_path} 的内容 ---")
+                debug_info.append(ls2.stdout.strip() if ls2.success else f"无法列出: {ls2.stderr}")
+            
             task.append_log(
                 f"工作目录: {resolved_path}\n"
                 f"\x1b[31m未找到 pom.xml (搜索深度 3 层)\x1b[0m\n"
-                f"\x1b[33m远程目录内容:\x1b[0m\n{dir_contents}\n"
-                f"\x1b[33m请先同步文件到该目录，或检查项目路径配置\x1b[0m\n"
+                f"\x1b[33m调试信息:\x1b[0m\n" + "\n".join(debug_info) + "\n"
+                f"\x1b[33m请先同步文件，或检查项目路径配置\x1b[0m\n"
             )
             task.status = "failed"
             return
 
         task.append_log(f"工作目录: {work_dir}\n\n")
 
-        if not self._ensure_java(executor, task):
+        if not self._ensure_java(executor, task, work_dir):
             task.status = "failed"
             task.append_log("Java 环境不可用，编译终止\n")
             return
@@ -645,7 +710,56 @@ class BuildService:
             task.append_log("Maven 环境不可用，编译终止\n")
             return
 
-        full_cmd = f"mkdir -p {work_dir} && cd {work_dir} && {command} 2>&1"
+        # 构建完整的命令，确保使用正确的 Java 版本
+        cmd_parts = [f"mkdir -p {work_dir}", f"cd {work_dir}"]
+        
+        # 如果需要特定的 JDK 版本，设置 JAVA_HOME
+        jdk_version = task.config.get("jdk_version", "")
+        if not jdk_version:
+            required = self._parse_pom_java_version(executor, work_dir)
+            jdk_version = required or ""
+        
+        if jdk_version:
+            # 检测并设置 JAVA_HOME
+            java_home_cmd = (
+                f"for dir in '/usr/lib/jvm/java-{jdk_version}-openjdk' "
+                f"'/usr/lib/jvm/java-{jdk_version}' "
+                f"'/usr/lib/jvm/jre-{jdk_version}-openjdk'; do "
+                f"if [ -d \"$dir\" ]; then "
+                f"export JAVA_HOME=\"$dir\" && "
+                f"export PATH=\"$JAVA_HOME/bin:$PATH\" && "
+                f"echo \"使用 JAVA_HOME: $JAVA_HOME\" && "
+                f"break; "
+                f"fi; "
+                f"done"
+            )
+            cmd_parts.append(java_home_cmd)
+            
+            # 覆盖 Maven 编译器配置，使用指定的 JDK 版本
+            # 这会覆盖 pom.xml 中的 maven.compiler.source 和 maven.compiler.target
+            if "mvn " in command:
+                # 先移除可能存在的 2>&1
+                base_cmd = command
+                if base_cmd.strip().endswith(" 2>&1"):
+                    base_cmd = base_cmd[:-6].strip()
+                
+                # 检查是否已有版本参数，如果没有则添加
+                if "-Dmaven.compiler.source" not in base_cmd and "-Dmaven.compiler.target" not in base_cmd:
+                    base_cmd = f"{base_cmd} -Dmaven.compiler.source={jdk_version} -Dmaven.compiler.target={jdk_version}"
+                
+                # 重新添加 2>&1
+                command = f"{base_cmd} 2>&1"
+            else:
+                # 非 Maven 命令，确保有 2>&1
+                if not command.strip().endswith(" 2>&1"):
+                    command = f"{command} 2>&1"
+        else:
+            # 没有指定 JDK 版本，确保有 2>&1
+            if not command.strip().endswith(" 2>&1"):
+                command = f"{command} 2>&1"
+        
+        cmd_parts.append(command)
+        full_cmd = " && ".join(cmd_parts)
 
         def _on_output(text: str) -> None:
             task.append_log(text)
@@ -669,26 +783,85 @@ class BuildService:
             task.status = "failed"
             task.append_log(f"\nMaven {action_label} 失败 (exit_code={exit_code})\n")
 
+    def _follow_log_file(self, task: BuildTask, log_file: str, duration: int = 30) -> None:
+        """后台线程，持续读取日志文件并追加到任务日志中"""
+        import time
+        last_size = 0
+        executor = RemoteExecutor(task.account_alias)
+        start_time = time.time()
+        
+        while time.time() - start_time < duration:
+            if task.status not in ["running"] and task.status not in ["pending"]:
+                break
+            try:
+                # 使用 tail 获取新增内容
+                if last_size == 0:
+                    # 第一次读取整个文件
+                    result = executor.exec_command(f"cat '{log_file}' 2>&1 || true", timeout=5.0)
+                else:
+                    # 读取新增内容
+                    result = executor.exec_command(f"tail -c +{last_size + 1} '{log_file}' 2>&1 || true", timeout=5.0)
+                
+                if result.success and result.stdout:
+                    task.append_log(result.stdout)
+                
+                # 获取文件大小
+                size_result = executor.exec_command(f"stat -c %s '{log_file}' 2>/dev/null || echo 0", timeout=3.0)
+                if size_result.success and size_result.stdout.strip():
+                    try:
+                        last_size = int(size_result.stdout.strip())
+                    except ValueError:
+                        pass
+                time.sleep(1)
+            except Exception:
+                time.sleep(1)
+
     def _execute_run_task(self, task: BuildTask) -> None:
+        import threading
         run_mode = task.config.get("run_mode", "jar")
 
         if run_mode == "jar":
-            self._run_jar_internal(task)
+            log_file = self._run_jar_internal(task)
         elif run_mode == "spring-boot":
-            self._run_spring_boot_internal(task)
+            log_file = self._run_spring_boot_internal(task)
         elif run_mode == "exec":
-            self._run_exec_java_internal(task)
+            log_file = self._run_exec_java_internal(task)
         else:
             task.status = "failed"
             task.append_log(f"未知的运行模式: {run_mode}\n")
+            return
+        
+        if log_file and task.status == "running":
+            # 先等 3 秒，获取启动日志
+            import time
+            time.sleep(3)
+            
+            # 读取初始启动日志
+            executor = RemoteExecutor(task.account_alias)
+            log_result = executor.exec_command(f"cat '{log_file}' 2>&1 || true", timeout=5.0)
+            if log_result.success and log_result.stdout:
+                task.append_log("\n--- 启动日志 ---\n")
+                task.append_log(log_result.stdout)
+            
+            # 启动后台线程持续跟踪日志 30 秒
+            t = threading.Thread(
+                target=self._follow_log_file,
+                args=(task, log_file, 30),
+                daemon=True
+            )
+            t.start()
 
-    def _run_jar_internal(self, task: BuildTask) -> None:
+    def _run_jar_internal(self, task: BuildTask) -> Optional[str]:
         jar_path = task.config.get("jar_path", "")
         jvm_args = task.config.get("jvm_args", "")
         app_args = task.config.get("app_args", "")
+        local_path = task.config.get("local_path", "")
 
         executor = RemoteExecutor(task.account_alias)
         resolved_path = executor.resolve_path(task.project_path)
+        if local_path:
+            project_folder = os.path.basename(os.path.abspath(local_path))
+            resolved_path = resolved_path.rstrip('/') + '/' + project_folder
 
         full_jar_path = jar_path
         if not jar_path.startswith("/"):
@@ -701,9 +874,8 @@ class BuildService:
         task.append_log(f"JAR 路径: {full_jar_path}\n")
         task.append_log(f"日志文件: {log_file}\n\n")
 
-        nohup_cmd = f"mkdir -p {task.project_path} && nohup {java_cmd} > {log_file} 2>&1 & echo $!"
+        nohup_cmd = f"mkdir -p {resolved_path} && nohup {java_cmd} > {log_file} 2>&1 & echo $!"
 
-        executor = RemoteExecutor(task.account_alias)
         result = executor.exec_command(nohup_cmd, timeout=15.0)
 
         if result.success and result.stdout.strip():
@@ -711,24 +883,41 @@ class BuildService:
                 pid = int(result.stdout.strip().split("\n")[-1].strip())
                 task.pid = pid
                 task.append_log(f"进程已启动，PID: {pid}\n")
-                task.append_log(f"标准输出重定向至: {log_file}\n")
                 task.status = "running"
+                return log_file
             except (ValueError, IndexError):
                 task.status = "failed"
                 task.append_log(f"无法解析 PID: {result.stdout}\n")
+                # 读取并显示日志文件内容
+                task.append_log("\n--- 启动日志 ---\n")
+                log_result = executor.exec_command(f"cat '{log_file}' 2>&1 || true", timeout=5.0)
+                if log_result.success and log_result.stdout:
+                    task.append_log(log_result.stdout)
+                else:
+                    task.append_log(f"无法读取日志文件: {log_result.stderr}\n")
+                return None
         else:
             task.status = "failed"
             task.append_log(f"启动失败: {result.stderr}\n")
+            # 尝试读取日志文件显示更多错误信息
+            task.append_log("\n--- 启动日志 ---\n")
+            log_result = executor.exec_command(f"cat '{log_file}' 2>&1 || true", timeout=5.0)
+            if log_result.success and log_result.stdout:
+                task.append_log(log_result.stdout)
+            else:
+                task.append_log(f"无法读取日志文件: {log_result.stderr}\n")
+            return None
 
-    def _run_spring_boot_internal(self, task: BuildTask) -> None:
+    def _run_spring_boot_internal(self, task: BuildTask) -> Optional[str]:
         main_class = task.config.get("main_class")
+        local_path = task.config.get("local_path", "")
         executor = RemoteExecutor(task.account_alias)
         resolved_path = executor.resolve_path(task.project_path)
         work_dir = self._detect_maven_root(executor, resolved_path)
         if work_dir is None:
             task.status = "failed"
             task.append_log(f"\x1b[31m未找到 pom.xml，请先同步文件\x1b[0m\n")
-            return
+            return None
         log_file = f"{work_dir.rstrip('/')}/nohup-{task.task_id}.log"
 
         task.append_log("运行模式: mvn spring-boot:run\n")
@@ -747,22 +936,40 @@ class BuildService:
                 task.pid = pid
                 task.append_log(f"进程已启动，PID: {pid}\n")
                 task.status = "running"
+                return log_file
             except (ValueError, IndexError):
                 task.status = "failed"
                 task.append_log(f"无法解析 PID: {result.stdout}\n")
+                # 读取并显示日志文件内容
+                task.append_log("\n--- 启动日志 ---\n")
+                log_result = executor.exec_command(f"cat '{log_file}' 2>&1 || true", timeout=5.0)
+                if log_result.success and log_result.stdout:
+                    task.append_log(log_result.stdout)
+                else:
+                    task.append_log(f"无法读取日志文件: {log_result.stderr}\n")
+                return None
         else:
             task.status = "failed"
             task.append_log(f"启动失败: {result.stderr}\n")
+            # 尝试读取日志文件显示更多错误信息
+            task.append_log("\n--- 启动日志 ---\n")
+            log_result = executor.exec_command(f"cat '{log_file}' 2>&1 || true", timeout=5.0)
+            if log_result.success and log_result.stdout:
+                task.append_log(log_result.stdout)
+            else:
+                task.append_log(f"无法读取日志文件: {log_result.stderr}\n")
+            return None
 
-    def _run_exec_java_internal(self, task: BuildTask) -> None:
+    def _run_exec_java_internal(self, task: BuildTask) -> Optional[str]:
         main_class = task.config.get("main_class", "")
+        local_path = task.config.get("local_path", "")
         executor = RemoteExecutor(task.account_alias)
         resolved_path = executor.resolve_path(task.project_path)
         work_dir = self._detect_maven_root(executor, resolved_path)
         if work_dir is None:
             task.status = "failed"
             task.append_log(f"\x1b[31m未找到 pom.xml，请先同步文件\x1b[0m\n")
-            return
+            return None
         log_file = f"{work_dir.rstrip('/')}/nohup-{task.task_id}.log"
 
         task.append_log("运行模式: mvn exec:java\n")
@@ -783,12 +990,29 @@ class BuildService:
                 task.pid = pid
                 task.append_log(f"进程已启动，PID: {pid}\n")
                 task.status = "running"
+                return log_file
             except (ValueError, IndexError):
                 task.status = "failed"
                 task.append_log(f"无法解析 PID: {result.stdout}\n")
+                # 读取并显示日志文件内容
+                task.append_log("\n--- 启动日志 ---\n")
+                log_result = executor.exec_command(f"cat '{log_file}' 2>&1 || true", timeout=5.0)
+                if log_result.success and log_result.stdout:
+                    task.append_log(log_result.stdout)
+                else:
+                    task.append_log(f"无法读取日志文件: {log_result.stderr}\n")
+                return None
         else:
             task.status = "failed"
             task.append_log(f"启动失败: {result.stderr}\n")
+            # 尝试读取日志文件显示更多错误信息
+            task.append_log("\n--- 启动日志 ---\n")
+            log_result = executor.exec_command(f"cat '{log_file}' 2>&1 || true", timeout=5.0)
+            if log_result.success and log_result.stdout:
+                task.append_log(log_result.stdout)
+            else:
+                task.append_log(f"无法读取日志文件: {log_result.stderr}\n")
+            return None
 
     # ── 内部辅助方法 ──────────────────────────────────────────────
 
@@ -854,6 +1078,30 @@ class BuildService:
         raise RemoteExecutorError(
             f"安装命令执行失败 (exit_code={result.exit_code}): {result.stderr[:200]}"
         )
+
+
+    def read_run_log(self, task_id: str, max_lines: int = 500) -> str:
+        """读取运行时日志文件"""
+        task = self.get_build_task(task_id)
+        if task is None:
+            return ""
+        
+        executor = RemoteExecutor(task.account_alias)
+        resolved_path = executor.resolve_path(task.project_path)
+        
+        # 添加项目文件夹名（如果有 local_path）
+        local_path = task.config.get("local_path", "")
+        if local_path:
+            project_folder = os.path.basename(os.path.abspath(local_path))
+            resolved_path = resolved_path.rstrip("/") + "/" + project_folder
+        
+        log_file = f"{resolved_path.rstrip('/')}/nohup-{task_id}.log"
+        
+        # 使用 tail 命令获取最后几行
+        result = executor.exec_command(f"tail -n {max_lines} '{log_file}' 2>&1 || true", timeout=10.0)
+        if result.success:
+            return result.stdout
+        return f"无法读取日志文件: {result.stderr}"
 
 
 build_service = BuildService()

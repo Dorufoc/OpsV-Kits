@@ -163,6 +163,7 @@ class SyncService:
             task.remote_path = resolve_remote_path(
                 conn.manager.client, task.remote_path, account.username
             )
+            # 添加项目文件夹名称，确保同步和编译路径一致
             project_folder = os.path.basename(os.path.abspath(task.local_path))
             task.remote_path = task.remote_path.rstrip("/") + "/" + project_folder
             sftp = conn.manager.open_sftp()

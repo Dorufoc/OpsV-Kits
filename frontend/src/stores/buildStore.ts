@@ -29,17 +29,36 @@ export const useBuildStore = defineStore('build', () => {
       if (!currentTaskId.value) return
       try {
         const res: any = await request.get(`/build/status/${currentTaskId.value}`)
+        const isRunAction = res.action === 'run'
 
         if (res.status === 'running' || res.status === 'pending') {
-          buildStatus.value = 'building'
+          if (isRunAction) {
+            runStatus.value = 'running'
+          } else {
+            buildStatus.value = 'building'
+          }
         } else if (res.status === 'completed') {
-          buildStatus.value = 'success'
-          stopPolling()
+          if (isRunAction) {
+            runStatus.value = 'running' // 运行任务保持 running
+          } else {
+            buildStatus.value = 'success'
+          }
+          if (!isRunAction) {
+            stopPolling()
+          }
         } else if (res.status === 'failed') {
-          buildStatus.value = 'failed'
+          if (isRunAction) {
+            runStatus.value = 'stopped'
+          } else {
+            buildStatus.value = 'failed'
+          }
           stopPolling()
         } else if (res.status === 'stopped') {
-          buildStatus.value = 'idle'
+          if (isRunAction) {
+            runStatus.value = 'stopped'
+          } else {
+            buildStatus.value = 'idle'
+          }
           stopPolling()
         }
 
@@ -62,11 +81,11 @@ export const useBuildStore = defineStore('build', () => {
   }
 
   async function startBuild(params: { remote_path: string; account_alias: string; local_path?: string; command?: string; jdk_version?: string }) {
-    buildStatus.value = 'building'
-    rawLog.value = ''
+    buildStatus.value = "building"
+    rawLog.value = ""
     stopPolling()
     try {
-      const res: any = await request.post('/build/compile', {
+      const res: any = await request.post("/build/compile", {
         project_path: params.remote_path,
         account_alias: params.account_alias,
         local_path: params.local_path || undefined,
@@ -77,24 +96,52 @@ export const useBuildStore = defineStore('build', () => {
       startPolling()
       return res
     } catch (e) {
-      buildStatus.value = 'failed'
+      buildStatus.value = "failed"
       pipeToTerminal(`\r\n\x1b[31m启动编译失败: ${e}\x1b[0m\r\n`)
       throw e
     }
   }
 
-  async function startRun(params: { remote_path: string; account_alias: string; jar_path?: string }) {
+  async function startTest(params: { remote_path: string; account_alias: string; local_path?: string; command?: string; jdk_version?: string }) {
+    buildStatus.value = "building"
+    rawLog.value = ""
+    stopPolling()
+    try {
+      const res: any = await request.post("/build/test", {
+        project_path: params.remote_path,
+        account_alias: params.account_alias,
+        local_path: params.local_path || undefined,
+        command: params.command || undefined,
+        jdk_version: params.jdk_version || undefined,
+      })
+      currentTaskId.value = res.task_id || res.taskId
+      startPolling()
+      return res
+    } catch (e) {
+      buildStatus.value = "failed"
+      pipeToTerminal(`\r\n\x1b[31m启动测试失败: ${e}\x1b[0m\r\n`)
+      throw e
+    }
+  }
+
+  async function startRun(params: { remote_path: string; account_alias: string; local_path?: string; jar_path?: string; run_mode?: string }) {
     runStatus.value = 'running'
+    rawLog.value = ""
+    stopPolling()
     try {
       const res: any = await request.post('/build/run', {
         project_path: params.remote_path,
         account_alias: params.account_alias,
+        local_path: params.local_path || undefined,
         jar_path: params.jar_path || undefined,
+        run_mode: params.run_mode || "spring-boot",
       })
       currentTaskId.value = res.task_id || res.taskId
+      startPolling()
       return res
     } catch (e) {
       runStatus.value = 'stopped'
+      pipeToTerminal(`\r\n\x1b[31m启动失败: ${e}\x1b[0m\r\n`)
       throw e
     }
   }
@@ -127,6 +174,7 @@ export const useBuildStore = defineStore('build', () => {
     currentTaskId,
     setLogCallback,
     startBuild,
+    startTest,
     startRun,
     stopTask,
     resetStatus,

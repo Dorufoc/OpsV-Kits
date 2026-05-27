@@ -195,6 +195,14 @@ class CompileRequest(BaseModel):
     jdk_version: Optional[str] = Field(default=None, description="JDK 版本号，如 8/11/17/21，留空自动检测")
 
 
+class TestRequest(BaseModel):
+    account_alias: str = Field(..., description="SSH 账户别名")
+    project_path: str = Field(..., description="远程项目路径")
+    local_path: Optional[str] = Field(default=None, description="本地项目路径（用于自动拼接项目文件夹名）")
+    command: str = Field(default="mvn clean test", description="Maven 测试命令")
+    jdk_version: Optional[str] = Field(default=None, description="JDK 版本号，如 8/11/17/21，留空自动检测")
+
+
 class PackageRequest(BaseModel):
     account_alias: str = Field(..., description="SSH 账户别名")
     project_path: str = Field(..., description="远程项目路径")
@@ -240,6 +248,11 @@ class BuildHistoryResponse(BaseModel):
     tasks: list[BuildTaskResponse]
 
 
+class RunLogResponse(BaseModel):
+    task_id: str
+    log: str
+
+
 # ── 编译运行 API 端点 ──────────────────────────────────────────
 
 
@@ -271,6 +284,22 @@ async def api_package(data: PackageRequest):
         return BuildTaskResponse(**task.to_dict())
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"启动打包失败: {e}")
+
+
+@build_router.post("/test", response_model=BuildTaskResponse)
+async def api_test(data: TestRequest):
+    _verify_account(data.account_alias)
+    try:
+        task = build_service.test_project(
+            account_alias=data.account_alias,
+            project_path=data.project_path,
+            local_path=data.local_path,
+            command=data.command,
+            jdk_version=data.jdk_version,
+        )
+        return BuildTaskResponse(**task.to_dict())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"启动测试失败: {e}")
 
 
 @build_router.post("/run/jar", response_model=BuildTaskResponse)
@@ -315,6 +344,49 @@ async def api_run_exec_java(data: RunExecJavaRequest):
         return BuildTaskResponse(**task.to_dict())
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"启动 exec:java 失败: {e}")
+
+
+class GenericRunRequest(BaseModel):
+    account_alias: str = Field(..., description="SSH 账户别名")
+    project_path: str = Field(..., description="远程项目路径")
+    local_path: Optional[str] = Field(default=None, description="本地项目路径（用于自动拼接项目文件夹名）")
+    run_mode: Optional[str] = Field(default="spring-boot", description="运行模式：spring-boot | jar | exec")
+    jar_path: Optional[str] = Field(default=None, description="jar 路径（仅 jar 模式需要）")
+    main_class: Optional[str] = Field(default=None, description="主类（仅 exec 模式需要）")
+    jvm_args: Optional[str] = Field(default="", description="JVM 参数（仅 jar 模式）")
+    app_args: Optional[str] = Field(default="", description="应用参数（仅 jar 模式）")
+
+
+@build_router.post("/run", response_model=BuildTaskResponse)
+async def api_generic_run(data: GenericRunRequest):
+    _verify_account(data.account_alias)
+    try:
+        if data.run_mode == "jar":
+            task = build_service.run_jar(
+                account_alias=data.account_alias,
+                project_path=data.project_path,
+                jar_path=data.jar_path or "",
+                jvm_args=data.jvm_args or "",
+                app_args=data.app_args or "",
+                local_path=data.local_path,
+            )
+        elif data.run_mode == "exec":
+            task = build_service.run_exec_java(
+                account_alias=data.account_alias,
+                project_path=data.project_path,
+                main_class=data.main_class or "",
+                local_path=data.local_path,
+            )
+        else:
+            task = build_service.run_spring_boot(
+                account_alias=data.account_alias,
+                project_path=data.project_path,
+                main_class=data.main_class,
+                local_path=data.local_path,
+            )
+        return BuildTaskResponse(**task.to_dict())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"启动运行失败: {e}")
 
 
 def _stop_task(task_id: str) -> dict:
@@ -366,6 +438,21 @@ async def api_get_build_history(
         account_alias=account_alias, limit=limit
     )
     return BuildHistoryResponse(tasks=[BuildTaskResponse(**t) for t in tasks])
+
+
+@build_router.get("/log/{task_id}", response_model=RunLogResponse)
+async def api_get_run_log(
+    task_id: str = Path(..., description="构建任务 ID"),
+    max_lines: int = Query(default=500, ge=1, le=2000, description="返回的最大行数"),
+):
+    task = build_service.get_build_task(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail=f"任务 '{task_id}' 不存在")
+    try:
+        log_content = build_service.read_run_log(task_id, max_lines)
+        return RunLogResponse(task_id=task_id, log=log_content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"读取日志失败: {e}")
 
 
 # ── 实时日志 WebSocket ─────────────────────────────────────────

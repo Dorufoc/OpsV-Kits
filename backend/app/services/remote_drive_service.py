@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import base64
+import errno
 import logging
 import os
 import posixpath
 import threading
 import time
 import urllib.parse
+import uuid
 from datetime import datetime, timezone
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
@@ -32,14 +35,55 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         logger.debug("WebDAV: %s - %s", self.client_address[0], format % args)
 
-    def _parse_path(self):
-        raw = urllib.parse.urlparse(self.path)
-        parts = raw.path.strip("/").split("/")
+    def _check_auth(self):
+        """Check Basic Auth header. Windows WebDAV requires authentication."""
+        auth_header = self.headers.get("Authorization", "")
+        if auth_header.startswith("Basic "):
+            try:
+                creds = base64.b64decode(auth_header[6:]).decode("utf-8")
+                username, password = creds.split(":", 1)
+                # For now, accept any credentials - the actual auth is done via SSH key
+                return True
+            except Exception:
+                pass
+        return False
+
+    def _send_auth_required(self):
+        """Send 401 Unauthorized with Basic Auth challenge."""
+        self.send_response(401)
+        self.send_header("WWW-Authenticate", 'Basic realm="OpsV-Kits WebDAV"')
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(b"Authentication required")))
+        self.end_headers()
+        self.wfile.write(b"Authentication required")
+
+    def _normalise_dav_path(self, path: str) -> str:
+        # Handle Windows DavWWWRoot special path
+        if path.startswith("/DavWWWRoot"):
+            path = path.replace("/DavWWWRoot", "", 1)
+        if not path.startswith("/"):
+            path = "/" + path
+        return path or "/"
+
+    def _split_dav_path(self, path: str):
+        path = self._normalise_dav_path(path)
+        parts = path.strip("/").split("/")
         if not parts or not parts[0]:
             return None, "/"
         account_alias = urllib.parse.unquote(parts[0])
         remote_path = "/" + "/".join(urllib.parse.unquote(p) for p in parts[1:])
         return account_alias, remote_path
+
+    def _parse_path(self):
+        raw = urllib.parse.urlparse(self.path)
+        return self._split_dav_path(raw.path)
+
+    def _parse_destination(self):
+        destination = self.headers.get("Destination")
+        if not destination:
+            return None, None
+        parsed = urllib.parse.urlparse(destination)
+        return self._split_dav_path(parsed.path)
 
     def _get_sftp(self, alias: str):
         account = self.SSH_SERVICE.get_account(alias)
@@ -47,7 +91,7 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             return None, None
         try:
             conn = self.SSH_SERVICE.pool.get_connection(account)
-            sftp = conn.conn.open_sftp()
+            sftp = conn.manager.open_sftp()
             return sftp, conn
         except Exception as e:
             logger.error("Failed to get SFTP for %s: %s", alias, e)
@@ -71,11 +115,35 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
         dt = datetime.fromtimestamp(t, tz=timezone.utc)
         return dt.strftime("%a, %d %b %Y %H:%M:%S GMT")
 
+    def _format_time_iso(self, t: float) -> str:
+        """Format time in ISO 8601 format for Windows WebDAV compatibility."""
+        dt = datetime.fromtimestamp(t, tz=timezone.utc)
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
     def _list_accounts_xml(self):
         accounts = self.SSH_SERVICE.list_accounts() or []
+        now = time.time()
+        mtime = self._format_time(now)
+        ctime = self._format_time_iso(now)
         lines = []
         lines.append('<?xml version="1.0" encoding="utf-8"?>')
-        lines.append('<D:multistatus xmlns:D="DAV:">')
+        lines.append('<D:multistatus xmlns:D="DAV:" xmlns:Z="urn:schemas-microsoft-com:">')
+        # Include root directory first - Windows WebDAV client expects this
+        lines.append("<D:response>")
+        lines.append("  <D:href>/</D:href>")
+        lines.append("  <D:propstat>")
+        lines.append("    <D:prop>")
+        lines.append("      <D:displayname>OpsV-Kits</D:displayname>")
+        lines.append("      <D:resourcetype><D:collection/></D:resourcetype>")
+        lines.append("      <D:getcontenttype>httpd/unix-directory</D:getcontenttype>")
+        lines.append("      <D:getcontentlength>0</D:getcontentlength>")
+        lines.append(f"      <D:getlastmodified>{mtime}</D:getlastmodified>")
+        lines.append(f"      <D:creationdate>{ctime}</D:creationdate>")
+        lines.append("      <Z:Win32FileAttributes>0x00000010</Z:Win32FileAttributes>")
+        lines.append("    </D:prop>")
+        lines.append("    <D:status>HTTP/1.1 200 OK</D:status>")
+        lines.append("  </D:propstat>")
+        lines.append("</D:response>")
         for acct in accounts:
             alias = acct.alias
             href = f"/{urllib.parse.quote(alias, safe='')}/"
@@ -87,6 +155,9 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             lines.append("      <D:resourcetype><D:collection/></D:resourcetype>")
             lines.append("      <D:getcontenttype>httpd/unix-directory</D:getcontenttype>")
             lines.append("      <D:getcontentlength>0</D:getcontentlength>")
+            lines.append(f"      <D:getlastmodified>{mtime}</D:getlastmodified>")
+            lines.append(f"      <D:creationdate>{ctime}</D:creationdate>")
+            lines.append("      <Z:Win32FileAttributes>0x00000010</Z:Win32FileAttributes>")
             lines.append("    </D:prop>")
             lines.append("    <D:status>HTTP/1.1 200 OK</D:status>")
             lines.append("  </D:propstat>")
@@ -111,12 +182,16 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             content_type = "httpd/unix-directory"
             content_length = 0
             res_type = "<D:collection/>"
+            win32_attrs = "0x00000010"  # FILE_ATTRIBUTE_DIRECTORY
         else:
             content_type = "application/octet-stream"
             content_length = stat.st_size or 0
             res_type = ""
+            win32_attrs = "0x00000020"  # FILE_ATTRIBUTE_ARCHIVE
 
-        mtime = self._format_time(stat.st_mtime if stat.st_mtime else time.time())
+        mtime_val = stat.st_mtime if stat.st_mtime else time.time()
+        mtime = self._format_time(mtime_val)
+        ctime = self._format_time_iso(stat.st_atime if stat.st_atime else mtime_val)
 
         return f"""<D:response>
   <D:href>{href}</D:href>
@@ -127,6 +202,8 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
       <D:getcontenttype>{content_type}</D:getcontenttype>
       <D:getcontentlength>{content_length}</D:getcontentlength>
       <D:getlastmodified>{mtime}</D:getlastmodified>
+      <D:creationdate>{ctime}</D:creationdate>
+      <Z:Win32FileAttributes>{win32_attrs}</Z:Win32FileAttributes>
     </D:prop>
     <D:status>HTTP/1.1 200 OK</D:status>
   </D:propstat>
@@ -148,22 +225,24 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             return
         try:
             stat_info = sftp.stat(remote_path)
+            depth = self.headers.get("Depth", "infinity").lower()
             if stat_info.st_mode is not None and stat_info.st_mode & 0o40000:
                 items = sftp.listdir_attr(remote_path)
                 lines = []
                 lines.append('<?xml version="1.0" encoding="utf-8"?>')
-                lines.append('<D:multistatus xmlns:D="DAV:">')
+                lines.append('<D:multistatus xmlns:D="DAV:" xmlns:Z="urn:schemas-microsoft-com:">')
                 lines.append(self._stat_to_xml(alias, remote_path, stat_info))
-                base_path = remote_path.rstrip("/")
-                for item in items:
-                    item_path = posixpath.join(base_path, item.filename) if base_path else "/" + item.filename
-                    lines.append(self._stat_to_xml(alias, item_path, item))
+                if depth != "0":
+                    base_path = remote_path.rstrip("/")
+                    for item in items:
+                        item_path = posixpath.join(base_path, item.filename) if base_path else "/" + item.filename
+                        lines.append(self._stat_to_xml(alias, item_path, item))
                 lines.append("</D:multistatus>")
                 body = "\n".join(lines)
             else:
                 body = self._stat_to_xml(alias, remote_path, stat_info)
                 body = f"""<?xml version="1.0" encoding="utf-8"?>
-<D:multistatus xmlns:D="DAV:">
+<D:multistatus xmlns:D="DAV:" xmlns:Z="urn:schemas-microsoft-com:">
 {body}
 </D:multistatus>"""
 
@@ -195,22 +274,50 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
         try:
             stat_info = sftp.stat(remote_path)
             if stat_info.st_mode is not None and stat_info.st_mode & 0o40000:
-                self.send_response(302)
-                self.send_header("Location", self.path.rstrip("/") + "/")
-                self.end_headers()
+                # Avoid redirect loop by checking if already ends with /
+                if not self.path.endswith("/"):
+                    self.send_response(302)
+                    self.send_header("Location", self.path + "/")
+                    self.end_headers()
+                else:
+                    # List directory contents
+                    self._list_dir_html(alias, remote_path, sftp)
                 return
-            self.send_response(200)
+            file_size = stat_info.st_size or 0
+            range_header = self.headers.get("Range")
+            start = 0
+            end = file_size - 1
+            status_code = 200
+            if range_header:
+                parsed_range = self._parse_range(range_header, file_size)
+                if parsed_range is None:
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{file_size}")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                start, end = parsed_range
+                status_code = 206
+            content_length = max(0, end - start + 1)
+            self.send_response(status_code)
             self.send_header("Content-Type", "application/octet-stream")
-            self.send_header("Content-Length", str(stat_info.st_size))
+            self.send_header("Content-Length", str(content_length))
             self.send_header("Content-Disposition", f'inline; filename="{os.path.basename(remote_path)}"')
+            self.send_header("Last-Modified", self._format_time(stat_info.st_mtime or time.time()))
             self.send_header("Accept-Ranges", "bytes")
+            if status_code == 206:
+                self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
             self.end_headers()
             with sftp.open(remote_path, "rb") as f:
-                while True:
-                    chunk = f.read(65536)
+                if start:
+                    f.seek(start)
+                remaining = content_length
+                while remaining > 0:
+                    chunk = f.read(min(65536, remaining))
                     if not chunk:
                         break
                     self.wfile.write(chunk)
+                    remaining -= len(chunk)
         except FileNotFoundError:
             self.send_error(404, "File not found")
         except PermissionError:
@@ -228,18 +335,26 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.send_error(404, "Account not found or connection failed")
             return
         try:
+            dir_path = posixpath.dirname(remote_path)
+            if dir_path:
+                self._ensure_dir(sftp, dir_path)
             content_length = int(self.headers.get("Content-Length", 0))
-            data = self.rfile.read(content_length) if content_length > 0 else b""
-            remote_dir = posixpath.dirname(remote_path)
-            try:
-                sftp.stat(remote_dir)
-            except FileNotFoundError:
-                self._mkdir_p(sftp, remote_dir)
             with sftp.open(remote_path, "wb") as f:
-                f.write(data)
+                remaining = content_length
+                while remaining > 0:
+                    chunk_size = min(65536, remaining)
+                    chunk = self.rfile.read(chunk_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    remaining -= len(chunk)
             self.send_response(201)
-            self.send_header("Content-Length", "0")
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(b"Created")))
             self.end_headers()
+            self.wfile.write(b"Created")
+        except PermissionError:
+            self.send_error(403, "Permission denied")
         except Exception as e:
             logger.error("PUT error: %s", e)
             self.send_error(500, str(e))
@@ -262,7 +377,7 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", "0")
             self.end_headers()
         except FileNotFoundError:
-            self.send_error(404, "Path not found")
+            self.send_error(404, "File not found")
         except PermissionError:
             self.send_error(403, "Permission denied")
         except Exception as e:
@@ -282,6 +397,10 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.send_response(201)
             self.send_header("Content-Length", "0")
             self.end_headers()
+        except FileExistsError:
+            self.send_error(405, "Method Not Allowed")
+        except PermissionError:
+            self.send_error(403, "Permission denied")
         except Exception as e:
             logger.error("MKCOL error: %s", e)
             self.send_error(500, str(e))
@@ -290,25 +409,38 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self._release(conn)
 
     def _handle_move(self, alias: str, remote_path: str):
-        dest_header = self.headers.get("Destination", "")
-        if not dest_header:
+        overwrite = self.headers.get("Overwrite", "T") != "F"
+        dest_alias, dest_remote_path = self._parse_destination()
+        if not dest_alias:
             self.send_error(400, "Destination header required")
             return
-        parsed_dest = urllib.parse.urlparse(dest_header)
-        dest_parts = parsed_dest.path.strip("/").split("/")
-        if not dest_parts or urllib.parse.unquote(dest_parts[0]) != alias:
-            self.send_error(502, "Cross-account move not supported")
+        if dest_alias != alias:
+            self.send_error(400, "Cross-account move not supported")
             return
-        dest_path = "/" + "/".join(urllib.parse.unquote(p) for p in dest_parts[1:])
         sftp, conn = self._get_sftp(alias)
         if not sftp:
             self.send_error(404, "Account not found or connection failed")
             return
         try:
-            sftp.rename(remote_path, dest_path)
-            self.send_response(204)
+            created = True
+            try:
+                dest_stat = sftp.stat(dest_remote_path)
+                created = False
+                if not overwrite:
+                    self.send_error(412, "Precondition Failed")
+                    return
+                if dest_stat.st_mode is not None and dest_stat.st_mode & 0o40000:
+                    self._rmtree(sftp, dest_remote_path)
+                else:
+                    sftp.remove(dest_remote_path)
+            except FileNotFoundError:
+                pass
+            sftp.rename(remote_path, dest_remote_path)
+            self.send_response(201 if created else 204)
             self.send_header("Content-Length", "0")
             self.end_headers()
+        except PermissionError:
+            self.send_error(403, "Permission denied")
         except Exception as e:
             logger.error("MOVE error: %s", e)
             self.send_error(500, str(e))
@@ -316,13 +448,81 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self._close_sftp(sftp)
             self._release(conn)
 
-    def _mkdir_p(self, sftp, path: str):
+    def _handle_copy(self, alias: str, remote_path: str):
+        overwrite = self.headers.get("Overwrite", "T") != "F"
+        dest_alias, dest_remote_path = self._parse_destination()
+        if not dest_alias:
+            self.send_error(400, "Destination header required")
+            return
+        if dest_alias != alias:
+            self.send_error(400, "Cross-account copy not supported")
+            return
+        sftp, conn = self._get_sftp(alias)
+        if not sftp:
+            self.send_error(404, "Account not found or connection failed")
+            return
+        try:
+            created = True
+            try:
+                dest_stat = sftp.stat(dest_remote_path)
+                created = False
+                if not overwrite:
+                    self.send_error(412, "Precondition Failed")
+                    return
+                if dest_stat.st_mode is not None and dest_stat.st_mode & 0o40000:
+                    self._rmtree(sftp, dest_remote_path)
+                else:
+                    sftp.remove(dest_remote_path)
+            except FileNotFoundError:
+                pass
+            self._copy_path(sftp, remote_path, dest_remote_path)
+            self.send_response(201 if created else 204)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        except FileNotFoundError:
+            self.send_error(404, "Path not found")
+        except PermissionError:
+            self.send_error(403, "Permission denied")
+        except Exception as e:
+            logger.error("COPY error: %s", e)
+            self.send_error(500, str(e))
+        finally:
+            self._close_sftp(sftp)
+            self._release(conn)
+
+    def _parse_range(self, range_header: str, file_size: int):
+        if not range_header.startswith("bytes=") or file_size < 0:
+            return None
+        raw = range_header[6:].split(",", 1)[0].strip()
+        if "-" not in raw:
+            return None
+        start_raw, end_raw = raw.split("-", 1)
+        try:
+            if start_raw == "":
+                suffix = int(end_raw)
+                if suffix <= 0:
+                    return None
+                start = max(0, file_size - suffix)
+                end = file_size - 1
+            else:
+                start = int(start_raw)
+                end = int(end_raw) if end_raw else file_size - 1
+            if start < 0 or end < start or start >= file_size:
+                return None
+            return start, min(end, file_size - 1)
+        except ValueError:
+            return None
+
+    def _is_not_found(self, exc: OSError) -> bool:
+        return getattr(exc, "errno", None) in (errno.ENOENT, errno.ENOTDIR)
+
+    def _ensure_dir(self, sftp, path: str):
         parts = path.strip("/").split("/")
         current = ""
         for part in parts:
             if not part:
                 continue
-            current = posixpath.join(current, part) if current else "/" + part
+            current = current + "/" + part if current else "/" + part
             try:
                 sftp.stat(current)
             except FileNotFoundError:
@@ -337,11 +537,93 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
                 sftp.remove(item_path)
         sftp.rmdir(path)
 
+    def _copy_path(self, sftp, src: str, dst: str):
+        stat_info = sftp.stat(src)
+        if stat_info.st_mode is not None and stat_info.st_mode & 0o40000:
+            self._copy_tree(sftp, src, dst)
+        else:
+            parent = posixpath.dirname(dst)
+            if parent:
+                self._ensure_dir(sftp, parent)
+            with sftp.open(src, "rb") as src_f, sftp.open(dst, "wb") as dst_f:
+                while True:
+                    chunk = src_f.read(65536)
+                    if not chunk:
+                        break
+                    dst_f.write(chunk)
+
+    def _copy_tree(self, sftp, src: str, dst: str):
+        try:
+            sftp.mkdir(dst)
+        except OSError as e:
+            if self._is_not_found(e):
+                self._ensure_dir(sftp, posixpath.dirname(dst))
+                sftp.mkdir(dst)
+            else:
+                raise
+        for item in sftp.listdir_attr(src):
+            src_path = posixpath.join(src.rstrip("/"), item.filename)
+            dst_path = posixpath.join(dst.rstrip("/"), item.filename)
+            if item.st_mode is not None and item.st_mode & 0o40000:
+                self._copy_tree(sftp, src_path, dst_path)
+            else:
+                with sftp.open(src_path, "rb") as src_f, sftp.open(dst_path, "wb") as dst_f:
+                    while True:
+                        chunk = src_f.read(65536)
+                        if not chunk:
+                            break
+                        dst_f.write(chunk)
+
+    def _list_dir_html(self, alias: str, remote_path: str, sftp):
+        # Show parent link
+        items = []
+        if remote_path != "/":
+            parent_path = os.path.dirname(remote_path.rstrip("/")) if remote_path != "/" else "/"
+            if parent_path == "":
+                parent_path = "/"
+            items.append(f'<li><a href="/{urllib.parse.quote(alias, safe="")}{parent_path}">..</a></li>')
+        try:
+            files = sftp.listdir_attr(remote_path)
+            files.sort(key=lambda x: (not x.st_mode & 0o40000, x.filename))
+            for attr in files:
+                name = attr.filename
+                is_dir = attr.st_mode & 0o40000 != 0
+                item_path = remote_path.rstrip("/") + "/" + name
+                link = f'/{urllib.parse.quote(alias, safe="")}{item_path}'
+                if is_dir:
+                    link += "/"
+                items.append(f'<li><a href="{link}">{_xml_escape(name)}</a></li>')
+        except Exception as e:
+            items.append(f'<li style="color: #f56c6c;">Error: {_xml_escape(str(e))}</li>')
+        body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>{_xml_escape(alias)} - {_xml_escape(remote_path)}</title>
+<style>
+body {{ font-family: sans-serif; margin: 2em; }}
+h1 {{ color: #409eff; }}
+ul {{ list-style: none; padding: 0; }}
+li {{ padding: 8px; margin: 4px 0; background: #f5f7fa; border-radius: 4px; }}
+a {{ color: #409eff; text-decoration: none; }}
+a:hover {{ text-decoration: underline; }}
+</style>
+</head>
+<body>
+<h1>{_xml_escape(alias)}</h1>
+<p>Current path: {_xml_escape(remote_path)}</p>
+<ul>{"".join(items)}</ul>
+</body>
+</html>"""
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body.encode("utf-8"))))
+        self.end_headers()
+        self.wfile.write(body.encode("utf-8"))
+
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header("DAV", "1, 2")
         self.send_header("MS-Author-Via", "DAV")
-        self.send_header("Allow", "OPTIONS, GET, HEAD, PUT, DELETE, PROPFIND, MKCOL, MOVE, COPY")
+        self.send_header("Allow", "OPTIONS, GET, HEAD, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, MOVE, COPY, LOCK, UNLOCK")
         self.send_header("Content-Length", "0")
         self.end_headers()
 
@@ -351,6 +633,25 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self._handle_propfind_root()
         else:
             self._handle_propfind(alias, remote_path)
+
+    def do_PROPPATCH(self):
+        href = _xml_escape(self._normalise_dav_path(urllib.parse.urlparse(self.path).path))
+        body = f"""<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:">
+  <D:response>
+    <D:href>{href}</D:href>
+    <D:propstat>
+      <D:prop/>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>
+</D:multistatus>"""
+        encoded = body.encode("utf-8")
+        self.send_response(207)
+        self.send_header("Content-Type", "application/xml; charset=utf-8")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
 
     def do_GET(self):
         alias, remote_path = self._parse_path()
@@ -363,6 +664,7 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
         alias, remote_path = self._parse_path()
         if alias is None:
             self.send_response(200)
+            self.send_header("Content-Length", "0")
             self.end_headers()
         else:
             sftp, conn = self._get_sftp(alias)
@@ -372,11 +674,16 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             try:
                 stat_info = sftp.stat(remote_path)
                 self.send_response(200)
-                self.send_header("Content-Length", str(stat_info.st_size))
+                is_dir = stat_info.st_mode is not None and stat_info.st_mode & 0o40000
+                self.send_header("Content-Type", "httpd/unix-directory" if is_dir else "application/octet-stream")
+                self.send_header("Content-Length", "0" if is_dir else str(stat_info.st_size or 0))
+                self.send_header("Last-Modified", self._format_time(stat_info.st_mtime or time.time()))
+                self.send_header("Accept-Ranges", "bytes")
                 self.end_headers()
             except FileNotFoundError:
                 self.send_error(404)
             except Exception as e:
+                logger.error("HEAD error: %s", e)
                 self.send_error(500)
             finally:
                 self._close_sftp(sftp)
@@ -409,6 +716,41 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.send_error(400, "Account alias required")
         else:
             self._handle_move(alias, remote_path)
+
+    def do_COPY(self):
+        alias, remote_path = self._parse_path()
+        if alias is None:
+            self.send_error(400, "Account alias required")
+        else:
+            self._handle_copy(alias, remote_path)
+
+    def do_LOCK(self):
+        token = f"opaquelocktoken:{uuid.uuid4()}"
+        body = f"""<?xml version="1.0" encoding="utf-8"?>
+<D:prop xmlns:D="DAV:">
+  <D:lockdiscovery>
+    <D:activelock>
+      <D:locktype><D:write/></D:locktype>
+      <D:lockscope><D:exclusive/></D:lockscope>
+      <D:depth>{_xml_escape(self.headers.get("Depth", "infinity"))}</D:depth>
+      <D:owner>OpsV-Kits</D:owner>
+      <D:timeout>Second-600</D:timeout>
+      <D:locktoken><D:href>{token}</D:href></D:locktoken>
+    </D:activelock>
+  </D:lockdiscovery>
+</D:prop>"""
+        encoded = body.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/xml; charset=utf-8")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.send_header("Lock-Token", f"<{token}>")
+        self.end_headers()
+        self.wfile.write(encoded)
+
+    def do_UNLOCK(self):
+        self.send_response(204)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def _list_root_html(self):
         accounts = self.SSH_SERVICE.list_accounts() or []
@@ -448,7 +790,6 @@ def _xml_escape(text: str) -> str:
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")
-        .replace("'", "&apos;")
     )
 
 

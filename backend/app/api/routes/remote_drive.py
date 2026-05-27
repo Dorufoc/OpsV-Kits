@@ -24,6 +24,7 @@ async def get_status():
             "hostname": a.host,
             "port": a.port,
             "url": f"http://127.0.0.1:{port}/{a.alias}/",
+            "windows_url": f"\\\\127.0.0.1@{port}\\DavWWWRoot\\{a.alias}\\",
         }
         for a in accounts
     ]
@@ -33,6 +34,7 @@ async def get_status():
         "port": port,
         "hostname": hostname,
         "webdav_url": f"http://127.0.0.1:{port}/",
+        "windows_url": f"\\\\127.0.0.1@{port}\\DavWWWRoot\\",
         "mounts": mount_list,
         "account_count": len(accounts),
     }

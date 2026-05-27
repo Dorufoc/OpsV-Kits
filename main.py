@@ -308,7 +308,6 @@ def main():
         dist_dir = FRONTEND_DIR / "dist"
         if not dist_dir.is_dir():
             build_frontend()
-
         print(f"  ▶ Frontend static file served by backend on http://localhost:{args.port}")
         print()
         frontend_url = backend_url

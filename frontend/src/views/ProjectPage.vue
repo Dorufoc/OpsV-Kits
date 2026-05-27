@@ -95,6 +95,7 @@
           </el-button>
           <el-button @click="handleSync" :disabled="!canSync">仅同步</el-button>
           <el-button @click="handleBuild" :disabled="!canBuild">仅编译</el-button>
+          <el-button @click="handleTest" :disabled="!canBuild">仅测试</el-button>
           <el-button @click="handleRun" :disabled="!canRun">仅运行</el-button>
           <el-button type="danger" @click="handleStop" :disabled="!isRunning">停止</el-button>
         </div>
@@ -308,7 +309,24 @@ async function handleCreateProject() {
 async function handleDeploy() {
   await handleSync()
   await handleBuild()
+  await handleTest()
   await handleRun()
+}
+
+async function handleTest() {
+  if (!canBuild.value) return
+  terminalRef.value?.clear()
+  terminalRef.value?.writeln('开始测试项目...')
+  try {
+    await buildStore.startTest({
+      remote_path: projectConfig.value.remote_path,
+      account_alias: projectConfig.value.ssh_alias,
+      local_path: projectConfig.value.local_path || undefined,
+      jdk_version: projectConfig.value.jdk_version || undefined,
+    })
+  } catch {
+    terminalRef.value?.writeln('\x1b[31m测试失败\x1b[0m')
+  }
 }
 
 async function handleSync() {
@@ -348,6 +366,7 @@ async function handleRun() {
     await buildStore.startRun({
       remote_path: projectConfig.value.remote_path,
       account_alias: projectConfig.value.ssh_alias,
+      local_path: projectConfig.value.local_path || undefined,
     })
   } catch {
     terminalRef.value?.writeln('\x1b[31m启动失败\x1b[0m')

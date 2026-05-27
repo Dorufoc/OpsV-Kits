@@ -5,7 +5,7 @@ from typing import Callable, Optional
 from uuid import uuid4
 
 
-BUILD_ACTIONS = frozenset({"compile", "package", "run"})
+BUILD_ACTIONS = frozenset({"compile", "package", "test", "run"})
 BUILD_STATUSES = frozenset({"pending", "running", "completed", "failed", "stopped"})
 
 

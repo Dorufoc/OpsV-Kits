@@ -50,14 +50,14 @@ class FileSyncEngine:
 
     def full_sync(self, force: bool = False) -> None:
         self._report("scan", 0.0, "扫描本地项目...")
-        local_files, local_dirs = self._scan_local()
+        local_files, local_sizes, local_dirs = self._scan_local()
         self._report("scan", 0.3, f"本地扫描完成: {len(local_files)} 个文件")
 
         if self._stopped:
             return
 
         self._report("scan", 0.4, "扫描远程目录...")
-        remote_files, remote_dirs = self._scan_remote()
+        remote_files, remote_sizes, remote_dirs = self._scan_remote()
         self._report("scan", 0.6, f"远程扫描完成: {len(remote_files)} 个文件")
 
         if self._stopped:
@@ -74,8 +74,8 @@ class FileSyncEngine:
             for rel_path in sorted(files_to_check):
                 if self._stopped:
                     return
-                local_size = local_dirs[rel_path] if rel_path in local_dirs else None
-                remote_size = remote_dirs.get(rel_path)
+                local_size = local_sizes[rel_path] if rel_path in local_sizes else None
+                remote_size = remote_sizes.get(rel_path)
                 if local_size is None or remote_size is None or local_size != remote_size:
                     needs_upload.add(rel_path)
                 checked += 1
@@ -113,14 +113,19 @@ class FileSyncEngine:
 
     # ── 本地扫描 ──────────────────────────────────────────────────
 
-    def _scan_local(self) -> tuple[set[str], dict[str, int]]:
+    def _scan_local(self) -> tuple[set[str], dict[str, int], set[str]]:
         files: set[str] = set()
         sizes: dict[str, int] = {}
+        dirs: set[str] = set()
         for dirpath, dirnames, filenames in os.walk(self._local_path):
             dirnames[:] = [d for d in dirnames if not d.startswith(".")]
             rel_dir = os.path.relpath(dirpath, self._local_path)
             if rel_dir == ".":
                 rel_dir = ""
+            
+            # 记录目录
+            if rel_dir:
+                dirs.add(rel_dir)
 
             for filename in filenames:
                 full_path = os.path.join(dirpath, filename)
@@ -134,13 +139,14 @@ class FileSyncEngine:
                     sizes[rel_path] = st.st_size
                 except OSError:
                     continue
-        return files, sizes
+        return files, sizes, dirs
 
     # ── 远程扫描 ──────────────────────────────────────────────────
 
-    def _scan_remote(self) -> tuple[set[str], dict[str, int]]:
+    def _scan_remote(self) -> tuple[set[str], dict[str, int], set[str]]:
         files: set[str] = set()
         sizes: dict[str, int] = {}
+        dirs: set[str] = set()
 
         def walk(path: str, prefix: str) -> None:
             try:
@@ -153,17 +159,19 @@ class FileSyncEngine:
                     continue
                 rel = f"{prefix}/{name}" if prefix else name
                 if entry.st_mode is not None and (entry.st_mode & 0o40000):
+                    if prefix:  # 不记录根目录
+                        dirs.add(rel)
                     walk(f"{path}/{name}", rel)
                 else:
                     files.add(rel)
                     sizes[rel] = entry.st_size
 
         walk(self._remote_path, "")
-        return files, sizes
+        return files, sizes, dirs
 
     # ── 创建目录 ──────────────────────────────────────────────────
 
-    def _create_remote_dirs(self, local_dirs: dict[str, int]) -> None:
+    def _create_remote_dirs(self, local_dirs: set[str]) -> None:
         for rel_dir in sorted(local_dirs):
             if self._stopped:
                 return

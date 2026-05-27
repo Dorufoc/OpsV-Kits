@@ -7,6 +7,105 @@
     </el-page-header>
     <el-divider />
 
+    <el-card shadow="never" class="section-card">
+      <template #header>
+        <span><el-icon :size="16"><FolderOpened /></el-icon> 远程硬盘（NAS）</span>
+        <div class="card-header-right">
+          <el-switch
+            v-model="remoteDriveEnabled"
+            active-text="已启用"
+            inactive-text="已关闭"
+            @change="onRemoteDriveToggle"
+            size="small"
+            style="margin-right: 8px"
+          />
+          <el-tag :type="remoteDriveRunning ? 'success' : 'info'" size="small">
+            {{ remoteDriveRunning ? '服务运行中' : '服务已停止' }}
+          </el-tag>
+        </div>
+      </template>
+
+      <div class="remote-drive-body">
+        <div class="rd-section">
+          <div class="rd-field">
+            <span class="rd-label">WebDAV 地址：</span>
+            <el-input :model-value="webdavUrl" readonly style="width: 340px" size="small">
+              <template #append>
+                <el-button @click="copyUrl" :icon="DocumentCopy" size="small">复制</el-button>
+              </template>
+            </el-input>
+          </div>
+          <div class="rd-field">
+            <span class="rd-label">Windows 映射地址：</span>
+            <el-input :model-value="windowsUrl" readonly style="width: 420px" size="small">
+              <template #append>
+                <el-button @click="copyWindowsUrl" :icon="DocumentCopy" size="small">复制</el-button>
+              </template>
+            </el-input>
+          </div>
+        </div>
+
+        <el-table v-if="mounts.length > 0" :data="mounts" size="small" stripe style="width: 100%; margin-top: 12px;">
+          <el-table-column prop="alias" label="远程服务器别名" width="150" />
+          <el-table-column prop="hostname" label="主机地址" width="180" />
+          <el-table-column prop="port" label="端口" width="70" />
+          <el-table-column label="独立访问地址">
+            <template #default="scope">
+              <el-link type="primary" :href="scope.row.url" target="_blank">{{ scope.row.url }}</el-link>
+            </template>
+          </el-table-column>
+          <el-table-column prop="windows_url" label="Windows 映射地址" min-width="280" />
+        </el-table>
+
+        <div v-if="remoteDriveRunning" class="rd-status">
+          <el-icon><SuccessFilled /></el-icon>
+          共 {{ accountCount }} 台远程主机可通过网络硬盘访问
+        </div>
+
+        <el-collapse class="rd-tutorial" accordion>
+          <el-collapse-item title="📖 查看使用教程 — 如何在 Windows 中映射为网络驱动器" name="tutorial">
+            <div class="tutorial-content">
+              <h4>什么是远程硬盘？</h4>
+              <p>远程硬盘功能通过 WebDAV 协议将远程 Linux 服务器的文件系统暴露到本地网络，您可以像操作本地硬盘一样（拖拽文件、直接编辑），无需每次通过浏览器上传/下载。</p>
+
+              <h4>方法一：映射为 Windows 网络驱动器（推荐）</h4>
+              <ol>
+                <li>确保上方开关为<strong>「已启用」</strong>且状态标签显示<strong>「服务运行中」</strong></li>
+                <li>打开 Windows 资源管理器（Win + E）</li>
+                <li>右键左侧的<strong>「此电脑」</strong> → 选择<strong>「映射网络驱动器」</strong></li>
+                <li>在弹出的窗口中：
+                  <ul>
+                    <li><strong>驱动器</strong>：选择一个空闲盘符（如 Z:）</li>
+                    <li><strong>文件夹</strong>：优先输入 <code>{{ windowsUrl }}</code>；也可输入 <code>{{ webdavUrl }}</code></li>
+                    <li>勾选<strong>「登录时重新连接」</strong></li>
+                  </ul>
+                </li>
+                <li>点击<strong>「完成」</strong>，稍等片刻即可在网络位置中看到远程服务器的文件</li>
+                <li>如果映射到某个特定服务器的根目录，请使用表格中的<strong>独立访问地址</strong></li>
+              </ol>
+
+              <h4>方法二：直接在浏览器中访问</h4>
+              <ol>
+                <li>复制上方 WebDAV 地址 <code>{{ webdavUrl }}</code></li>
+                <li>在浏览器地址栏中打开，可见所有已配置的远程服务器列表</li>
+                <li>点击任意服务器别名进入该服务器的文件系统</li>
+              </ol>
+
+              <h4>注意事项</h4>
+              <ul>
+                <li><strong>WebDAV 服务仅监听 <code>127.0.0.1</code></strong>（本机），其他设备无法访问，确保安全</li>
+                <li>映射网络驱动器时，Windows 可能需要启用 WebDAV 支持（Win10/11 默认已支持）</li>
+                <li>如果映射后长时间无响应，请在资源管理器中右键映射的驱动器 → <strong>「断开」</strong> 后重新映射</li>
+                <li>文件操作（上传/下载/删除/重命名/新建文件夹）均通过 SSH/SFTP 实时同步到远程服务器</li>
+                <li>远程服务器必须已在 <strong>SSH 账户管理</strong> 中正确配置</li>
+                <li>如需关闭此功能，将上方开关切换为 <strong>「已关闭」</strong> 即可</li>
+              </ul>
+            </div>
+          </el-collapse-item>
+        </el-collapse>
+      </div>
+    </el-card>
+
     <el-card shadow="never" class="account-card">
       <div class="account-selector">
         <span class="selector-label">目标服务器:</span>
@@ -106,7 +205,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, CircleClose, Connection, Key, Delete } from '@element-plus/icons-vue'
+import { Refresh, CircleClose, Connection, Key, Delete, FolderOpened, DocumentCopy, SuccessFilled } from '@element-plus/icons-vue'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { request } from '@/api'
 
@@ -123,6 +222,13 @@ const firewallRules = ref<any[]>([])
 const newPort = ref(8080)
 const newProtocol = ref('tcp')
 const loadingPort = ref(false)
+
+const remoteDriveEnabled = ref(true)
+const remoteDriveRunning = ref(false)
+const webdavUrl = ref('http://127.0.0.1:8081/')
+const windowsUrl = ref('\\\\127.0.0.1@8081\\DavWWWRoot\\')
+const mounts = ref<any[]>([])
+const accountCount = ref(0)
 
 function onAccountChange(alias: string) {
   selectedAlias.value = alias
@@ -226,6 +332,50 @@ async function removeRule(row: any) {
   } catch { ElMessage.error('删除失败') }
 }
 
+async function loadDriveStatus() {
+  try {
+    const res: any = await request.get('/settings')
+    remoteDriveEnabled.value = res.remote_drive_enabled !== false
+  } catch {}
+  try {
+    const status: any = await request.get('/remote-drive/status')
+    remoteDriveRunning.value = status.running
+    webdavUrl.value = status.webdav_url
+    windowsUrl.value = status.windows_url || webdavUrl.value
+    mounts.value = status.mounts || []
+    accountCount.value = status.account_count
+  } catch {}
+}
+
+async function onRemoteDriveToggle(val: boolean) {
+  try {
+    await request.put('/settings', { remote_drive_enabled: val })
+    ElMessage.success(val ? '远程硬盘功能已开启' : '远程硬盘功能已关闭')
+    loadDriveStatus()
+  } catch {
+    ElMessage.error('设置更新失败')
+    remoteDriveEnabled.value = !val
+  }
+}
+
+async function copyUrl() {
+  try {
+    await navigator.clipboard.writeText(webdavUrl.value)
+    ElMessage.success('地址已复制到剪贴板')
+  } catch {
+    ElMessage.warning('复制失败，请手动复制')
+  }
+}
+
+async function copyWindowsUrl() {
+  try {
+    await navigator.clipboard.writeText(windowsUrl.value)
+    ElMessage.success('Windows 映射地址已复制到剪贴板')
+  } catch {
+    ElMessage.warning('复制失败，请手动复制')
+  }
+}
+
 onMounted(async () => {
   await sshStore.fetchAccounts()
   sshAccounts.value = sshStore.accounts
@@ -234,6 +384,7 @@ onMounted(async () => {
     loadSelinux()
     loadFirewallStatus()
   }
+  loadDriveStatus()
 })
 </script>
 
@@ -256,4 +407,30 @@ onMounted(async () => {
 }
 .selinux-row .label { color: #909399; }
 .firewall-actions { display: flex; flex-direction: column; gap: 12px; }
+
+.remote-drive-body { display: flex; flex-direction: column; gap: 4px; }
+.rd-section { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.rd-field { display: flex; align-items: center; gap: 8px; }
+.rd-label { font-size: 13px; color: #606266; white-space: nowrap; }
+.rd-status {
+  font-size: 12px; color: #67c23a; margin-top: 8px;
+  display: flex; align-items: center; gap: 4px;
+}
+.rd-tutorial { margin-top: 12px; }
+.rd-tutorial :deep(.el-collapse-item__header) {
+  font-size: 13px; font-weight: 500; color: #409eff; padding-left: 4px;
+}
+.tutorial-content { font-size: 13px; line-height: 1.8; color: #303133; padding: 4px 0; }
+.tutorial-content h4 {
+  font-size: 14px; margin: 12px 0 6px; color: #303133;
+}
+.tutorial-content h4:first-child { margin-top: 0; }
+.tutorial-content p { margin: 4px 0; color: #606266; }
+.tutorial-content ol, .tutorial-content ul { margin: 4px 0; padding-left: 20px; }
+.tutorial-content li { margin: 3px 0; }
+.tutorial-content code {
+  background: #f5f7fa; padding: 1px 6px; border-radius: 3px;
+  font-size: 12px; color: #e6a23c; font-family: Consolas, monospace;
+}
+.tutorial-content strong { color: #303133; }
 </style>
