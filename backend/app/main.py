@@ -16,6 +16,7 @@ from app.api.routes import settings as settings_route
 from app.api.routes import ssh_account
 from app.api.routes import sync as sync_route
 from app.api.routes import system
+from app.api.routes import vscode
 from app.api.routes import webssh
 from app.services.sync_service import sync_service
 
@@ -52,6 +53,7 @@ app.include_router(docker.router, prefix="/api", tags=["docker"])
 app.include_router(system.router, prefix="/api", tags=["system"])
 app.include_router(project.router, prefix="/api", tags=["projects"])
 app.include_router(webssh.router, prefix="/api", tags=["webssh"])
+app.include_router(vscode.router, prefix="/api", tags=["vscode"])
 app.include_router(remote_drive.router, prefix="/api", tags=["remote-drive"])
 
 
@@ -97,3 +99,6 @@ async def shutdown_event():
 
     from app.services.remote_drive_service import remote_drive_service
     remote_drive_service.stop()
+
+    from app.services.vscode_service import vscode_service
+    vscode_service.shutdown()

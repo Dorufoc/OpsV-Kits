@@ -82,6 +82,38 @@ def install_nodejs_linux():
     return False
 
 
+def _check_skip_key(timeout: float = 3.0) -> bool:
+    """检查用户是否在指定时间内按了回车键，返回True表示跳过"""
+    if sys.platform == "win32":
+        import msvcrt
+        import time
+        start = time.time()
+        while time.time() - start < timeout:
+            if msvcrt.kbhit():
+                key = msvcrt.getch()
+                if key == b'\r' or key == b'\n':
+                    return True
+            time.sleep(0.1)
+    else:
+        import select
+        import tty
+        import termios
+        import time
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setcbreak(fd)
+            start = time.time()
+            while time.time() - start < timeout:
+                if select.select([sys.stdin], [], [], 0.1)[0]:
+                    key = sys.stdin.read(1)
+                    if key == '\n' or key == '\r':
+                        return True
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return False
+
+
 def ensure_nodejs():
     try:
         node_check = subprocess.run(["node", "--version"], capture_output=True, text=True)
@@ -91,7 +123,13 @@ def ensure_nodejs():
     except FileNotFoundError:
         pass
 
-    print("  ⚠ Node.js not found, attempting auto-install...")
+    print("  ⚠ Node.js not found, attempting auto-install... (按回车键跳过)", end='', flush=True)
+
+    if _check_skip_key(timeout=3.0):
+        print("\r  ⏭️  已跳过 Node.js 自动安装")
+        return
+
+    print()
     if sys.platform == "win32":
         ok = install_nodejs_windows()
     elif sys.platform == "linux":
@@ -154,7 +192,13 @@ def start_frontend_dev(port: int = 3000) -> subprocess.Popen:
 
 
 def install_dependencies():
-    print("  ℹ Checking dependencies...")
+    print("  ℹ Checking dependencies... (3s内按回车键跳过)", end='', flush=True)
+
+    if _check_skip_key(timeout=3.0):
+        print("\r  ⏭️  已跳过依赖检查")
+        return
+
+    print()
 
     pip_install_done = False
     if not pip_install_done:

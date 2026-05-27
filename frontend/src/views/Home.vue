@@ -44,6 +44,10 @@
           <div class="stat-value">{{ websshStore.sessions.length }}</div>
           <div class="stat-label">终端会话</div>
         </el-card>
+        <el-card shadow="hover" class="stat-card" @click="$router.push('/vscode')">
+          <div class="stat-value"><el-icon :size="24"><Edit /></el-icon></div>
+          <div class="stat-label">在线 IDE</div>
+        </el-card>
       </div>
 
       <el-card shadow="never" class="dashboard-card">
@@ -189,7 +193,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Plus, Check, Connection, Refresh, Monitor, InfoFilled, Cpu, Coin, Folder, FolderOpened, Loading } from '@element-plus/icons-vue'
+import { Plus, Check, Connection, Refresh, Monitor, InfoFilled, Cpu, Coin, Folder, FolderOpened, Loading, Edit } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { useSshAccountStore } from '@/stores/sshAccountStore'

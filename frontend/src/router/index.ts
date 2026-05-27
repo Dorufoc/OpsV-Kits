@@ -51,6 +51,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '工具箱' },
   },
   {
+    path: '/vscode',
+    name: 'VSCode',
+    component: () => import('@/views/VSCodePage.vue'),
+    meta: { title: 'Web VSCode' },
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: () => import('@/views/Settings.vue'),
