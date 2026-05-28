@@ -1,9 +1,7 @@
 <template>
   <div class="file-browser">
     <div class="browser-toolbar">
-      <el-button size="small" :disabled="!canGoBack" @click="$emit('navigate', parentPath)">
-        <el-icon><Back /></el-icon> 上级
-      </el-button>
+      <Md3Button size="sm" :disabled="!canGoBack" @click="$emit('navigate', parentPath)" :icon="Back">上级</Md3Button>
       <el-breadcrumb class="path-breadcrumb" separator="/">
         <el-breadcrumb-item
           v-for="(seg, index) in pathSegments"
@@ -22,9 +20,7 @@
 
     <div class="browser-actions">
       <el-dropdown trigger="click" v-if="showCreate">
-        <el-button size="small" type="primary">
-          <el-icon><Plus /></el-icon> 新建
-        </el-button>
+        <Md3Button size="sm" variant="primary" :icon="Plus">新建</Md3Button>
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item @click="$emit('mkdir')">文件夹</el-dropdown-item>
@@ -32,9 +28,7 @@
           </el-dropdown-menu>
         </template>
       </el-dropdown>
-      <el-button size="small" @click="$emit('upload')" v-if="showUpload">
-        <el-icon><Upload /></el-icon> 上传
-      </el-button>
+      <Md3Button size="sm" @click="$emit('upload')" :icon="Upload" v-if="showUpload">上传</Md3Button>
       <el-input
         v-model="searchQuery"
         placeholder="搜索文件..."
@@ -76,22 +70,14 @@
       <el-table-column prop="permission" label="权限" width="120" />
       <el-table-column prop="owner" label="所有者" width="120" />
       <el-table-column prop="modified" label="修改时间" width="160" />
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="300" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" text @click.stop="$emit('download', row)">
-            <el-icon><Download /></el-icon>
-          </el-button>
-          <el-button size="small" text @click.stop="$emit('rename', row)">
-            <el-icon><Edit /></el-icon>
-          </el-button>
-          <el-button size="small" text @click.stop="$emit('copy', row)">
-            <el-icon><CopyDocument /></el-icon>
-          </el-button>
+          <Md3Button :icon="Download" size="sm" @click.stop="$emit('download', row)">下载</Md3Button>
+          <Md3Button :icon="Edit" size="sm" @click.stop="$emit('rename', row)">重命名</Md3Button>
+          <Md3Button :icon="CopyDocument" size="sm" @click.stop="$emit('copy', row)">复制</Md3Button>
           <el-popconfirm title="确认删除?" @confirm="$emit('delete', row)">
             <template #reference>
-              <el-button size="small" text type="danger">
-                <el-icon><Delete /></el-icon>
-              </el-button>
+              <Md3Button :icon="Delete" size="sm" variant="danger">删除</Md3Button>
             </template>
           </el-popconfirm>
         </template>
@@ -108,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import Md3Button from '@/components/Md3Button.vue'
 import { computed, ref } from 'vue'
 import {
   Back, Plus, Upload, Search,
@@ -212,13 +199,24 @@ function formatSize(bytes: number): string {
 .file-browser {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--md3-space-sm);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-sm);
+  padding: var(--md3-space-md);
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.file-browser:hover {
+  box-shadow: var(--md3-elevation-level1);
 }
 
 .browser-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--md3-space-md);
 }
 
 .path-breadcrumb {
@@ -226,18 +224,20 @@ function formatSize(bytes: number): string {
 }
 
 .breadcrumb-link {
-  color: #409eff;
+  color: var(--md3-primary);
   cursor: pointer;
+  transition: opacity var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 .breadcrumb-link:hover {
+  opacity: 0.8;
   text-decoration: underline;
 }
 
 .browser-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--md3-space-sm);
 }
 
 .search-input {
@@ -248,25 +248,26 @@ function formatSize(bytes: number): string {
 .file-name {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--md3-space-sm);
 }
 
 .folder-icon {
-  color: #e6a23c;
+  color: var(--md3-warning);
 }
 
 .file-icon {
-  color: #909399;
+  color: var(--md3-on-surface-variant);
 }
 
 .browser-status {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  color: #909399;
+  color: var(--md3-on-surface-variant);
 }
 
 .selected-info {
-  color: #409eff;
+  color: var(--md3-primary);
+  transition: color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 </style>

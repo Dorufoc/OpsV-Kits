@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { request } from '@/api'
 
-export type SyncStatus = 'idle' | 'scanning' | 'syncing' | 'completed' | 'error'
+export type SyncStatus = 'idle' | 'scanning' | 'syncing' | 'completed' | 'failed' | 'error'
 
 export interface SyncProgress {
   total: number
@@ -112,6 +112,7 @@ export const useSyncStore = defineStore('sync', () => {
         }
       } catch {
         if (syncStatus.value === 'idle') return
+        syncStatus.value = 'error'
         stopPolling()
       }
     }, 1000)
@@ -156,6 +157,18 @@ export const useSyncStore = defineStore('sync', () => {
     }
   }
 
+  function waitForCompletion(): Promise<'completed' | 'failed' | 'stopped'> {
+    return new Promise((resolve) => {
+      const check = () => {
+        const s = syncStatus.value
+        if (s === 'completed') return resolve('completed')
+        if (s === 'failed' || s === 'error') return resolve('failed')
+        setTimeout(check, 200)
+      }
+      check()
+    })
+  }
+
   function resetStatus() {
     stopPolling()
     syncStatus.value = 'idle'
@@ -179,6 +192,7 @@ export const useSyncStore = defineStore('sync', () => {
     startSync,
     stopSync,
     getSyncStatus,
+    waitForCompletion,
     resetStatus,
   }
 })

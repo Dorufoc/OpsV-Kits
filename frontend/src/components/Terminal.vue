@@ -7,30 +7,12 @@
         </slot>
       </div>
       <div class="toolbar-right">
-        <el-button size="small" text @click="handleCopy">
-          <el-icon><DocumentCopy /></el-icon>
-          复制选中
-        </el-button>
-        <el-button size="small" text @click="handleCopyAll">
-          <el-icon><CopyDocument /></el-icon>
-          复制全部
-        </el-button>
-        <el-button size="small" text @click="handlePaste">
-          <el-icon><Upload /></el-icon>
-          粘贴
-        </el-button>
-        <el-button size="small" text @click="handleClear">
-          <el-icon><Delete /></el-icon>
-          清屏
-        </el-button>
-        <el-button size="small" text @click="handleFreeze" :type="isFrozen ? 'warning' : ''">
-          <el-icon><VideoPause v-if="!isFrozen" /><VideoPlay v-else /></el-icon>
-          {{ isFrozen ? '已冻结' : '冻结' }}
-        </el-button>
-        <el-button size="small" text @click="handleFullscreen">
-          <el-icon><FullScreen /></el-icon>
-          全屏
-        </el-button>
+        <Md3Button variant="text" size="sm" :icon="DocumentCopy" @click="handleCopy">复制选中</Md3Button>
+        <Md3Button variant="text" size="sm" :icon="CopyDocument" @click="handleCopyAll">复制全部</Md3Button>
+        <Md3Button variant="text" size="sm" :icon="Upload" @click="handlePaste">粘贴</Md3Button>
+        <Md3Button variant="text" size="sm" :icon="Delete" @click="handleClear">清屏</Md3Button>
+        <Md3Button :variant="isFrozen ? 'warning' : 'text'" size="sm" :icon="isFrozen ? VideoPlay : VideoPause" @click="handleFreeze">{{ isFrozen ? '已冻结' : '冻结' }}</Md3Button>
+        <Md3Button variant="text" size="sm" :icon="FullScreen" @click="handleFullscreen">全屏</Md3Button>
       </div>
     </div>
     <div class="terminal-container" ref="containerRef"></div>
@@ -43,6 +25,7 @@ import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
 import { DocumentCopy, CopyDocument, Upload, Delete, FullScreen, VideoPause, VideoPlay } from '@element-plus/icons-vue'
+import Md3Button from '@/components/Md3Button.vue'
 
 const props = defineProps<{
   sessionName?: string
@@ -248,31 +231,40 @@ watch(() => props.fontSize, (newSize) => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-sm);
   overflow: hidden;
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.terminal-wrapper:hover {
+  box-shadow: var(--md3-elevation-level1);
 }
 
 .terminal-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 8px;
-  background: #f5f7fa;
-  border-bottom: 1px solid #e4e7ed;
+  padding: var(--md3-space-xs) var(--md3-space-sm);
+  background: var(--md3-glass-bg);
+  border-bottom: 1px solid var(--md3-glass-border);
+  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 .toolbar-left,
 .toolbar-right {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--md3-space-xs);
 }
 
 .session-label {
   font-size: 13px;
   font-weight: 500;
-  color: #303133;
+  color: var(--md3-on-surface);
 }
 
 .terminal-container {

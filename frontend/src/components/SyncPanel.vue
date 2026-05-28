@@ -70,28 +70,37 @@ const syncPercentage = computed(() => {
 
 <style scoped>
 .sync-panel {
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 6px;
+  padding: var(--md3-space-md);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-md);
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.sync-panel:hover {
+  box-shadow: var(--md3-elevation-level1);
 }
 
 .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--md3-space-md);
 }
 
 .panel-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
+  color: var(--md3-on-surface);
 }
 
 .panel-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: var(--md3-space-xs);
+  margin-bottom: var(--md3-space-md);
 }
 
 .status-item {
@@ -101,11 +110,11 @@ const syncPercentage = computed(() => {
 }
 
 .status-item .label {
-  color: #909399;
+  color: var(--md3-on-surface-variant);
 }
 
 .status-item .value {
-  color: #303133;
+  color: var(--md3-on-surface);
   font-weight: 500;
 }
 
@@ -117,6 +126,6 @@ const syncPercentage = computed(() => {
 }
 
 .panel-progress {
-  margin-top: 4px;
+  margin-top: var(--md3-space-xs);
 }
 </style>

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import threading
 import time
 from typing import Any, Optional
@@ -11,6 +12,8 @@ from pydantic import BaseModel, Field
 
 from app.services.docker_service import DockerCommandError, docker_service
 from app.services.ssh_account_service import ssh_account_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/docker", tags=["docker"])
 
@@ -87,18 +90,44 @@ def _verify_account(account_alias: str) -> None:
         )
 
 
-def _handle_docker_error(e: DockerCommandError) -> None:
-    if "command not found" in str(e).lower() or "not found" in str(e).lower():
+def _handle_docker_error(e: DockerCommandError, context: str = "") -> None:
+    error_msg = str(e)
+    error_msg_lower = error_msg.lower()
+    ctx = f"[{context}] " if context else ""
+
+    logger.error(f"Docker 命令执行失败 {ctx}(exit_code={e.exit_code}): {error_msg}")
+
+    if "command not found" in error_msg_lower:
         raise HTTPException(
             status_code=503,
-            detail=f"Docker 未安装或未找到: {str(e)}",
+            detail=f"Docker 未安装: {error_msg}",
         )
-    if "permission denied" in str(e).lower() or "got permission denied" in str(e).lower():
+    if "not found" in error_msg_lower or "no such" in error_msg_lower:
+        raise HTTPException(
+            status_code=404,
+            detail=f"资源未找到: {error_msg}",
+        )
+    if "permission denied" in error_msg_lower or "got permission denied" in error_msg_lower:
         raise HTTPException(
             status_code=403,
-            detail=f"Docker 权限不足: {str(e)}",
+            detail=f"Docker 权限不足: {error_msg}",
         )
-    raise HTTPException(status_code=400, detail=str(e))
+    if "is already running" in error_msg_lower:
+        raise HTTPException(
+            status_code=409,
+            detail=f"容器已在运行中",
+        )
+    if "is already paused" in error_msg_lower:
+        raise HTTPException(
+            status_code=409,
+            detail=f"容器已暂停，请先恢复再操作",
+        )
+    if "timeout" in error_msg_lower:
+        raise HTTPException(
+            status_code=504,
+            detail=f"Docker 操作超时: {error_msg}",
+        )
+    raise HTTPException(status_code=400, detail=f"Docker 操作失败: {error_msg}")
 
 
 # ── 环境检测 ─────────────────────────────────────────────────────
@@ -129,7 +158,7 @@ async def install_docker(data: InstallRequest):
         message = docker_service.install_docker(data.account_alias)
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "install_docker")
 
 
 # ── 容器管理 ─────────────────────────────────────────────────────
@@ -144,7 +173,7 @@ async def list_containers(
     try:
         return docker_service.list_containers(account_alias, all=all)
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "list_containers")
 
 
 @router.get("/containers/{container_id}")
@@ -158,7 +187,7 @@ async def get_container(
     except DockerCommandError as e:
         if "No such object" in str(e):
             raise HTTPException(status_code=404, detail=f"容器 '{container_id}' 未找到")
-        _handle_docker_error(e)
+        _handle_docker_error(e, "get_container")
 
 
 @router.post("/containers/{container_id}/start")
@@ -168,10 +197,28 @@ async def start_container(
 ):
     _verify_account(account_alias)
     try:
+        info = docker_service.get_container_info(account_alias, container_id)
+        state = info.get("State", {})
+        if state.get("Status") == "running":
+            logger.info(
+                "容器已在运行中 [account=%s, container=%s]",
+                account_alias, container_id,
+            )
+            return {"message": f"容器 {container_id} 已在运行中"}
+    except DockerCommandError:
+        pass
+
+    try:
         message = docker_service.start_container(account_alias, container_id)
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        if "already running" in str(e).lower():
+            logger.info(
+                "容器已在运行中（竞争条件）[account=%s, container=%s]",
+                account_alias, container_id,
+            )
+            return {"message": f"容器 {container_id} 已在运行中"}
+        _handle_docker_error(e, f"start_container({account_alias})")
 
 
 @router.post("/containers/{container_id}/stop")
@@ -186,7 +233,7 @@ async def stop_container(
         )
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "stop_container")
 
 
 @router.post("/containers/{container_id}/restart")
@@ -199,7 +246,7 @@ async def restart_container(
         message = docker_service.restart_container(account_alias, container_id)
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "restart_container")
 
 
 @router.post("/containers/{container_id}/kill")
@@ -212,7 +259,7 @@ async def kill_container(
         message = docker_service.kill_container(account_alias, container_id)
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "kill_container")
 
 
 @router.delete("/containers/{container_id}")
@@ -228,7 +275,7 @@ async def remove_container(
         )
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "remove_container")
 
 
 @router.post("/containers/{container_id}/pause")
@@ -241,7 +288,7 @@ async def pause_container(
         message = docker_service.pause_container(account_alias, container_id)
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "pause_container")
 
 
 @router.post("/containers/{container_id}/unpause")
@@ -254,7 +301,7 @@ async def unpause_container(
         message = docker_service.unpause_container(account_alias, container_id)
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "unpause_container")
 
 
 @router.get("/containers/{container_id}/logs")
@@ -273,7 +320,7 @@ async def get_container_logs(
     except DockerCommandError as e:
         if "No such object" in str(e):
             raise HTTPException(status_code=404, detail=f"容器 '{container_id}' 未找到")
-        _handle_docker_error(e)
+        _handle_docker_error(e, "get_container_logs")
 
 
 @router.websocket("/ws/containers/{container_id}/logs")
@@ -372,7 +419,7 @@ async def get_container_stats(
     except DockerCommandError as e:
         if "No such object" in str(e):
             raise HTTPException(status_code=404, detail=f"容器 '{container_id}' 未找到")
-        _handle_docker_error(e)
+        _handle_docker_error(e, "get_container_stats")
 
 
 @router.post("/containers/{container_id}/exec")
@@ -391,7 +438,7 @@ async def exec_in_container(
             "stderr": stderr,
         }
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "exec_in_container")
 
 
 # ── 镜像管理 ─────────────────────────────────────────────────────
@@ -405,7 +452,7 @@ async def list_images(
     try:
         return docker_service.list_images(account_alias)
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "list_images")
 
 
 @router.delete("/images/{image_id}")
@@ -418,7 +465,7 @@ async def remove_image(
         message = docker_service.remove_image(account_alias, image_id)
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "remove_image")
 
 
 @router.post("/images/pull")
@@ -428,7 +475,7 @@ async def pull_image(data: PullImageRequest):
         message = docker_service.pull_image(data.account_alias, data.image_name)
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "pull_image")
 
 
 @router.post("/images/build")
@@ -440,7 +487,7 @@ async def build_image(data: BuildImageRequest):
         )
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "build_image")
 
 
 @router.post("/images/prune")
@@ -452,7 +499,7 @@ async def prune_images(
         result = docker_service.prune_images(account_alias)
         return result
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "prune_images")
 
 
 @router.get("/images/search")
@@ -464,7 +511,7 @@ async def search_images(
     try:
         return docker_service.search_images(account_alias, term)
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "search_images")
 
 
 # ── 网络管理 ─────────────────────────────────────────────────────
@@ -478,7 +525,7 @@ async def list_networks(
     try:
         return docker_service.list_networks(account_alias)
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "list_networks")
 
 
 @router.post("/networks", status_code=201)
@@ -490,7 +537,7 @@ async def create_network(data: CreateNetworkRequest):
         )
         return {"network_id": network_id, "name": data.name, "driver": data.driver}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "create_network")
 
 
 @router.delete("/networks/{network_id}")
@@ -503,7 +550,7 @@ async def remove_network(
         message = docker_service.remove_network(account_alias, network_id)
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "remove_network")
 
 
 @router.get("/networks/{network_id}")
@@ -517,7 +564,7 @@ async def get_network_info(
     except DockerCommandError as e:
         if "network" in str(e).lower() and "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=f"网络 '{network_id}' 未找到")
-        _handle_docker_error(e)
+        _handle_docker_error(e, "get_network_info")
 
 
 # ── 卷管理 ───────────────────────────────────────────────────────
@@ -531,7 +578,7 @@ async def list_volumes(
     try:
         return docker_service.list_volumes(account_alias)
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "list_volumes")
 
 
 @router.post("/volumes", status_code=201)
@@ -541,7 +588,7 @@ async def create_volume(data: CreateVolumeRequest):
         volume_name = docker_service.create_volume(data.account_alias, data.name)
         return {"volume_name": volume_name}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "create_volume")
 
 
 @router.delete("/volumes/{volume_name}")
@@ -554,7 +601,7 @@ async def remove_volume(
         message = docker_service.remove_volume(account_alias, volume_name)
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "remove_volume")
 
 
 @router.get("/volumes/{volume_name}")
@@ -568,7 +615,7 @@ async def get_volume_info(
     except DockerCommandError as e:
         if "volume" in str(e).lower() and "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=f"卷 '{volume_name}' 未找到")
-        _handle_docker_error(e)
+        _handle_docker_error(e, "get_volume_info")
 
 
 # ── Compose 管理 ────────────────────────────────────────────────
@@ -585,7 +632,7 @@ async def list_compose_projects(
             account_alias, search_path=search_path
         )
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "list_compose_projects")
 
 
 @router.post("/compose/up")
@@ -597,7 +644,7 @@ async def compose_up(data: ComposeUpRequest):
         )
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "compose_up")
 
 
 @router.post("/compose/down")
@@ -609,7 +656,7 @@ async def compose_down(data: ComposeDownRequest):
         )
         return {"message": message}
     except DockerCommandError as e:
-        _handle_docker_error(e)
+        _handle_docker_error(e, "compose_down")
 
 
 def _safe_ws_send(websocket: WebSocket, data: dict[str, Any]) -> None:

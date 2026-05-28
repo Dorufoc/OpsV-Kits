@@ -1,0 +1,200 @@
+:root,
+[data-theme="light"] {
+  /* ===== MD3 Color Tokens (Light) ===== */
+  --md3-primary: #4F46E5;
+  --md3-primary-container: #E0DFFF;
+  --md3-on-primary: #FFFFFF;
+  --md3-on-primary-container: #1A1265;
+
+  --md3-secondary: #625B71;
+  --md3-secondary-container: #E8DEF8;
+  --md3-on-secondary: #FFFFFF;
+  --md3-on-secondary-container: #1D192B;
+
+  --md3-tertiary: #7D5260;
+  --md3-tertiary-container: #FFD9E3;
+  --md3-on-tertiary: #FFFFFF;
+  --md3-on-tertiary-container: #31101D;
+
+  --md3-error: #B3261E;
+  --md3-error-container: #F9DEDC;
+  --md3-on-error: #FFFFFF;
+  --md3-on-error-container: #410E0B;
+
+  --md3-surface: #FEFBFF;
+  --md3-surface-dim: #DFDADF;
+  --md3-surface-bright: #FEFBFF;
+  --md3-surface-container-lowest: #FFFFFF;
+  --md3-surface-container-low: #F7F2FA;
+  --md3-surface-container: #F3EDF7;
+  --md3-surface-container-high: #ECE6F0;
+  --md3-surface-container-highest: #E6E0E9;
+  --md3-on-surface: #1C1B1E;
+  --md3-on-surface-variant: #49454E;
+
+  --md3-outline: #79747E;
+  --md3-outline-variant: #CAC4CF;
+
+  --md3-inverse-primary: #CCC2FF;
+  --md3-inverse-surface: #313033;
+  --md3-inverse-on-surface: #F4EFF4;
+
+  --md3-success: #1B7D3A;
+  --md3-success-container: #D7F5DD;
+  --md3-on-success: #FFFFFF;
+  --md3-warning: #9A6B00;
+  --md3-warning-container: #FFDF9A;
+  --md3-on-warning: #FFFFFF;
+
+  /* Button hover/active states (Light) */
+  --md3-primary-container-hover: #D5D4FF;
+  --md3-primary-container-active: #C5C2FF;
+  --md3-error-container-hover: #F5D0CE;
+  --md3-success-container-hover: #C8F0D0;
+  --md3-warning-container-hover: #FFD68C;
+
+  /* ===== Glassmorphism (Light) ===== */
+  --md3-glass-bg: rgba(254, 251, 255, 0.72);
+  --md3-glass-bg-dark: rgba(28, 27, 30, 0.72);
+  --md3-glass-border: rgba(202, 196, 207, 0.5);
+  --md3-glass-blur: blur(16px);
+
+  /* ===== Gradient (Light) ===== */
+  --md3-gradient-primary: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+  --md3-gradient-surface: linear-gradient(135deg, #FEFBFF 0%, #F3EDF7 100%);
+  --md3-gradient-card: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(247,242,250,0.6) 100%);
+  --md3-gradient-dark-card: linear-gradient(135deg, rgba(49, 48, 51, 0.8) 0%, rgba(28, 27, 30, 0.6) 100%);
+}
+
+[data-theme="dark"] {
+  /* ===== MD3 Color Tokens (Dark) ===== */
+  --md3-primary: #CCC2FF;
+  --md3-primary-container: #2E2A6E;
+  --md3-on-primary: #1A1265;
+  --md3-on-primary-container: #CCC2FF;
+
+  --md3-secondary: #CCC2DC;
+  --md3-secondary-container: #4A4355;
+  --md3-on-secondary: #1D192B;
+  --md3-on-secondary-container: #E8DEF8;
+
+  --md3-tertiary: #EFB8C8;
+  --md3-tertiary-container: #4A3540;
+  --md3-on-tertiary: #31101D;
+  --md3-on-tertiary-container: #FFD9E3;
+
+  --md3-error: #F2B8B5;
+  --md3-error-container: #601410;
+  --md3-on-error: #601410;
+  --md3-on-error-container: #F9DEDC;
+
+  --md3-surface: #1C1B1E;
+  --md3-surface-dim: #141316;
+  --md3-surface-bright: #434145;
+  --md3-surface-container-lowest: #0E0D10;
+  --md3-surface-container-low: #242326;
+  --md3-surface-container: #2A292C;
+  --md3-surface-container-high: #343336;
+  --md3-surface-container-highest: #3F3E41;
+  --md3-on-surface: #E6E1E5;
+  --md3-on-surface-variant: #CAC4CF;
+
+  --md3-outline: #938F99;
+  --md3-outline-variant: #49454E;
+
+  --md3-inverse-primary: #4F46E5;
+  --md3-inverse-surface: #E6E1E5;
+  --md3-inverse-on-surface: #313033;
+
+  --md3-success: #4CAF50;
+  --md3-success-container: #1B5E20;
+  --md3-on-success: #000000;
+  --md3-warning: #FFB74D;
+  --md3-warning-container: #5C4000;
+  --md3-on-warning: #000000;
+
+  /* Button hover/active states (Dark) */
+  --md3-primary-container-hover: #4A44A0;
+  --md3-primary-container-active: #252260;
+  --md3-error-container-hover: #7A1A15;
+  --md3-success-container-hover: #247025;
+  --md3-warning-container-hover: #6B4A00;
+
+  /* ===== Glassmorphism (Dark) ===== */
+  --md3-glass-bg: rgba(28, 27, 30, 0.72);
+  --md3-glass-bg-dark: rgba(14, 13, 16, 0.72);
+  --md3-glass-border: rgba(73, 69, 78, 0.6);
+  --md3-glass-blur: blur(16px);
+
+  /* ===== Gradient (Dark) ===== */
+  --md3-gradient-primary: linear-gradient(135deg, #7C73E8 0%, #9A8EFF 100%);
+  --md3-gradient-surface: linear-gradient(135deg, #1C1B1E 0%, #141316 100%);
+  --md3-gradient-card: linear-gradient(135deg, rgba(42, 41, 44, 0.9) 0%, rgba(28, 27, 30, 0.6) 100%);
+  --md3-gradient-dark-card: linear-gradient(135deg, rgba(14, 13, 16, 0.8) 0%, rgba(28, 27, 30, 0.6) 100%);
+}
+
+/* ===== MD3 Typography ===== */
+:root {
+  --md3-font-display: 'Plus Jakarta Sans', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+  --md3-font-body: 'Plus Jakarta Sans', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+  --md3-font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+
+  --md3-type-display-large: 700 2.25rem/2.75rem var(--md3-font-display);
+  --md3-type-display-medium: 700 2rem/2.5rem var(--md3-font-display);
+  --md3-type-display-small: 700 1.75rem/2.25rem var(--md3-font-display);
+
+  --md3-type-headline-large: 600 1.5rem/2rem var(--md3-font-display);
+  --md3-type-headline-medium: 600 1.25rem/1.75rem var(--md3-font-display);
+  --md3-type-headline-small: 600 1.125rem/1.5rem var(--md3-font-display);
+
+  --md3-type-title-large: 500 1.125rem/1.5rem var(--md3-font-body);
+  --md3-type-title-medium: 500 1rem/1.5rem var(--md3-font-body);
+  --md3-type-title-small: 500 0.875rem/1.25rem var(--md3-font-body);
+
+  --md3-type-body-large: 400 1rem/1.5rem var(--md3-font-body);
+  --md3-type-body-medium: 400 0.875rem/1.25rem var(--md3-font-body);
+  --md3-type-body-small: 400 0.75rem/1rem var(--md3-font-body);
+
+  --md3-type-label-large: 500 0.875rem/1.25rem var(--md3-font-body);
+  --md3-type-label-medium: 500 0.75rem/1rem var(--md3-font-body);
+  --md3-type-label-small: 500 0.625rem/0.875rem var(--md3-font-body);
+
+  /* ===== MD3 Shape (Border Radius) ===== */
+  --md3-shape-none: 0;
+  --md3-shape-xs: 4px;
+  --md3-shape-sm: 8px;
+  --md3-shape-md: 12px;
+  --md3-shape-lg: 16px;
+  --md3-shape-xl: 20px;
+  --md3-shape-full: 9999px;
+
+  /* ===== MD3 Elevation (Shadows) ===== */
+  --md3-elevation-level0: none;
+  --md3-elevation-level1: 0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px 0 rgba(0,0,0,0.04);
+  --md3-elevation-level2: 0 2px 6px 0 rgba(0,0,0,0.10), 0 1px 3px 0 rgba(0,0,0,0.06);
+  --md3-elevation-level3: 0 4px 12px 0 rgba(0,0,0,0.12), 0 2px 5px 0 rgba(0,0,0,0.08);
+  --md3-elevation-level4: 0 6px 20px 0 rgba(0,0,0,0.14), 0 3px 8px 0 rgba(0,0,0,0.10);
+  --md3-elevation-level5: 0 8px 30px 0 rgba(0,0,0,0.16), 0 4px 12px 0 rgba(0,0,0,0.12);
+
+  /* ===== MD3 Space ===== */
+  --md3-space-xs: 4px;
+  --md3-space-sm: 8px;
+  --md3-space-md: 12px;
+  --md3-space-lg: 16px;
+  --md3-space-xl: 24px;
+  --md3-space-2xl: 32px;
+  --md3-space-3xl: 48px;
+
+  /* ===== MD3 Motion ===== */
+  --md3-motion-duration-short: 150ms;
+  --md3-motion-duration-medium: 250ms;
+  --md3-motion-duration-long: 350ms;
+  --md3-motion-easing-emphasized: cubic-bezier(0.2, 0.0, 0.0, 1.0);
+  --md3-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1.0);
+  --md3-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0.0, 0.8, 0.15);
+  --md3-motion-easing-standard: cubic-bezier(0.2, 0.0, 0.0, 1.0);
+
+  /* ===== Breakpoints ===== */
+  --md3-breakpoint-mobile: 767px;
+  --md3-breakpoint-tablet: 1023px;
+}

@@ -58,3 +58,13 @@ class SSHAccountUpdate(BaseModel):
 class AccountGroup(BaseModel):
     name: str = Field(..., description="分组名称")
     accounts: list[str] = Field(default_factory=list, description="分组内账户别名列表")
+
+
+class AccountGroupCreate(BaseModel):
+    name: str = Field(..., description="分组名称")
+    accounts: list[str] = Field(default_factory=list, description="分组内账户别名列表")
+
+
+class AccountGroupUpdate(BaseModel):
+    new_name: Optional[str] = Field(default=None, description="新分组名称（重命名）")
+    accounts: Optional[list[str]] = Field(default=None, description="分组内账户别名列表")

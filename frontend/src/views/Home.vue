@@ -4,13 +4,13 @@
       <el-empty description="OpsV-Kits 欢迎您" :image-size="200">
         <template #image>
           <div class="welcome-icon">
-            <el-icon :size="80" color="#409eff"><Connection /></el-icon>
+            <el-icon :size="80" color="var(--ov-primary, #1a73e8)"><Connection /></el-icon>
           </div>
         </template>
         <p class="welcome-text">开始使用前，请先配置您的第一个 SSH 远程服务器</p>
-        <el-button type="primary" size="large" @click="dialogVisible = true">
-          <el-icon><Plus /></el-icon> 添加 SSH 服务器
-        </el-button>
+        <Md3Button variant="primary" size="lg" :icon="Plus" @click="dialogVisible = true">
+          添加 SSH 服务器
+        </Md3Button>
       </el-empty>
     </template>
 
@@ -20,9 +20,9 @@
           <span>控制台</span>
         </template>
         <template #extra>
-          <el-button size="small" @click="dashboardAlias = ''; loadDashboard()" :disabled="!dashboardAlias">
-            <el-icon><Refresh /></el-icon> 刷新
-          </el-button>
+          <Md3Button size="sm" :icon="Refresh" @click="dashboardAlias = ''; loadDashboard()" :disabled="!dashboardAlias">
+            刷新
+          </Md3Button>
         </template>
       </el-page-header>
       <el-divider />
@@ -176,12 +176,12 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="handleTest" :loading="testing" :disabled="!formValid">
-          <el-icon><Connection /></el-icon> 测试连接
-        </el-button>
-        <el-button type="primary" @click="handleSave" :loading="saving">
-          <el-icon><Check /></el-icon> 保存并开始使用
-        </el-button>
+        <Md3Button :icon="Connection" @click="handleTest" :loading="testing" :disabled="!formValid">
+          测试连接
+        </Md3Button>
+        <Md3Button variant="primary" :icon="Check" @click="handleSave" :loading="saving">
+          保存并开始使用
+        </Md3Button>
       </template>
     </el-dialog>
   </div>
@@ -192,6 +192,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Plus, Check, Connection, Refresh, Monitor, InfoFilled, Cpu, Coin, Folder, FolderOpened, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import Md3Button from '@/components/Md3Button.vue'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { useDockerStore } from '@/stores/dockerStore'
 import { useWebsshStore } from '@/stores/websshStore'
@@ -236,7 +237,7 @@ function formatBytes(bytes: number): string {
   return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i]
 }
 
-function memColor(pct: number) { return pct > 90 ? '#f56c6c' : pct > 70 ? '#e6a23c' : '#67c23a' }
+function memColor(pct: number) { return pct > 90 ? '#b3261e' : pct > 70 ? '#f9a825' : '#1b7d3a' }
 function diskColor(pct: number) { return memColor(pct) }
 
 async function loadDashboard() {
@@ -316,24 +317,25 @@ onMounted(() => { checkFirstLaunch() })
 </script>
 
 <style scoped>
-.home { padding: 16px 0; }
-.welcome-icon { display: flex; justify-content: center; align-items: center; margin-bottom: 8px; }
-.welcome-text { color: #909399; font-size: 15px; margin: 0 0 24px 0; }
-.stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-top: 8px; }
-.stat-card { cursor: pointer; transition: transform 0.15s; text-align: center; }
-.stat-card:hover { transform: translateY(-2px); }
-.stat-value { font-size: 32px; font-weight: 700; color: #409eff; line-height: 1.2; }
-.stat-label { font-size: 14px; color: #909399; margin-top: 4px; }
-.dashboard-card { margin-top: 20px; }
-.dashboard-header { display: flex; align-items: center; justify-content: space-between; }
-.select-hint, .loading-hint { text-align: center; color: #909399; padding: 40px 0; font-size: 14px; }
-.info-section { background: #fafafa; border-radius: 6px; padding: 12px 16px; }
-.info-title { font-size: 13px; font-weight: 600; color: #303133; margin-bottom: 10px; display: flex; align-items: center; gap: 4px; }
+.home { padding: var(--md3-space-lg) 0; }
+.welcome-icon { display: flex; justify-content: center; align-items: center; margin-bottom: var(--md3-space-sm); }
+.welcome-text { color: var(--md3-on-surface-variant); font-size: 15px; margin: 0 0 var(--md3-space-xl) 0; }
+.stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--md3-space-lg); margin-top: var(--md3-space-sm); }
+.stat-card { cursor: pointer; transition: all var(--md3-motion-duration-medium) var(--md3-motion-easing-standard); text-align: center; background: var(--md3-glass-bg); backdrop-filter: var(--md3-glass-blur); -webkit-backdrop-filter: var(--md3-glass-blur); border: 1px solid var(--md3-glass-border); }
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--md3-elevation-level2); }
+.stat-value { font-size: 32px; font-weight: 700; color: var(--md3-primary); line-height: 1.2; }
+.stat-label { font-size: 14px; color: var(--md3-on-surface-variant); margin-top: var(--md3-space-xs); }
+.dashboard-card { margin-top: var(--md3-space-xl); }
+.dashboard-header { display: flex; align-items: center; justify-content: space-between; gap: var(--md3-space-md); }
+.select-hint, .loading-hint { text-align: center; color: var(--md3-on-surface-variant); padding: var(--md3-space-3xl) 0; font-size: 14px; }
+.info-section { background: var(--md3-glass-bg); backdrop-filter: var(--md3-glass-blur); -webkit-backdrop-filter: var(--md3-glass-blur); border: 1px solid var(--md3-glass-border); border-radius: var(--md3-shape-sm); padding: var(--md3-space-md) var(--md3-space-lg); transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard); }
+.info-section:hover { box-shadow: var(--md3-elevation-level1); }
+.info-title { font-size: 13px; font-weight: 600; color: var(--md3-on-surface); margin-bottom: var(--md3-space-sm); display: flex; align-items: center; gap: var(--md3-space-xs); }
 .info-grid { display: flex; flex-direction: column; gap: 6px; }
 .info-item { display: flex; justify-content: space-between; font-size: 13px; }
-.info-label { color: #909399; white-space: nowrap; }
-.info-value { color: #303133; text-align: right; word-break: break-all; }
-.progress-block { padding: 4px 0; }
-.progress-header { display: flex; justify-content: space-between; font-size: 12px; color: #606266; margin-bottom: 4px; }
-.no-data { color: #c0c4cc; font-size: 13px; padding: 8px 0; }
+.info-label { color: var(--md3-on-surface-variant); white-space: nowrap; }
+.info-value { color: var(--md3-on-surface); text-align: right; word-break: break-all; }
+.progress-block { padding: var(--md3-space-xs) 0; }
+.progress-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--md3-on-surface-variant); margin-bottom: var(--md3-space-xs); }
+.no-data { color: var(--md3-outline-variant); font-size: 13px; padding: var(--md3-space-sm) 0; }
 </style>

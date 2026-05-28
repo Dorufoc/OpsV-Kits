@@ -5,9 +5,7 @@
         <span>WebSSH 终端</span>
       </template>
       <template #extra>
-        <el-button size="small" type="primary" @click="showConnectDialog = true">
-          <el-icon><Plus /></el-icon> 新建
-        </el-button>
+        <Md3Button size="sm" variant="primary" :icon="Plus" @click="showConnectDialog = true">新建</Md3Button>
       </template>
     </el-page-header>
     <el-divider />
@@ -35,9 +33,7 @@
               ({{ activeSession.username }}@{{ activeSession.host }})
             </span>
           </div>
-          <el-button size="small" text @click="toggleFullscreen">
-            <el-icon><FullScreen /></el-icon> {{ isFullscreen ? '退出全屏' : '全屏' }}
-          </el-button>
+          <Md3Button size="sm" variant="text" :icon="FullScreen" @click="toggleFullscreen">{{ isFullscreen ? '退出全屏' : '全屏' }}</Md3Button>
         </div>
 
         <div class="terminal-area" ref="terminalAreaRef">
@@ -57,27 +53,13 @@
         </div>
 
         <div class="terminal-footer" v-if="activeSession">
-          <el-button size="small" text>
-            <el-icon><DocumentCopy /></el-icon> 粘贴
-          </el-button>
-          <el-button size="small" text @click="openSearch">
-            <el-icon><Search /></el-icon> 搜索
-          </el-button>
-          <el-button size="small" text>
-            <el-icon><Upload /></el-icon> 上传
-          </el-button>
-          <el-button size="small" text>
-            <el-icon><Download /></el-icon> 下载
-          </el-button>
-          <el-button size="small" text @click="showSettings = true">
-            <el-icon><Setting /></el-icon> 设置
-          </el-button>
-          <el-button size="small" text>
-            <el-icon><Tickets /></el-icon> 历史
-          </el-button>
-          <el-button size="small" text>
-            <el-icon><QuestionFilled /></el-icon> 帮助
-          </el-button>
+          <Md3Button size="sm" variant="text" :icon="DocumentCopy">粘贴</Md3Button>
+          <Md3Button size="sm" variant="text" :icon="Search" @click="openSearch">搜索</Md3Button>
+          <Md3Button size="sm" variant="text" :icon="Upload">上传</Md3Button>
+          <Md3Button size="sm" variant="text" :icon="Download">下载</Md3Button>
+          <Md3Button size="sm" variant="text" :icon="Setting" @click="showSettings = true">设置</Md3Button>
+          <Md3Button size="sm" variant="text" :icon="Tickets">历史</Md3Button>
+          <Md3Button size="sm" variant="text" :icon="QuestionFilled">帮助</Md3Button>
         </div>
       </div>
     </div>
@@ -115,7 +97,7 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showSettings = false">关闭</el-button>
+        <Md3Button @click="showSettings = false">关闭</Md3Button>
       </template>
     </el-dialog>
   </div>
@@ -128,6 +110,7 @@ import {
   DocumentCopy, Search, Upload, Download,
   Setting, Tickets, QuestionFilled,
 } from '@element-plus/icons-vue'
+import Md3Button from '@/components/Md3Button.vue'
 import { useWebsshStore, type HistoryRecord } from '@/stores/websshStore'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { request } from '@/api'
@@ -264,7 +247,7 @@ onBeforeUnmount(() => {
 
 .webssh-layout {
   display: flex;
-  gap: 16px;
+  gap: var(--md3-space-lg);
   flex: 1;
   min-height: 500px;
 }
@@ -272,10 +255,17 @@ onBeforeUnmount(() => {
 .webssh-sidebar {
   width: 220px;
   flex-shrink: 0;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  background: #fff;
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-md);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
   overflow: hidden;
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.webssh-sidebar:hover {
+  box-shadow: var(--md3-elevation-level1);
 }
 
 .webssh-main {
@@ -288,11 +278,13 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: #f5f7fa;
-  border: 1px solid #e4e7ed;
+  padding: var(--md3-space-sm) var(--md3-space-md);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
   border-bottom: none;
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--md3-shape-sm) var(--md3-shape-sm) 0 0;
 }
 
 .session-info {
@@ -321,11 +313,13 @@ onBeforeUnmount(() => {
 .terminal-footer {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: #f5f7fa;
-  border: 1px solid #e4e7ed;
+  gap: var(--md3-space-xs);
+  padding: var(--md3-space-xs) var(--md3-space-sm);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
   border-top: none;
-  border-radius: 0 0 4px 4px;
+  border-radius: 0 0 var(--md3-shape-sm) var(--md3-shape-sm);
 }
 </style>

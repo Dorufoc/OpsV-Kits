@@ -11,9 +11,11 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 
 class SettingsUpdate(BaseModel):
-    session_ttl_hours: int = Field(default=72, ge=1, le=720, description="会话历史保留时间（小时）")
+    session_ttl_hours: int | None = Field(default=None, ge=1, le=720, description="会话历史保留时间（小时）")
     remote_drive_enabled: bool | None = Field(default=None, description="远程硬盘功能开关")
     remote_drive_port: int | None = Field(default=None, ge=1024, le=65535, description="远程硬盘 WebDAV 端口")
+    remote_drive_username: str | None = Field(default=None, description="远程硬盘登录用户名")
+    remote_drive_password: str | None = Field(default=None, description="远程硬盘登录密码")
 
 
 @router.get("")

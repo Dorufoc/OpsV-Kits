@@ -101,7 +101,6 @@ class SSHAccountService:
         with self._lock:
             if data.alias in self._accounts:
                 raise ValueError(f"账户别名 '{data.alias}' 已存在")
-            # 检查账户数量限制，防止异常情况下创建过多账户
             if len(self._accounts) >= _MAX_ACCOUNTS_LIMIT:
                 raise ValueError(f"账户数量已达到上限 ({_MAX_ACCOUNTS_LIMIT})，请先删除部分账户")
             encrypted = self._encrypt_sensitive(data)
@@ -121,6 +120,8 @@ class SSHAccountService:
             self._accounts[data.alias] = account
             if account.is_default:
                 self._default_alias = account.alias
+            if account.group:
+                self._sync_account_to_group(data.alias, account.group)
             self._add_audit_log(account.alias, "create", "success", "账户创建成功")
             self._save_to_disk()
             return self._decrypt_account(account)
@@ -148,6 +149,7 @@ class SSHAccountService:
             if alias not in self._accounts:
                 raise ValueError(f"账户 '{alias}' 不存在")
             existing = self._accounts[alias]
+            old_group = existing.group
             update_data = data.model_dump(exclude_unset=True)
             encrypted_updates = self._encrypt_fields(update_data)
             merged = existing.model_copy(update=encrypted_updates)
@@ -156,6 +158,12 @@ class SSHAccountService:
                 self._default_alias = merged.alias
             if data.is_default is False and self._default_alias == alias:
                 self._default_alias = None
+            new_group = merged.group
+            if "group" in update_data:
+                if old_group and old_group != new_group:
+                    self._remove_account_from_group(alias, old_group)
+                if new_group:
+                    self._sync_account_to_group(alias, new_group)
             self._add_audit_log(alias, "update", "success", "账户更新成功")
             self._save_to_disk()
             return self._decrypt_account(merged)
@@ -264,7 +272,47 @@ class SSHAccountService:
             if name not in self._groups:
                 raise ValueError(f"分组 '{name}' 不存在")
             del self._groups[name]
+            for account in self._accounts.values():
+                if account.group == name:
+                    updated = account.model_copy(update={"group": None})
+                    self._accounts[account.alias] = updated
+            self._add_audit_log("__system__", "delete_group", "success", f"删除分组 '{name}'")
             self._save_to_disk()
+
+    def update_group(self, name: str, new_name: Optional[str] = None, accounts: Optional[list[str]] = None) -> AccountGroup:
+        with self._lock:
+            if name not in self._groups:
+                raise ValueError(f"分组 '{name}' 不存在")
+            group = self._groups[name]
+            if new_name and new_name != name:
+                if new_name in self._groups:
+                    raise ValueError(f"分组 '{new_name}' 已存在")
+                for alias in group.accounts:
+                    account = self._accounts.get(alias)
+                    if account:
+                        updated = account.model_copy(update={"group": new_name})
+                        self._accounts[alias] = updated
+                del self._groups[name]
+                group = group.model_copy(update={"name": new_name})
+                self._groups[new_name] = group
+            if accounts is not None:
+                old_accounts = set(group.accounts)
+                new_accounts = set(accounts)
+                for alias in old_accounts - new_accounts:
+                    account = self._accounts.get(alias)
+                    if account and account.group == group.name:
+                        updated = account.model_copy(update={"group": None})
+                        self._accounts[alias] = updated
+                for alias in new_accounts - old_accounts:
+                    account = self._accounts.get(alias)
+                    if account:
+                        updated = account.model_copy(update={"group": group.name})
+                        self._accounts[alias] = updated
+                group = group.model_copy(update={"accounts": list(accounts)})
+                self._groups[group.name] = group
+            self._add_audit_log("__system__", "update_group", "success", f"更新分组 '{name}'")
+            self._save_to_disk()
+            return group
 
     # ── 审计日志 ────────────────────────────────────────────────────
 
@@ -276,6 +324,22 @@ class SSHAccountService:
             if account_alias:
                 logs = [log for log in logs if log.account_alias == account_alias]
             return logs[-limit:]
+
+    # ── 分组同步辅助 ──────────────────────────────────────────────────
+
+    def _sync_account_to_group(self, alias: str, group_name: str) -> None:
+        if group_name not in self._groups:
+            self._groups[group_name] = AccountGroup(name=group_name, accounts=[alias])
+        else:
+            group = self._groups[group_name]
+            if alias not in group.accounts:
+                group.accounts.append(alias)
+
+    def _remove_account_from_group(self, alias: str, group_name: str) -> None:
+        if group_name in self._groups:
+            group = self._groups[group_name]
+            if alias in group.accounts:
+                group.accounts.remove(alias)
 
     # ── 加密辅助 ────────────────────────────────────────────────────
 

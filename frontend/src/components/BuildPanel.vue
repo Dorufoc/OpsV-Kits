@@ -67,24 +67,33 @@ const runText = computed(() => {
 .build-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--md3-space-md);
 }
 
 .panel-section {
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 6px;
+  padding: var(--md3-space-md);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-sm);
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.panel-section:hover {
+  box-shadow: var(--md3-elevation-level1);
 }
 
 .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: var(--md3-space-sm);
 }
 
 .panel-title {
   font-weight: 600;
   font-size: 14px;
+  color: var(--md3-on-surface);
 }
 </style>

@@ -8,6 +8,8 @@ from app.core.ssh_client import SSHClientManager
 from app.models.audit_log import AuditLog
 from app.models.ssh_account import (
     AccountGroup,
+    AccountGroupCreate,
+    AccountGroupUpdate,
     SSHAccount,
     SSHAccountCreate,
     SSHAccountUpdate,
@@ -30,47 +32,6 @@ async def create_account(data: SSHAccountCreate):
         return ssh_account_service.create_account(data)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
-
-
-@router.get("/{alias}", response_model=SSHAccount)
-async def get_account(alias: str):
-    account = ssh_account_service.get_account(alias)
-    if account is None:
-        raise HTTPException(status_code=404, detail=f"账户 '{alias}' 不存在")
-    return account
-
-
-@router.put("/{alias}", response_model=SSHAccount)
-async def update_account(alias: str, data: SSHAccountUpdate):
-    try:
-        return ssh_account_service.update_account(alias, data)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.delete("/{alias}", status_code=204)
-async def delete_account(alias: str):
-    try:
-        ssh_account_service.delete_account(alias)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.post("/{alias}/test")
-async def test_account(alias: str):
-    try:
-        success, message = ssh_account_service.test_account(alias)
-        return {"alias": alias, "success": success, "message": message}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.post("/{alias}/default", response_model=SSHAccount)
-async def set_default_account(alias: str):
-    try:
-        return ssh_account_service.set_default(alias)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/exists")
@@ -130,9 +91,9 @@ async def test_connection_direct(data: SSHAccountCreate):
 
 
 @router.post("/groups", response_model=AccountGroup, status_code=201)
-async def create_group(name: str, accounts: Optional[list[str]] = None):
+async def create_group(data: AccountGroupCreate):
     try:
-        return ssh_account_service.create_group(name, accounts)
+        return ssh_account_service.create_group(data.name, data.accounts)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -147,10 +108,59 @@ async def list_groups_short():
     return ssh_account_service.list_groups()
 
 
+@router.put("/groups/{name}", response_model=AccountGroup)
+async def update_group(name: str, data: AccountGroupUpdate):
+    try:
+        return ssh_account_service.update_group(name, new_name=data.new_name, accounts=data.accounts)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.delete("/groups/{name}", status_code=204)
 async def delete_group(name: str):
     try:
         ssh_account_service.delete_group(name)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/{alias}", response_model=SSHAccount)
+async def get_account(alias: str):
+    account = ssh_account_service.get_account(alias)
+    if account is None:
+        raise HTTPException(status_code=404, detail=f"账户 '{alias}' 不存在")
+    return account
+
+
+@router.put("/{alias}", response_model=SSHAccount)
+async def update_account(alias: str, data: SSHAccountUpdate):
+    try:
+        return ssh_account_service.update_account(alias, data)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/{alias}", status_code=204)
+async def delete_account(alias: str):
+    try:
+        ssh_account_service.delete_account(alias)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/{alias}/test")
+async def test_account(alias: str):
+    try:
+        success, message = ssh_account_service.test_account(alias)
+        return {"alias": alias, "success": success, "message": message}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/{alias}/default", response_model=SSHAccount)
+async def set_default_account(alias: str):
+    try:
+        return ssh_account_service.set_default(alias)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

@@ -22,9 +22,7 @@
               <span>{{ acc.alias }}</span>
             </el-menu-item>
           </el-menu>
-          <el-button size="small" class="add-account-btn" @click="goToSshAccounts">
-            <el-icon><Plus /></el-icon> 添加
-          </el-button>
+          <Md3Button size="sm" class="add-account-btn" :icon="Plus" @click="goToSshAccounts">添加</Md3Button>
         </div>
         <div class="sidebar-section">
           <div class="sidebar-label">快速导航</div>
@@ -66,7 +64,7 @@
       <div class="command-header">
         <span class="command-title">快速命令</span>
         <div class="command-actions">
-          <el-button size="small" @click="clearHistory">清空</el-button>
+          <Md3Button size="sm" @click="clearHistory">清空</Md3Button>
         </div>
       </div>
       <div class="command-input-row">
@@ -78,7 +76,7 @@
           @keyup.enter="executeCommand"
         >
           <template #append>
-            <el-button @click="executeCommand">执行</el-button>
+            <Md3Button @click="executeCommand">执行</Md3Button>
           </template>
         </el-input>
       </div>
@@ -93,16 +91,16 @@
     <el-dialog v-model="showMkdirDialog" title="新建文件夹" width="400px">
       <el-input v-model="newDirName" placeholder="文件夹名称" />
       <template #footer>
-        <el-button @click="showMkdirDialog = false">取消</el-button>
-        <el-button type="primary" @click="createDirectory">确定</el-button>
+        <Md3Button @click="showMkdirDialog = false">取消</Md3Button>
+        <Md3Button variant="primary" @click="createDirectory">确定</Md3Button>
       </template>
     </el-dialog>
 
     <el-dialog v-model="showCreateFileDialog" title="新建文件" width="400px">
       <el-input v-model="newFileName" placeholder="文件名（如：test.txt）" />
       <template #footer>
-        <el-button @click="showCreateFileDialog = false">取消</el-button>
-        <el-button type="primary" @click="createFile">确定</el-button>
+        <Md3Button @click="showCreateFileDialog = false">取消</Md3Button>
+        <Md3Button variant="primary" @click="createFile">确定</Md3Button>
       </template>
     </el-dialog>
   </div>
@@ -110,6 +108,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import Md3Button from '@/components/Md3Button.vue'
 import { User, Plus, Collection } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
@@ -319,7 +318,7 @@ onMounted(() => {
 
 .file-manager-layout {
   display: flex;
-  gap: 16px;
+  gap: var(--md3-space-lg);
   height: 400px;
 }
 
@@ -328,31 +327,42 @@ onMounted(() => {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--md3-space-lg);
+  padding: var(--md3-space-md);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-md);
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.file-sidebar:hover {
+  box-shadow: var(--md3-elevation-level1);
 }
 
 .sidebar-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--md3-space-xs);
 }
 
 .sidebar-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #909399;
+  font: var(--md3-type-label-small);
+  color: var(--md3-outline);
   text-transform: uppercase;
   letter-spacing: 1px;
-  padding: 4px 0;
+  padding: var(--md3-space-xs) 0;
 }
 
 .account-menu {
   border-right: none !important;
+  background: transparent;
 }
 
 .add-account-btn {
   width: 100%;
-  margin-top: 4px;
+  margin-top: var(--md3-space-xs);
 }
 
 .bookmark-list {
@@ -364,17 +374,18 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 8px;
+  padding: 6px var(--md3-space-sm);
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--md3-shape-sm);
   font-size: 13px;
-  color: #606266;
-  transition: background 0.2s;
+  color: var(--md3-on-surface-variant);
+  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard),
+              color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 .bookmark-item:hover {
-  background: #ecf5ff;
-  color: #409eff;
+  background: var(--md3-primary-container);
+  color: var(--md3-primary);
 }
 
 .file-main {
@@ -383,49 +394,48 @@ onMounted(() => {
 }
 
 .quick-command-area {
-  margin-top: 8px;
+  margin-top: var(--md3-space-sm);
 }
 
 .command-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: var(--md3-space-sm);
 }
 
 .command-title {
-  font-weight: 600;
-  font-size: 14px;
+  font: var(--md3-type-title-small);
 }
 
 .command-input-row {
-  margin-bottom: 8px;
+  margin-bottom: var(--md3-space-sm);
 }
 
 .command-output {
   max-height: 200px;
   overflow-y: auto;
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 8px;
-  border-radius: 4px;
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  background: var(--md3-inverse-surface);
+  color: var(--md3-inverse-on-surface);
+  padding: var(--md3-space-sm);
+  border-radius: var(--md3-shape-sm);
+  font-family: var(--md3-font-mono);
   font-size: 12px;
   line-height: 1.6;
 }
 
 .command-entry {
-  margin-bottom: 8px;
+  margin-bottom: var(--md3-space-sm);
 }
 
 .command-prompt {
-  color: #6a9955;
+  color: var(--md3-success);
 }
 
 .command-result {
   margin: 2px 0 0 0;
   white-space: pre-wrap;
   word-break: break-all;
-  color: #d4d4d4;
+  color: var(--md3-inverse-on-surface);
 }
 </style>

@@ -24,28 +24,16 @@
         </template>
       </el-table-column>
       <el-table-column prop="created" label="创建时间" width="160" />
-      <el-table-column label="操作" width="280" fixed="right">
+      <el-table-column label="操作" width="420" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" text @click="$emit('start', row)" :disabled="row.state === 'running'">
-            <el-icon><VideoPlay /></el-icon>
-          </el-button>
-          <el-button size="small" text @click="$emit('stop', row)" :disabled="row.state !== 'running'">
-            <el-icon><VideoPause /></el-icon>
-          </el-button>
-          <el-button size="small" text @click="$emit('restart', row)">
-            <el-icon><Refresh /></el-icon>
-          </el-button>
-          <el-button size="small" text @click="$emit('logs', row)">
-            <el-icon><Tickets /></el-icon>
-          </el-button>
-          <el-button size="small" text @click="$emit('terminal', row)" :disabled="row.state !== 'running'">
-            <el-icon><Monitor /></el-icon>
-          </el-button>
+          <Md3Button :icon="VideoPlay" size="sm" @click="$emit('start', row)" :disabled="row.state === 'running'">启动</Md3Button>
+          <Md3Button :icon="VideoPause" size="sm" @click="$emit('stop', row)" :disabled="row.state !== 'running'">停止</Md3Button>
+          <Md3Button :icon="Refresh" size="sm" @click="$emit('restart', row)">重启</Md3Button>
+          <Md3Button :icon="Tickets" size="sm" @click="$emit('logs', row)">日志</Md3Button>
+          <Md3Button :icon="Monitor" size="sm" @click="$emit('terminal', row)" :disabled="row.state !== 'running'">终端</Md3Button>
           <el-popconfirm title="确认删除?" @confirm="$emit('delete', row)">
             <template #reference>
-              <el-button size="small" text type="danger">
-                <el-icon><Delete /></el-icon>
-              </el-button>
+              <Md3Button :icon="Delete" size="sm" variant="danger">删除</Md3Button>
             </template>
           </el-popconfirm>
         </template>
@@ -55,6 +43,7 @@
 </template>
 
 <script setup lang="ts">
+import Md3Button from '@/components/Md3Button.vue'
 import {
   VideoPlay, VideoPause, Refresh,
   Tickets, Monitor, Delete,
@@ -91,14 +80,28 @@ function onSelectionChange(selection: DockerContainer[]) {
 </script>
 
 <style scoped>
+.container-list {
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-sm);
+  overflow: hidden;
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.container-list:hover {
+  box-shadow: var(--md3-elevation-level1);
+}
+
 .container-name {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--md3-space-sm);
 }
 
 .ports-text {
-  font-family: 'Consolas', monospace;
+  font-family: var(--md3-font-mono);
   font-size: 12px;
 }
 </style>

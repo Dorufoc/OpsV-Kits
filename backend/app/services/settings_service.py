@@ -5,6 +5,8 @@ import threading
 from pathlib import Path
 from typing import Any, Optional
 
+from app.core.encryption import encrypt, decrypt
+
 _PERSIST_DIR = Path.home() / ".opsv-kits"
 _SETTINGS_PATH = _PERSIST_DIR / "settings.json"
 
@@ -12,6 +14,8 @@ _DEFAULT_SETTINGS: dict[str, Any] = {
     "session_ttl_hours": 72,
     "remote_drive_enabled": True,
     "remote_drive_port": 8081,
+    "remote_drive_username": "opsv",
+    "remote_drive_password": "",
 }
 
 
@@ -59,13 +63,40 @@ class SettingsService:
 
     def get_all(self) -> dict[str, Any]:
         with self._lock:
-            return dict(self._settings)
+            result = dict(self._settings)
+            pwd = result.get("remote_drive_password", "")
+            result["remote_drive_password_set"] = bool(pwd)
+            result.pop("remote_drive_password", None)
+            return result
 
     def update(self, data: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
+            if "remote_drive_password" in data and data["remote_drive_password"]:
+                data["remote_drive_password"] = encrypt(data["remote_drive_password"])
             self._settings.update(data)
             self._save()
-            return dict(self._settings)
+            return self._get_all_decrypted()
+
+    def get_decrypted_password(self, key: str = "remote_drive_password") -> str:
+        with self._lock:
+            val = self._settings.get(key, "")
+            if not val:
+                return ""
+            try:
+                return decrypt(val)
+            except Exception:
+                return val
+
+    def _get_all_decrypted(self) -> dict[str, Any]:
+        with self._lock:
+            result = dict(self._settings)
+            pwd = result.get("remote_drive_password", "")
+            if pwd:
+                try:
+                    result["remote_drive_password"] = decrypt(pwd)
+                except Exception:
+                    result["remote_drive_password"] = ""
+            return result
 
 
 settings_service = SettingsService()

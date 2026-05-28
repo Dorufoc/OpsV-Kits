@@ -1,0 +1,65 @@
+/* ===== Unified Animation System ===== */
+/* Only fade, slide-up, scale-in are allowed. NO rotate animations. */
+
+/* Fade In */
+@keyframes md3-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Fade In & Slide Up */
+@keyframes md3-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scale In */
+@keyframes md3-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Shimmer (loading skeleton pulse) */
+@keyframes md3-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Utility Classes */
+.md3-animate-fade-in {
+  animation: md3-fade-in var(--md3-motion-duration-medium) var(--md3-motion-easing-standard) forwards;
+}
+
+.md3-animate-slide-up {
+  animation: md3-slide-up var(--md3-motion-duration-medium) var(--md3-motion-easing-emphasized-decelerate) forwards;
+}
+
+.md3-animate-scale-in {
+  animation: md3-scale-in var(--md3-motion-duration-medium) var(--md3-motion-easing-emphasized-decelerate) forwards;
+}
+
+/* Delay utility classes */
+.md3-delay-100 { animation-delay: 100ms; }
+.md3-delay-200 { animation-delay: 200ms; }
+.md3-delay-300 { animation-delay: 300ms; }
+.md3-delay-400 { animation-delay: 400ms; }

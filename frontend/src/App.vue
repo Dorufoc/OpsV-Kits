@@ -1,99 +1,77 @@
 <template>
-  <el-container class="app-container">
-    <el-header class="app-header">
+  <div class="app-shell">
+    <header class="app-header">
       <div class="header-left">
-        <el-icon class="header-logo" :size="24">
-          <Monitor />
-        </el-icon>
-        <span class="header-title">OpsV-Kits</span>
+        <button class="menu-toggle" @click="toggleDrawer" aria-label="切换菜单">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="4" y1="12" x2="20" y2="12"/>
+            <line x1="4" y1="18" x2="20" y2="18"/>
+          </svg>
+        </button>
+        <div class="header-brand">
+          <div class="brand-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+          </div>
+          <span class="brand-title">OpsV-Kits</span>
+        </div>
       </div>
-      <el-menu
-        :default-active="route.path"
-        mode="horizontal"
-        :ellipsis="false"
-        router
-        class="header-menu"
-      >
-        <el-menu-item index="/">
-          <el-icon><HomeFilled /></el-icon>
-          <span>首页</span>
-        </el-menu-item>
-        <el-menu-item index="/project">
-          <el-icon><TrendCharts /></el-icon>
-          <span>项目</span>
-        </el-menu-item>
-        <el-menu-item index="/file-manager">
-          <el-icon><FolderOpened /></el-icon>
-          <span>文件管理</span>
-        </el-menu-item>
-        <el-menu-item index="/ssh-accounts">
-          <el-icon><UserFilled /></el-icon>
-          <span>SSH 账户</span>
-        </el-menu-item>
-        <el-menu-item index="/docker">
-          <el-icon><Coin /></el-icon>
-          <span>Docker</span>
-        </el-menu-item>
-        <el-menu-item index="/webssh">
-          <el-icon><Monitor /></el-icon>
-          <span>终端</span>
-        </el-menu-item>
-        <el-menu-item index="/settings">
-          <el-icon><Setting /></el-icon>
-          <span>设置</span>
-        </el-menu-item>
-      </el-menu>
-    </el-header>
-    <el-container class="app-body">
-      <el-aside width="220px" class="app-aside">
-        <div class="aside-title">导航菜单</div>
-        <el-menu
-          :default-active="route.path"
-          router
-          class="aside-menu"
+      <nav class="header-nav">
+        <router-link
+          v-for="item in navItems"
+          :key="item.path"
+          :to="item.path"
+          class="nav-link"
+          :class="{ active: route.path === item.path || (item.path !== '/' && route.path.startsWith(item.path)) }"
         >
-          <el-menu-item index="/">
-            <el-icon><HomeFilled /></el-icon>
-            <span>控制台</span>
-          </el-menu-item>
-          <el-menu-item index="/project">
-            <el-icon><TrendCharts /></el-icon>
-            <span>项目部署</span>
-          </el-menu-item>
-          <el-menu-item index="/file-manager">
-            <el-icon><FolderOpened /></el-icon>
-            <span>远程文件管理</span>
-          </el-menu-item>
-          <el-menu-item index="/ssh-accounts">
-            <el-icon><UserFilled /></el-icon>
-            <span>SSH 账户管理</span>
-          </el-menu-item>
-          <el-menu-item index="/docker">
-            <el-icon><Coin /></el-icon>
-            <span>Docker 管理</span>
-          </el-menu-item>
-          <el-menu-item index="/webssh">
-            <el-icon><Monitor /></el-icon>
-            <span>WebSSH 终端</span>
-          </el-menu-item>
-          <el-menu-item index="/tools">
-            <el-icon><Tools /></el-icon>
-            <span>工具箱</span>
-          </el-menu-item>
-          <el-menu-item index="/settings">
-            <el-icon><Setting /></el-icon>
-            <span>系统设置</span>
-          </el-menu-item>
-        </el-menu>
-      </el-aside>
-      <el-main class="app-main">
-        <router-view />
-      </el-main>
-    </el-container>
-  </el-container>
+          <component :is="item.icon" class="nav-icon" />
+          <span class="nav-label">{{ item.label }}</span>
+        </router-link>
+      </nav>
+      <div class="header-actions">
+        <ThemeToggle />
+      </div>
+    </header>
+
+    <div class="app-body">
+      <aside class="app-sidebar" :class="{ open: drawerOpen }">
+        <div class="sidebar-header">
+          <span class="sidebar-title">导航菜单</span>
+        </div>
+        <nav class="sidebar-nav">
+          <router-link
+            v-for="item in sidebarItems"
+            :key="item.path"
+            :to="item.path"
+            class="sidebar-link"
+            :class="{ active: route.path === item.path || (item.path !== '/' && route.path.startsWith(item.path)) }"
+            @click="drawerOpen = false"
+          >
+            <component :is="item.icon" class="sidebar-icon" />
+            <span class="sidebar-label">{{ item.label }}</span>
+          </router-link>
+        </nav>
+      </aside>
+
+      <div v-if="drawerOpen" class="drawer-overlay" @click="drawerOpen = false" />
+
+      <main class="app-content">
+        <router-view v-slot="{ Component: RouteComponent }">
+          <transition name="route" mode="out-in">
+            <component :is="RouteComponent" />
+          </transition>
+        </router-view>
+      </main>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   Monitor,
@@ -105,92 +83,299 @@ import {
   Setting,
   Tools,
 } from '@element-plus/icons-vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 
 const route = useRoute()
+const drawerOpen = ref(false)
+
+function toggleDrawer() {
+  drawerOpen.value = !drawerOpen.value
+}
+
+interface NavItem {
+  path: string
+  label: string
+  icon: object
+}
+
+const navItems: NavItem[] = [
+  { path: '/', label: '首页', icon: HomeFilled },
+  { path: '/project', label: '项目', icon: TrendCharts },
+  { path: '/file-manager', label: '文件', icon: FolderOpened },
+  { path: '/ssh-accounts', label: 'SSH', icon: UserFilled },
+  { path: '/docker', label: 'Docker', icon: Coin },
+  { path: '/webssh', label: '终端', icon: Monitor },
+]
+
+const sidebarItems: NavItem[] = [
+  { path: '/', label: '控制台', icon: HomeFilled },
+  { path: '/project', label: '项目部署', icon: TrendCharts },
+  { path: '/file-manager', label: '远程文件管理', icon: FolderOpened },
+  { path: '/ssh-accounts', label: 'SSH 账户管理', icon: UserFilled },
+  { path: '/docker', label: 'Docker 管理', icon: Coin },
+  { path: '/webssh', label: 'WebSSH 终端', icon: Monitor },
+  { path: '/tools', label: '工具箱', icon: Tools },
+  { path: '/settings', label: '系统设置', icon: Setting },
+]
 </script>
 
 <style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* ===== Route Transition ===== */
+.route-enter-active {
+  animation: md3-slide-up var(--md3-motion-duration-long) var(--md3-motion-easing-emphasized-decelerate) forwards;
 }
 
-html, body {
-  height: 100%;
-  font-family: 'Microsoft YaHei', 'PingFang SC', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-#app {
-  height: 100%;
+.route-leave-active {
+  animation: md3-fade-in var(--md3-motion-duration-medium) var(--md3-motion-easing-standard) reverse forwards;
 }
 </style>
 
 <style scoped>
-.app-container {
+/* ===== App Shell ===== */
+.app-shell {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  background: var(--md3-gradient-surface);
+  overflow: hidden;
 }
 
+/* ===== Header ===== */
 .app-header {
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
-  height: 60px !important;
+  justify-content: space-between;
+  padding: 0 var(--md3-space-xl);
+  height: 64px;
+  flex-shrink: 0;
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border-bottom: 1px solid var(--md3-glass-border);
+  position: relative;
+  z-index: 100;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-right: 32px;
+  gap: var(--md3-space-md);
 }
 
-.header-logo {
-  color: #409eff;
+.menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: var(--md3-on-surface-variant);
+  cursor: pointer;
+  border-radius: var(--md3-shape-sm);
+  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
-.header-title {
-  font-size: 18px;
+.menu-toggle:hover {
+  background: var(--md3-surface-container-high);
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-sm);
+}
+
+.brand-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--md3-gradient-primary);
+  border-radius: var(--md3-shape-sm);
+  color: var(--md3-on-primary);
+}
+
+.brand-title {
+  font: var(--md3-type-title-large);
+  color: var(--md3-on-surface);
+  letter-spacing: -0.02em;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-xs);
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--md3-shape-full);
+  color: var(--md3-on-surface-variant);
+  text-decoration: none;
+  font: var(--md3-type-label-large);
+  transition: all var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+}
+
+.nav-link:hover {
+  background: var(--md3-surface-container-high);
+  color: var(--md3-on-surface);
+}
+
+.nav-link.active {
+  background: var(--md3-primary-container);
+  color: var(--md3-on-primary-container);
   font-weight: 600;
-  color: #303133;
-  white-space: nowrap;
 }
 
-.header-menu {
-  flex: 1;
-  border-bottom: none !important;
+.nav-icon {
+  width: 18px;
+  height: 18px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-sm);
+  margin-left: auto;
+}
+
+/* ===== Body ===== */
 .app-body {
   flex: 1;
+  display: flex;
   overflow: hidden;
+  position: relative;
 }
 
-.app-aside {
-  background: #fff;
-  border-right: 1px solid #e4e7ed;
+/* ===== Sidebar ===== */
+.app-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border-right: 1px solid var(--md3-glass-border);
   overflow-y: auto;
+  padding: var(--md3-space-md) 0;
+  z-index: 50;
+  transition: transform var(--md3-motion-duration-medium) var(--md3-motion-easing-emphasized-decelerate);
 }
 
-.aside-title {
-  padding: 16px 20px 8px;
-  font-size: 12px;
-  color: #909399;
+.sidebar-header {
+  padding: var(--md3-space-sm) var(--md3-space-xl) var(--md3-space-md);
+}
+
+.sidebar-title {
+  font: var(--md3-type-label-small);
+  color: var(--md3-outline);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
 }
 
-.aside-menu {
-  border-right: none !important;
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--md3-space-sm);
 }
 
-.app-main {
-  background: #f5f7fa;
-  padding: 20px;
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-md);
+  padding: 10px var(--md3-space-lg);
+  border-radius: var(--md3-shape-sm);
+  color: var(--md3-on-surface-variant);
+  text-decoration: none;
+  font: var(--md3-type-body-medium);
+  transition: all var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+}
+
+.sidebar-link:hover {
+  background: var(--md3-surface-container-high);
+  color: var(--md3-on-surface);
+}
+
+.sidebar-link.active {
+  background: var(--md3-primary-container);
+  color: var(--md3-on-primary-container);
+  font-weight: 600;
+}
+
+.sidebar-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* ===== Main Content ===== */
+.app-content {
+  flex: 1;
   overflow-y: auto;
+  padding: var(--md3-space-xl);
+}
+
+/* ===== Drawer Overlay ===== */
+.drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 49;
+  backdrop-filter: blur(4px);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1023px) {
+  .header-nav {
+    display: none;
+  }
+
+  .menu-toggle {
+    display: flex;
+  }
+
+  .app-sidebar {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+    z-index: 60;
+    width: 280px;
+  }
+
+  .app-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .drawer-overlay {
+    display: block;
+  }
+
+  .app-content {
+    padding: var(--md3-space-lg);
+  }
+}
+
+@media (max-width: 767px) {
+  .app-header {
+    padding: 0 var(--md3-space-lg);
+  }
+
+  .brand-title {
+    font-size: 16px;
+  }
+
+  .app-content {
+    padding: var(--md3-space-md);
+  }
 }
 </style>

@@ -5,9 +5,7 @@
         <span>容器: {{ containerName }}</span>
       </template>
       <template #extra>
-        <el-button size="small" text @click="goBack">
-          <el-icon><Close /></el-icon>
-        </el-button>
+        <Md3Button :icon="Close" size="sm" variant="default" @click="goBack">关闭</Md3Button>
       </template>
     </el-page-header>
     <el-divider />
@@ -82,12 +80,8 @@
 
       <el-tab-pane label="日志" name="logs">
         <div class="log-controls">
-          <el-button size="small" :type="isLogStreaming ? 'danger' : 'primary'" @click="toggleLogStream">
-            {{ isLogStreaming ? '暂停' : '实时日志' }}
-          </el-button>
-          <el-button size="small" @click="downloadLogs">
-            <el-icon><Download /></el-icon> 下载
-          </el-button>
+          <Md3Button size="sm" :variant="isLogStreaming ? 'danger' : 'primary'" @click="toggleLogStream">{{ isLogStreaming ? '暂停' : '实时日志' }}</Md3Button>
+          <Md3Button size="sm" :icon="Download" @click="downloadLogs">下载</Md3Button>
           <el-input-number v-model="logTailLines" :min="50" :max="1000" :step="50" size="small" />
         </div>
         <div class="log-viewer" ref="logViewerRef">
@@ -129,28 +123,16 @@ ports: 0.0.0.0:8080->8080/tcp</pre>
     </el-tabs>
 
     <div class="detail-actions">
-      <el-button @click="restartContainer">
-        <el-icon><Refresh /></el-icon> 重启
-      </el-button>
-      <el-button @click="stopContainer">
-        <el-icon><VideoPause /></el-icon> 停止
-      </el-button>
-      <el-button type="danger" @click="killContainer">
-        <el-icon><Remove /></el-icon> 强制停止
-      </el-button>
+      <Md3Button :icon="Refresh" @click="restartContainer">重启</Md3Button>
+      <Md3Button :icon="VideoPause" @click="stopContainer">停止</Md3Button>
+      <Md3Button variant="danger" :icon="Remove" @click="killContainer">强制停止</Md3Button>
       <el-popconfirm title="确认删除容器?" @confirm="deleteContainer">
         <template #reference>
-          <el-button type="danger">
-            <el-icon><Delete /></el-icon> 删除
-          </el-button>
+          <Md3Button variant="danger" :icon="Delete">删除</Md3Button>
         </template>
       </el-popconfirm>
-      <el-button @click="openStats">
-        <el-icon><DataAnalysis /></el-icon> 资源监控
-      </el-button>
-      <el-button @click="activeTab = 'terminal'">
-        <el-icon><Monitor /></el-icon> 进入终端
-      </el-button>
+      <Md3Button :icon="DataAnalysis" @click="openStats">资源监控</Md3Button>
+      <Md3Button :icon="Monitor" @click="activeTab = 'terminal'">进入终端</Md3Button>
     </div>
   </div>
 </template>
@@ -163,6 +145,7 @@ import {
   Delete, DataAnalysis, Monitor, CircleCheck,
 } from '@element-plus/icons-vue'
 import { useDockerStore, type DockerContainer } from '@/stores/dockerStore'
+import Md3Button from '@/components/Md3Button.vue'
 import Terminal from '@/components/Terminal.vue'
 
 const route = useRoute()
@@ -267,92 +250,92 @@ onMounted(() => {
 }
 
 .info-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--md3-space-lg);
 }
 
 .mono-text {
-  font-family: 'Consolas', 'Cascadia Code', monospace;
+  font-family: var(--md3-font-mono);
   font-size: 12px;
-  background: #f5f7fa;
+  background: var(--md3-surface-container-low);
   padding: 1px 4px;
-  border-radius: 2px;
+  border-radius: var(--md3-shape-xs);
 }
 
 .detail-tabs {
-  margin-top: 8px;
+  margin-top: var(--md3-space-sm);
 }
 
 .stat-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--md3-space-lg);
 }
 
 .stat-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--md3-space-lg);
 }
 
 .stat-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--md3-space-md);
 }
 
 .stat-label {
   width: 40px;
   font-size: 13px;
-  color: #606266;
+  color: var(--md3-on-surface-variant);
   flex-shrink: 0;
 }
 
 .stat-value {
   font-weight: 500;
-  color: #303133;
+  color: var(--md3-on-surface);
 }
 
 .health-info {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--md3-space-md);
+  padding: var(--md3-space-lg);
 }
 
 .health-status {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--md3-space-sm);
 }
 
 .health-text {
   font-weight: 600;
-  color: #67c23a;
+  color: var(--md3-success);
 }
 
 .health-detail {
   font-size: 13px;
-  color: #909399;
+  color: var(--md3-on-surface-variant);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--md3-space-xs);
 }
 
 .log-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--md3-space-sm);
+  margin-bottom: var(--md3-space-md);
 }
 
 .log-viewer {
   max-height: 400px;
   overflow-y: auto;
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 8px;
-  border-radius: 4px;
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  background: var(--md3-inverse-surface);
+  color: var(--md3-inverse-on-surface);
+  padding: var(--md3-space-sm);
+  border-radius: var(--md3-shape-xs);
+  font-family: var(--md3-font-mono);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -362,7 +345,7 @@ onMounted(() => {
 }
 
 .log-line.log-info {
-  color: #d4d4d4;
+  color: var(--md3-inverse-on-surface);
 }
 
 .log-line.log-warn {
@@ -375,7 +358,7 @@ onMounted(() => {
 
 .config-pre {
   margin: 0;
-  font-family: 'Consolas', monospace;
+  font-family: var(--md3-font-mono);
   font-size: 12px;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -383,8 +366,8 @@ onMounted(() => {
 
 .detail-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 16px;
+  gap: var(--md3-space-sm);
+  margin-top: var(--md3-space-lg);
   flex-wrap: wrap;
 }
 </style>

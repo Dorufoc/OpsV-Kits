@@ -21,14 +21,7 @@
           >
             {{ session.status === 'online' ? '在线' : session.status === 'connecting' ? '连接中' : '离线' }}
           </el-tag>
-          <el-button
-            size="small"
-            text
-            type="danger"
-            @click.stop="$emit('disconnect', session.id)"
-          >
-            <el-icon><Close /></el-icon>
-          </el-button>
+          <Md3Button :icon="Close" size="sm" variant="danger" @click.stop="$emit('disconnect', session.id)">断开</Md3Button>
         </div>
       </div>
     </div>
@@ -48,14 +41,7 @@
         <div class="session-meta">
           <span class="time-label">{{ formatTime(record.disconnected_at) }}</span>
           <el-tag type="info" size="small" round>历史</el-tag>
-          <el-button
-            size="small"
-            text
-            type="danger"
-            @click.stop="$emit('deleteHistory', record.session_id)"
-          >
-            <el-icon><Delete /></el-icon>
-          </el-button>
+          <Md3Button :icon="Delete" size="sm" variant="danger" @click.stop="$emit('deleteHistory', record.session_id)">删除</Md3Button>
         </div>
       </div>
     </div>
@@ -65,14 +51,13 @@
     </div>
 
     <div class="session-actions">
-      <el-button size="small" type="primary" @click="$emit('newSession')">
-        <el-icon><Plus /></el-icon> 新建会话
-      </el-button>
+      <Md3Button size="sm" variant="primary" :icon="Plus" @click="$emit('newSession')">新建会话</Md3Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import Md3Button from '@/components/Md3Button.vue'
 import { Close, Plus, Delete } from '@element-plus/icons-vue'
 import type { WebSshSession, HistoryRecord } from '@/stores/websshStore'
 
@@ -108,16 +93,27 @@ function formatTime(isoStr: string): string {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-sm);
+  overflow: hidden;
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.session-manager:hover {
+  box-shadow: var(--md3-elevation-level1);
 }
 
 .section-label {
   font-size: 11px;
   font-weight: 600;
-  color: #909399;
+  color: var(--md3-on-surface-variant);
   text-transform: uppercase;
   letter-spacing: 1px;
-  padding: 8px 12px 4px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: var(--md3-space-sm) var(--md3-space-md) var(--md3-space-xs);
+  border-bottom: 1px solid var(--md3-surface-container-low);
 }
 
 .session-list {
@@ -129,23 +125,25 @@ function formatTime(isoStr: string): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: var(--md3-space-sm) var(--md3-space-md);
   cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
-  transition: background 0.2s;
+  border-bottom: 1px solid var(--md3-surface-container-low);
+  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard),
+              border-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 .session-item:hover {
-  background: #f5f7fa;
+  background: var(--md3-surface-container-low);
 }
 
 .session-item.active {
-  background: #ecf5ff;
-  border-left: 3px solid #409eff;
+  background: var(--md3-primary-container);
+  border-left: 3px solid var(--md3-primary);
 }
 
 .history-item {
   opacity: 0.75;
+  transition: opacity var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 .history-item:hover {
@@ -162,7 +160,7 @@ function formatTime(isoStr: string): string {
 .session-alias {
   font-weight: 500;
   font-size: 13px;
-  color: #303133;
+  color: var(--md3-on-surface);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -170,28 +168,28 @@ function formatTime(isoStr: string): string {
 
 .session-user {
   font-size: 11px;
-  color: #909399;
+  color: var(--md3-on-surface-variant);
 }
 
 .session-meta {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--md3-space-xs);
   flex-shrink: 0;
 }
 
 .time-label {
   font-size: 10px;
-  color: #c0c4cc;
+  color: var(--md3-outline-variant);
   white-space: nowrap;
 }
 
 .session-empty {
-  padding: 20px 0;
+  padding: var(--md3-space-xl) 0;
 }
 
 .session-actions {
-  padding: 12px;
-  border-top: 1px solid #e4e7ed;
+  padding: var(--md3-space-md);
+  border-top: 1px solid var(--md3-outline-variant);
 }
 </style>

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -18,6 +19,12 @@ from app.api.routes import sync as sync_route
 from app.api.routes import system
 from app.api.routes import webssh
 from app.services.sync_service import sync_service
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 app = FastAPI(
     title="OpsV-Kits API",

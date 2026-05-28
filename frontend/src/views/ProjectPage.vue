@@ -21,9 +21,7 @@
             <span>{{ proj.alias }}</span>
           </el-menu-item>
         </el-menu>
-        <el-button class="new-project-btn" size="small" @click="showNewProject = true">
-          <el-icon><Plus /></el-icon> 新建项目
-        </el-button>
+        <Md3Button class="new-project-btn" size="sm" :icon="Plus" @click="showNewProject = true">新建项目</Md3Button>
       </div>
 
       <div class="project-main">
@@ -32,24 +30,20 @@
             <div class="config-header">
               <span>项目配置</span>
               <div class="config-header-actions">
-                <el-button
+                <Md3Button
                   v-if="currentProject && selectedProject"
-                  size="small"
-                  type="danger"
-                  plain
+                  size="sm"
+                  variant="danger"
+                  :icon="Delete"
                   @click="confirmDelete"
-                >
-                  <el-icon><Delete /></el-icon> 删除项目
-                </el-button>
-                <el-button
+                >删除项目</Md3Button>
+                <Md3Button
                   v-if="currentProject"
-                  size="small"
-                  type="primary"
+                  variant="primary"
+                  :icon="Check"
                   @click="saveConfig"
                   :loading="savingConfig"
-                >
-                  <el-icon><Check /></el-icon> 保存配置
-                </el-button>
+                >保存配置</Md3Button>
               </div>
             </div>
           </template>
@@ -84,20 +78,18 @@
                 <el-option label="JDK 17" value="17" />
                 <el-option label="JDK 21" value="21" />
               </el-select>
-              <span style="margin-left: 8px; color: #909399; font-size: 12px;">默认 JDK 21</span>
+              <span style="margin-left: 8px; font-size: 12px;" class="text-muted">默认 JDK 21</span>
             </el-form-item>
           </el-form>
         </el-card>
 
         <div class="action-bar">
-          <el-button type="primary" size="large" @click="handleDeploy" :loading="isRunning">
-            一键部署
-          </el-button>
-          <el-button @click="handleSync" :disabled="!canSync">仅同步</el-button>
-          <el-button @click="handleBuild" :disabled="!canBuild">仅编译</el-button>
-          <el-button @click="handleTest" :disabled="!canBuild">仅测试</el-button>
-          <el-button @click="handleRun" :disabled="!canRun">仅运行</el-button>
-          <el-button type="danger" @click="handleStop" :disabled="!isRunning">停止</el-button>
+          <Md3Button variant="primary" size="lg" @click="handleDeploy" :loading="isRunning">一键部署</Md3Button>
+          <Md3Button @click="handleSync" :disabled="!canSync">仅同步</Md3Button>
+          <Md3Button @click="handleBuild" :disabled="!canBuild">仅编译</Md3Button>
+          <Md3Button @click="handleTest" :disabled="!canBuild">仅测试</Md3Button>
+          <Md3Button @click="handleRun" :disabled="!canRun">仅运行</Md3Button>
+          <Md3Button variant="danger" @click="handleStop" :disabled="!isRunning">停止</Md3Button>
         </div>
 
         <div class="status-area">
@@ -154,8 +146,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showNewProject = false">取消</el-button>
-        <el-button type="primary" @click="handleCreateProject" :loading="creatingProject">确定创建</el-button>
+        <Md3Button @click="showNewProject = false">取消</Md3Button>
+        <Md3Button variant="primary" @click="handleCreateProject" :loading="creatingProject">确定创建</Md3Button>
       </template>
     </el-dialog>
   </div>
@@ -169,6 +161,7 @@ import { useSyncStore } from '@/stores/syncStore'
 import { useBuildStore } from '@/stores/buildStore'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { useProjectStore, type ProjectItem } from '@/stores/projectStore'
+import Md3Button from '@/components/Md3Button.vue'
 import SyncPanel from '@/components/SyncPanel.vue'
 import BuildPanel from '@/components/BuildPanel.vue'
 import Terminal from '@/components/Terminal.vue'
@@ -201,7 +194,10 @@ const newProjectForm = ref({
   jdk_version: '21',
 })
 
+const isDeploying = ref(false)
+
 const isRunning = computed(() =>
+  isDeploying.value ||
   syncStore.syncStatus === 'syncing' ||
   syncStore.syncStatus === 'scanning' ||
   buildStore.buildStatus === 'building' ||
@@ -307,14 +303,28 @@ async function handleCreateProject() {
 }
 
 async function handleDeploy() {
-  await handleSync()
-  await handleBuild()
-  await handleTest()
-  await handleRun()
+  if (isDeploying.value || isRunning.value) return
+  isDeploying.value = true
+  const steps = [
+    { name: '同步', fn: handleSync },
+    { name: '编译', fn: handleBuild },
+    { name: '测试', fn: handleTest },
+    { name: '运行', fn: handleRun },
+  ]
+  try {
+    for (const step of steps) {
+      await step.fn()
+    }
+    terminalRef.value?.writeln('\x1b[32m一键部署完成\x1b[0m')
+  } catch (e: any) {
+    terminalRef.value?.writeln(`\x1b[31m一键部署中止: ${e?.message || e}\x1b[0m`)
+  } finally {
+    isDeploying.value = false
+  }
 }
 
 async function handleTest() {
-  if (!canBuild.value) return
+  if (!isDeploying.value && !canBuild.value) return
   terminalRef.value?.clear()
   terminalRef.value?.writeln('开始测试项目...')
   try {
@@ -324,13 +334,16 @@ async function handleTest() {
       local_path: projectConfig.value.local_path || undefined,
       jdk_version: projectConfig.value.jdk_version || undefined,
     })
-  } catch {
-    terminalRef.value?.writeln('\x1b[31m测试失败\x1b[0m')
+    const result = await buildStore.waitForCompletion()
+    if (result === 'failed') throw new Error('测试失败')
+  } catch (e: any) {
+    terminalRef.value?.writeln(`\x1b[31m${e?.message || '测试失败'}\x1b[0m`)
+    throw e
   }
 }
 
 async function handleSync() {
-  if (!canSync.value) return
+  if (!isDeploying.value && !canSync.value) return
   terminalRef.value?.writeln('开始同步文件...')
   try {
     await syncStore.startSync({
@@ -338,13 +351,16 @@ async function handleSync() {
       remote_path: projectConfig.value.remote_path,
       account_alias: projectConfig.value.ssh_alias,
     })
-  } catch {
-    terminalRef.value?.writeln('\x1b[31m文件同步失败\x1b[0m')
+    const result = await syncStore.waitForCompletion()
+    if (result === 'failed') throw new Error('文件同步失败')
+  } catch (e: any) {
+    terminalRef.value?.writeln(`\x1b[31m${e?.message || '文件同步失败'}\x1b[0m`)
+    throw e
   }
 }
 
 async function handleBuild() {
-  if (!canBuild.value) return
+  if (!isDeploying.value && !canBuild.value) return
   terminalRef.value?.clear()
   terminalRef.value?.writeln('开始编译项目...')
   try {
@@ -354,13 +370,16 @@ async function handleBuild() {
       local_path: projectConfig.value.local_path || undefined,
       jdk_version: projectConfig.value.jdk_version || undefined,
     })
-  } catch {
-    terminalRef.value?.writeln('\x1b[31m编译失败\x1b[0m')
+    const result = await buildStore.waitForCompletion()
+    if (result === 'failed') throw new Error('编译失败')
+  } catch (e: any) {
+    terminalRef.value?.writeln(`\x1b[31m${e?.message || '编译失败'}\x1b[0m`)
+    throw e
   }
 }
 
 async function handleRun() {
-  if (!canRun.value) return
+  if (!isDeploying.value && !canRun.value) return
   terminalRef.value?.writeln('启动应用程序...')
   try {
     await buildStore.startRun({
@@ -369,8 +388,11 @@ async function handleRun() {
       local_path: projectConfig.value.local_path || undefined,
       jdk_version: projectConfig.value.jdk_version || undefined,
     })
-  } catch {
-    terminalRef.value?.writeln('\x1b[31m启动失败\x1b[0m')
+    const result = await buildStore.waitForCompletion()
+    if (result === 'failed') throw new Error('启动失败')
+  } catch (e: any) {
+    terminalRef.value?.writeln(`\x1b[31m${e?.message || '启动失败'}\x1b[0m`)
+    throw e
   }
 }
 
@@ -410,7 +432,7 @@ onMounted(async () => {
 
 .project-layout {
   display: flex;
-  gap: 16px;
+  gap: var(--md3-space-lg);
   height: calc(100vh - 160px);
 }
 
@@ -419,19 +441,30 @@ onMounted(async () => {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--md3-space-sm);
+  padding: var(--md3-space-md);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-md);
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.project-sidebar:hover {
+  box-shadow: var(--md3-elevation-level1);
 }
 
 .sidebar-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-  padding: 8px 0;
+  font: var(--md3-type-title-small);
+  color: var(--md3-on-surface);
+  padding: var(--md3-space-sm) 0;
 }
 
 .project-menu {
   border-right: none !important;
   flex: 1;
+  background: transparent;
 }
 
 .new-project-btn {
@@ -442,7 +475,7 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--md3-space-lg);
   overflow-y: auto;
 }
 
@@ -458,30 +491,41 @@ onMounted(async () => {
 
 .config-header-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--md3-space-sm);
 }
 
 .account-host {
-  color: #909399;
+  color: var(--md3-outline);
   font-size: 12px;
-  margin-left: 8px;
+  margin-left: var(--md3-space-sm);
 }
 
 .text-muted {
-  color: #909399;
+  color: var(--md3-outline);
   font-size: 13px;
 }
 
 .action-bar {
   display: flex;
-  gap: 12px;
+  gap: var(--md3-space-md);
   flex-wrap: wrap;
+  padding: var(--md3-space-md);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-md);
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.action-bar:hover {
+  box-shadow: var(--md3-elevation-level1);
 }
 
 .status-area {
   flex: 1;
   display: flex;
-  gap: 16px;
+  gap: var(--md3-space-lg);
   min-height: 300px;
 }
 
@@ -490,6 +534,17 @@ onMounted(async () => {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-md);
+  padding: var(--md3-space-md);
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.status-sidebar:hover {
+  box-shadow: var(--md3-elevation-level1);
 }
 
 .status-terminal {
@@ -502,17 +557,19 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: #f5f7fa;
-  border: 1px solid #e4e7ed;
+  padding: var(--md3-space-sm) var(--md3-space-md);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
   border-bottom: none;
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--md3-shape-sm) var(--md3-shape-sm) 0 0;
 }
 
 .terminal-title {
   font-weight: 500;
   font-size: 13px;
-  color: #303133;
+  color: var(--md3-on-surface);
 }
 
 .status-terminal :deep(.terminal-wrapper) {

@@ -22,19 +22,13 @@
           <el-tag v-else type="info" size="small">未使用</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="300" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" text @click="$emit('pull', row)">
-            <el-icon><Download /></el-icon>
-          </el-button>
-          <el-button size="small" text @click="$emit('build', row)">
-            <el-icon><Refresh /></el-icon>
-          </el-button>
+          <Md3Button :icon="Download" size="sm" @click="$emit('pull', row)">拉取</Md3Button>
+          <Md3Button :icon="Refresh" size="sm" @click="$emit('build', row)">构建</Md3Button>
           <el-popconfirm title="确认删除镜像?" @confirm="$emit('delete', row)">
             <template #reference>
-              <el-button size="small" text type="danger" :disabled="row.in_use">
-                <el-icon><Delete /></el-icon>
-              </el-button>
+              <Md3Button :icon="Delete" size="sm" variant="danger" :disabled="row.in_use">删除</Md3Button>
             </template>
           </el-popconfirm>
         </template>
@@ -44,6 +38,7 @@
 </template>
 
 <script setup lang="ts">
+import Md3Button from '@/components/Md3Button.vue'
 import { Coin, Download, Refresh, Delete } from '@element-plus/icons-vue'
 import type { DockerImage } from '@/stores/dockerStore'
 
@@ -59,17 +54,31 @@ defineEmits<{
 </script>
 
 <style scoped>
+.image-list {
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-sm);
+  overflow: hidden;
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.image-list:hover {
+  box-shadow: var(--md3-elevation-level1);
+}
+
 .image-name {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--md3-space-sm);
 }
 
 .image-id {
-  font-family: 'Consolas', monospace;
+  font-family: var(--md3-font-mono);
   font-size: 12px;
-  background: #f5f7fa;
+  background: var(--md3-surface-container-low);
   padding: 1px 4px;
-  border-radius: 2px;
+  border-radius: var(--md3-shape-xs);
 }
 </style>

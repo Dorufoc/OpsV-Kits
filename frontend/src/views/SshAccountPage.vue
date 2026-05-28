@@ -11,12 +11,8 @@
       <div class="account-sidebar">
         <div class="sidebar-header">
           <span class="sidebar-title">账户列表</span>
-          <el-button size="small" type="primary" @click="showAddDialog = true">
-            <el-icon><Plus /></el-icon> 添加
-          </el-button>
-          <el-button size="small" @click="loadAccounts">
-            <el-icon><Refresh /></el-icon> 刷新
-          </el-button>
+          <Md3Button size="sm" variant="primary" :icon="Plus" @click="showAddDialog = true">添加</Md3Button>
+          <Md3Button size="sm" :icon="Refresh" @click="loadAccounts">刷新</Md3Button>
         </div>
 
         <div class="sidebar-section">
@@ -26,19 +22,27 @@
               <el-icon><FolderOpened /></el-icon>
               <span>全部账户</span>
             </el-menu-item>
-            <el-menu-item
+            <el-sub-menu
               v-for="g in groups"
               :key="g.name"
               :index="g.name"
-              @click="selectedGroup = g.name"
             >
-              <el-icon><Folder /></el-icon>
-              <span>{{ g.name }}</span>
-            </el-menu-item>
+              <template #title>
+                <el-icon><Folder /></el-icon>
+                <span>{{ g.name }}</span>
+              </template>
+              <el-menu-item :index="g.name" @click="selectedGroup = g.name">
+                <span>查看账户</span>
+              </el-menu-item>
+              <el-menu-item @click="openRenameGroup(g.name)">
+                <span>重命名</span>
+              </el-menu-item>
+              <el-menu-item @click="confirmDeleteGroup(g.name)">
+                <span style="color: var(--el-color-danger)">删除分组</span>
+              </el-menu-item>
+            </el-sub-menu>
           </el-menu>
-          <el-button size="small" class="add-group-btn" @click="showNewGroupDialog = true">
-            <el-icon><Plus /></el-icon> 新建分组
-          </el-button>
+          <Md3Button size="sm" class="add-group-btn" :icon="Plus" @click="showNewGroupDialog = true">新建分组</Md3Button>
         </div>
 
         <div class="account-list">
@@ -91,9 +95,7 @@
             <el-descriptions-item label="远程工作目录">
               <div class="workplace-row">
                 <code>{{ selectedAccount.workplace_path || '~/projects' }}</code>
-                <el-button size="small" link type="primary" @click="initWorkplace" :loading="initWorkplaceLoading">
-                  <el-icon><FolderOpened /></el-icon> 初始化
-                </el-button>
+                <Md3Button size="sm" variant="text" :icon="FolderOpened" @click="initWorkplace" :loading="initWorkplaceLoading">初始化</Md3Button>
               </div>
             </el-descriptions-item>
             <el-descriptions-item label="连接状态">
@@ -107,22 +109,14 @@
           </el-descriptions>
 
           <div class="detail-actions">
-            <el-button type="primary" @click="testConnection">
-              <el-icon><Connection /></el-icon> 测试连接
-            </el-button>
-            <el-button @click="editAccount">
-              <el-icon><Edit /></el-icon> 编辑
-            </el-button>
+            <Md3Button variant="primary" :icon="Connection" @click="testConnection">测试连接</Md3Button>
+            <Md3Button :icon="Edit" @click="editAccount">编辑</Md3Button>
             <el-popconfirm title="确认删除该账户?" @confirm="removeAccount">
               <template #reference>
-                <el-button type="danger">
-                  <el-icon><Delete /></el-icon> 删除
-                </el-button>
+                <Md3Button variant="danger" :icon="Delete">删除</Md3Button>
               </template>
             </el-popconfirm>
-            <el-button @click="setAsDefault">
-              <el-icon><StarFilled /></el-icon> 设为默认
-            </el-button>
+            <Md3Button :icon="StarFilled" @click="setAsDefault">设为默认</Md3Button>
           </div>
         </el-card>
 
@@ -155,8 +149,8 @@
             </div>
           </div>
           <div class="permission-actions">
-            <el-button size="small"><el-icon><Top /></el-icon> 提升权限</el-button>
-            <el-button size="small"><el-icon><Tickets /></el-icon> 查看日志</el-button>
+            <Md3Button size="sm" :icon="Top">提升权限</Md3Button>
+            <Md3Button size="sm" :icon="Tickets">查看日志</Md3Button>
           </div>
         </el-card>
       </div>
@@ -191,20 +185,31 @@
           <el-input v-model="formData.key_passphrase" type="password" show-password placeholder="私钥密码（可选）" />
         </el-form-item>
         <el-form-item label="分组">
-          <el-input v-model="formData.group" placeholder="如：生产环境组" />
+          <el-select v-model="formData.group" clearable placeholder="选择分组" style="width: calc(100% - 70px)">
+            <el-option v-for="g in groups" :key="g.name" :label="g.name" :value="g.name" />
+          </el-select>
+          <Md3Button size="sm" variant="text" :icon="Plus" @click="showNewGroupDialog = true" style="margin-left: 4px">新建</Md3Button>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showAddDialog = false">取消</el-button>
-        <el-button type="primary" @click="saveAccount">保存</el-button>
+        <Md3Button @click="showAddDialog = false">取消</Md3Button>
+        <Md3Button variant="primary" @click="saveAccount">保存</Md3Button>
       </template>
     </el-dialog>
 
     <el-dialog v-model="showNewGroupDialog" title="新建分组" width="400px">
       <el-input v-model="newGroupName" placeholder="分组名称" />
       <template #footer>
-        <el-button @click="showNewGroupDialog = false">取消</el-button>
-        <el-button type="primary" @click="createGroup">确定</el-button>
+        <Md3Button @click="showNewGroupDialog = false">取消</Md3Button>
+        <Md3Button variant="primary" @click="createGroup">确定</Md3Button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showRenameGroupDialog" title="重命名分组" width="400px">
+      <el-input v-model="renameGroupNewName" placeholder="新分组名称" />
+      <template #footer>
+        <Md3Button @click="showRenameGroupDialog = false">取消</Md3Button>
+        <Md3Button variant="primary" @click="renameGroup">确定</Md3Button>
       </template>
     </el-dialog>
   </div>
@@ -218,9 +223,10 @@ import {
   CircleCheck, Warning, CircleClose,
   Top, Tickets,
 } from '@element-plus/icons-vue'
+import Md3Button from '@/components/Md3Button.vue'
 import { useSshAccountStore, type SshAccount } from '@/stores/sshAccountStore'
 import { request } from '@/api'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const sshStore = useSshAccountStore()
 
@@ -230,6 +236,9 @@ const showAddDialog = ref(false)
 const showNewGroupDialog = ref(false)
 const isEditing = ref(false)
 const newGroupName = ref('')
+const showRenameGroupDialog = ref(false)
+const renameGroupOldName = ref('')
+const renameGroupNewName = ref('')
 
 const formData = ref<SshAccount>({
   alias: '',
@@ -317,11 +326,53 @@ async function saveAccount() {
   }
 }
 
-function createGroup() {
+async function createGroup() {
   if (!newGroupName.value) return
-  sshStore.groups.push({ name: newGroupName.value, accounts: [] })
-  showNewGroupDialog.value = false
-  newGroupName.value = ''
+  try {
+    await sshStore.createGroup(newGroupName.value)
+    showNewGroupDialog.value = false
+    newGroupName.value = ''
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.detail || '创建分组失败')
+  }
+}
+
+function openRenameGroup(name: string) {
+  renameGroupOldName.value = name
+  renameGroupNewName.value = name
+  showRenameGroupDialog.value = true
+}
+
+async function renameGroup() {
+  if (!renameGroupNewName.value || renameGroupNewName.value === renameGroupOldName.value) return
+  try {
+    await sshStore.updateGroup(renameGroupOldName.value, { new_name: renameGroupNewName.value })
+    showRenameGroupDialog.value = false
+    if (selectedGroup.value === renameGroupOldName.value) {
+      selectedGroup.value = renameGroupNewName.value
+    }
+    ElMessage.success('分组已重命名')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.detail || '重命名失败')
+  }
+}
+
+function confirmDeleteGroup(name: string) {
+  ElMessageBox.confirm(`确认删除分组 "${name}"？该分组下的账户将解除分组关联。`, '删除分组', {
+    confirmButtonText: '删除',
+    cancelButtonText: '取消',
+    type: 'warning',
+  }).then(async () => {
+    try {
+      await sshStore.deleteGroup(name)
+      if (selectedGroup.value === name) {
+        selectedGroup.value = 'all'
+      }
+      ElMessage.success('分组已删除')
+    } catch (e: any) {
+      ElMessage.error(e?.response?.data?.detail || '删除分组失败')
+    }
+  }).catch(() => {})
 }
 
 const initWorkplaceLoading = ref(false)
@@ -352,7 +403,7 @@ onMounted(() => {
 
 .account-layout {
   display: flex;
-  gap: 16px;
+  gap: var(--md3-space-lg);
 }
 
 .account-sidebar {
@@ -360,44 +411,54 @@ onMounted(() => {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--md3-space-md);
+  padding: var(--md3-space-md);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border: 1px solid var(--md3-glass-border);
+  border-radius: var(--md3-shape-md);
+  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+}
+
+.account-sidebar:hover {
+  box-shadow: var(--md3-elevation-level1);
 }
 
 .sidebar-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--md3-space-sm);
   flex-wrap: wrap;
 }
 
 .sidebar-title {
-  font-size: 14px;
-  font-weight: 600;
+  font: var(--md3-type-title-small);
   margin-right: auto;
 }
 
 .sidebar-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--md3-space-xs);
 }
 
 .section-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #909399;
+  font: var(--md3-type-label-small);
+  color: var(--md3-outline);
   text-transform: uppercase;
   letter-spacing: 1px;
-  padding: 4px 0;
+  padding: var(--md3-space-xs) 0;
 }
 
 .group-menu {
   border-right: none !important;
+  background: transparent;
 }
 
 .add-group-btn {
   width: 100%;
-  margin-top: 4px;
+  margin-top: var(--md3-space-xs);
 }
 
 .account-list {
@@ -412,18 +473,19 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: var(--md3-space-sm) var(--md3-space-md);
   cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.2s;
+  border-radius: var(--md3-shape-sm);
+  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard),
+              box-shadow var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 .account-list-item:hover {
-  background: #f5f7fa;
+  background: var(--md3-surface-container-high);
 }
 
 .account-list-item.active {
-  background: #ecf5ff;
+  background: var(--md3-primary-container);
 }
 
 .acc-info {
@@ -435,84 +497,84 @@ onMounted(() => {
 .acc-alias {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--md3-space-xs);
   font-weight: 500;
   font-size: 13px;
 }
 
 .star-icon {
-  color: #e6a23c;
+  color: var(--md3-warning);
 }
 
 .acc-host {
   font-size: 11px;
-  color: #909399;
+  color: var(--md3-outline);
 }
 
 .account-detail {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--md3-space-lg);
 }
 
 .detail-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 16px;
+  gap: var(--md3-space-sm);
+  margin-top: var(--md3-space-lg);
   flex-wrap: wrap;
 }
 
 .workplace-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--md3-space-sm);
 }
 
 .workplace-row code {
   font-size: 12px;
-  background: #f5f7fa;
+  background: var(--md3-surface-container-low);
   padding: 2px 6px;
-  border-radius: 3px;
-  color: #409eff;
+  border-radius: var(--md3-shape-xs);
+  color: var(--md3-primary);
 }
 
 .permission-card {
-  margin-top: 8px;
+  margin-top: var(--md3-space-sm);
 }
 
 .permission-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--md3-space-sm);
 }
 
 .permission-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--md3-space-sm);
   font-size: 13px;
 }
 
 .perm-success {
-  color: #67c23a;
+  color: var(--md3-success);
 }
 
 .perm-warning {
-  color: #e6a23c;
+  color: var(--md3-warning);
 }
 
 .perm-error {
-  color: #f56c6c;
+  color: var(--md3-error);
 }
 
 .permission-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--md3-space-sm);
+  margin-top: var(--md3-space-md);
 }
 
 .port-input {
-  margin-left: 4px;
+  margin-left: var(--md3-space-xs);
 }
 </style>

@@ -1,0 +1,81 @@
+/* ===== Reset & Base ===== */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  height: 100%;
+  font: var(--md3-type-body-medium);
+  font-family: var(--md3-font-body);
+  color: var(--md3-on-surface);
+  background: var(--md3-gradient-surface);
+  background-attachment: fixed;
+  line-height: 1.6;
+}
+
+#app {
+  height: 100%;
+}
+
+a {
+  color: var(--md3-primary);
+  text-decoration: none;
+  transition: color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+}
+
+a:hover {
+  color: var(--md3-primary-container-active);
+}
+
+code {
+  font-family: var(--md3-font-mono);
+  font-size: 0.875em;
+  background: var(--md3-surface-container-low);
+  padding: 0.125em 0.375em;
+  border-radius: var(--md3-shape-xs);
+  color: var(--md3-primary);
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--md3-outline-variant);
+  border-radius: var(--md3-shape-full);
+  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--md3-outline);
+}
+
+/* ===== Selection ===== */
+::selection {
+  background: var(--md3-primary-container);
+  color: var(--md3-on-primary-container);
+}
+
+/* ===== Focus visible ===== */
+:focus-visible {
+  outline: 2px solid var(--md3-primary);
+  outline-offset: 2px;
+  border-radius: var(--md3-shape-xs);
+}

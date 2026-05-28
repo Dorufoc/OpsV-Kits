@@ -102,13 +102,13 @@
     </el-form>
 
     <template #footer>
-      <el-button @click="testConnection" :loading="testing">
-        <el-icon><Connection /></el-icon> 测试连接
-      </el-button>
-      <el-button @click="$emit('update:visible', false)">取消</el-button>
-      <el-button type="primary" @click="doConnect">
-        <el-icon><Link /></el-icon> 连接
-      </el-button>
+      <Md3Button :icon="Connection" @click="testConnection" :loading="testing">
+        测试连接
+      </Md3Button>
+      <Md3Button @click="$emit('update:visible', false)">取消</Md3Button>
+      <Md3Button variant="primary" :icon="Link" @click="doConnect">
+        连接
+      </Md3Button>
     </template>
   </el-dialog>
 </template>
@@ -117,6 +117,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Connection, Link } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import Md3Button from '@/components/Md3Button.vue'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { request } from '@/api'
 
@@ -222,8 +223,8 @@ onMounted(() => {
 
 <style scoped>
 .account-desc {
-  color: #909399;
+  color: var(--md3-on-surface-variant);
   font-size: 12px;
-  margin-left: 8px;
+  margin-left: var(--md3-space-sm);
 }
 </style>

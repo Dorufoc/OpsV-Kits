@@ -5,9 +5,7 @@
         <span>Docker 管理</span>
       </template>
       <template #extra>
-        <el-button size="small" @click="refreshAll" :disabled="!dockerStore.currentAlias">
-          <el-icon><Refresh /></el-icon> 刷新
-        </el-button>
+        <Md3Button size="sm" :icon="Refresh" @click="refreshAll" :disabled="!dockerStore.currentAlias">刷新</Md3Button>
       </template>
     </el-page-header>
     <el-divider />
@@ -75,9 +73,9 @@
 
           <div class="batch-actions" v-if="selectedContainers.length > 0">
             <span class="batch-label">批量操作:</span>
-            <el-button size="small" @click="batchStart">启动选中</el-button>
-            <el-button size="small" @click="batchStop">停止选中</el-button>
-            <el-button size="small" type="danger" @click="batchDelete">删除选中</el-button>
+            <Md3Button size="sm" @click="batchStart">启动选中</Md3Button>
+            <Md3Button size="sm" @click="batchStop">停止选中</Md3Button>
+            <Md3Button size="sm" variant="danger" @click="batchDelete">删除选中</Md3Button>
           </div>
         </el-tab-pane>
 
@@ -87,15 +85,9 @@
           </template>
 
           <div class="tab-actions">
-            <el-button size="small" @click="showPullDialog = true">
-              <el-icon><Download /></el-icon> 拉取
-            </el-button>
-            <el-button size="small" @click="showBuildDialog = true">
-              <el-icon><Refresh /></el-icon> 构建
-            </el-button>
-            <el-button size="small" @click="pruneImages">
-              <el-icon><Delete /></el-icon> 清理悬空
-            </el-button>
+            <Md3Button size="sm" :icon="Download" @click="showPullDialog = true">拉取</Md3Button>
+            <Md3Button size="sm" :icon="Refresh" @click="showBuildDialog = true">构建</Md3Button>
+            <Md3Button size="sm" :icon="Delete" @click="pruneImages">清理悬空</Md3Button>
           </div>
 
           <ImageList
@@ -112,9 +104,7 @@
           </template>
 
           <div class="tab-actions">
-            <el-button size="small" @click="showNetworkDialog = true">
-              <el-icon><Plus /></el-icon> 创建网络
-            </el-button>
+            <Md3Button size="sm" :icon="Plus" @click="showNetworkDialog = true">创建网络</Md3Button>
           </div>
 
           <el-table :data="dockerStore.networks" size="small" stripe>
@@ -122,13 +112,11 @@
             <el-table-column prop="driver" label="驱动" width="100" />
             <el-table-column prop="scope" label="范围" width="80" />
             <el-table-column prop="containers" label="连接容器数" width="120" align="center" />
-            <el-table-column label="操作" width="120">
+            <el-table-column label="操作" width="100">
               <template #default="{ row }">
                 <el-popconfirm title="确认删除?" @confirm="dockerStore.deleteNetwork(row.id)">
                   <template #reference>
-                    <el-button size="small" text type="danger">
-                      <el-icon><Delete /></el-icon>
-                    </el-button>
+                    <Md3Button :icon="Delete" size="sm" variant="danger">删除</Md3Button>
                   </template>
                 </el-popconfirm>
               </template>
@@ -142,9 +130,7 @@
           </template>
 
           <div class="tab-actions">
-            <el-button size="small" @click="showVolumeDialog = true">
-              <el-icon><Plus /></el-icon> 创建卷
-            </el-button>
+            <Md3Button size="sm" :icon="Plus" @click="showVolumeDialog = true">创建卷</Md3Button>
           </div>
 
           <el-table :data="dockerStore.volumes" size="small" stripe>
@@ -152,13 +138,11 @@
             <el-table-column prop="driver" label="驱动" width="100" />
             <el-table-column prop="mountpoint" label="挂载点" min-width="200" />
             <el-table-column prop="size" label="大小" width="80" align="right" />
-            <el-table-column label="操作" width="120">
+            <el-table-column label="操作" width="100">
               <template #default="{ row }">
                 <el-popconfirm title="确认删除?" @confirm="dockerStore.deleteVolume(row.name)">
                   <template #reference>
-                    <el-button size="small" text type="danger">
-                      <el-icon><Delete /></el-icon>
-                    </el-button>
+                    <Md3Button :icon="Delete" size="sm" variant="danger">删除</Md3Button>
                   </template>
                 </el-popconfirm>
               </template>
@@ -185,14 +169,10 @@
                 >{{ svc }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="160">
+            <el-table-column label="操作" width="200">
               <template #default="{ row }">
-                <el-button size="small" text @click="dockerStore.composeUp({ path: row.path, detached: true })">
-                  <el-icon><VideoPlay /></el-icon>
-                </el-button>
-                <el-button size="small" text @click="dockerStore.composeDown({ path: row.path })">
-                  <el-icon><VideoPause /></el-icon>
-                </el-button>
+                <Md3Button :icon="VideoPlay" size="sm" variant="default" @click="dockerStore.composeUp({ path: row.path, detached: true })">启动</Md3Button>
+                <Md3Button :icon="VideoPause" size="sm" variant="default" @click="dockerStore.composeDown({ path: row.path })">停止</Md3Button>
               </template>
             </el-table-column>
           </el-table>
@@ -212,8 +192,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showPullDialog = false">取消</el-button>
-        <el-button type="primary" @click="pullImage">拉取</el-button>
+        <Md3Button @click="showPullDialog = false">取消</Md3Button>
+        <Md3Button variant="primary" @click="pullImage">拉取</Md3Button>
       </template>
     </el-dialog>
 
@@ -227,8 +207,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showBuildDialog = false">取消</el-button>
-        <el-button type="primary" @click="buildImage">构建</el-button>
+        <Md3Button @click="showBuildDialog = false">取消</Md3Button>
+        <Md3Button variant="primary" @click="buildImage">构建</Md3Button>
       </template>
     </el-dialog>
 
@@ -247,16 +227,16 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showNetworkDialog = false">取消</el-button>
-        <el-button type="primary" @click="createNetwork">创建</el-button>
+        <Md3Button @click="showNetworkDialog = false">取消</Md3Button>
+        <Md3Button variant="primary" @click="createNetwork">创建</Md3Button>
       </template>
     </el-dialog>
 
     <el-dialog v-model="showVolumeDialog" title="创建卷" width="420px">
       <el-input v-model="volumeForm.name" placeholder="卷名称" />
       <template #footer>
-        <el-button @click="showVolumeDialog = false">取消</el-button>
-        <el-button type="primary" @click="createVolume">创建</el-button>
+        <Md3Button @click="showVolumeDialog = false">取消</Md3Button>
+        <Md3Button variant="primary" @click="createVolume">创建</Md3Button>
       </template>
     </el-dialog>
 
@@ -269,7 +249,7 @@
         class="error-log-textarea"
       />
       <template #footer>
-        <el-button @click="showErrorLogDialog = false">关闭</el-button>
+        <Md3Button @click="showErrorLogDialog = false">关闭</Md3Button>
       </template>
     </el-dialog>
   </div>
@@ -284,6 +264,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useDockerStore, type DockerContainer } from '@/stores/dockerStore'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
+import Md3Button from '@/components/Md3Button.vue'
 import ContainerList from '@/components/ContainerList.vue'
 import ImageList from '@/components/ImageList.vue'
 
@@ -415,28 +396,28 @@ onMounted(async () => {
 }
 
 .account-card {
-  margin-bottom: 12px;
+  margin-bottom: var(--md3-space-md);
 }
 
 .account-selector {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--md3-space-sm);
 }
 
 .selector-label {
-  font-size: 13px;
-  color: #606266;
+  font: var(--md3-type-body-medium);
+  color: var(--md3-on-surface-variant);
   white-space: nowrap;
 }
 
 .env-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--md3-space-lg);
 }
 
 .env-info {
   display: flex;
-  gap: 24px;
+  gap: var(--md3-space-xl);
   flex-wrap: wrap;
 }
 
@@ -448,40 +429,46 @@ onMounted(async () => {
 }
 
 .env-label {
-  color: #909399;
+  color: var(--md3-outline);
   white-space: nowrap;
 }
 
 .docker-tabs {
-  margin-top: 8px;
+  margin-top: var(--md3-space-sm);
 }
 
 .tab-actions {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--md3-space-sm);
+  margin-bottom: var(--md3-space-md);
 }
 
 .batch-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding: 8px;
-  background: #f5f7fa;
-  border-radius: 4px;
+  gap: var(--md3-space-sm);
+  margin-top: var(--md3-space-md);
+  padding: var(--md3-space-sm);
+  background: var(--md3-surface-container-low);
+  border-radius: var(--md3-shape-sm);
+  border: 1px solid var(--md3-glass-border);
+  transition: box-shadow var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+}
+
+.batch-actions:hover {
+  box-shadow: var(--md3-elevation-level1);
 }
 
 .batch-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--md3-outline);
 }
 
 .error-log-textarea :deep(.el-textarea__inner) {
-  font-family: 'Consolas', 'Monaco', monospace;
+  font-family: var(--md3-font-mono);
   font-size: 12px;
-  background-color: #1e1e1e;
-  color: #d4d4d4;
-  border: 1px solid #3c3c3c;
+  background-color: var(--md3-inverse-surface);
+  color: var(--md3-inverse-on-surface);
+  border: 1px solid var(--md3-outline-variant);
 }
 </style>

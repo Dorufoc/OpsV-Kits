@@ -31,7 +31,7 @@
             <span class="rd-label">WebDAV 地址：</span>
             <el-input :model-value="webdavUrl" readonly style="width: 340px" size="small">
               <template #append>
-                <el-button @click="copyUrl" :icon="DocumentCopy" size="small">复制</el-button>
+                <Md3Button @click="copyUrl" :icon="DocumentCopy" size="sm">复制</Md3Button>
               </template>
             </el-input>
           </div>
@@ -39,7 +39,7 @@
             <span class="rd-label">Windows 映射地址：</span>
             <el-input :model-value="windowsUrl" readonly style="width: 420px" size="small">
               <template #append>
-                <el-button @click="copyWindowsUrl" :icon="DocumentCopy" size="small">复制</el-button>
+                <Md3Button @click="copyWindowsUrl" :icon="DocumentCopy" size="sm">复制</Md3Button>
               </template>
             </el-input>
           </div>
@@ -60,6 +60,9 @@
         <div v-if="remoteDriveRunning" class="rd-status">
           <el-icon><SuccessFilled /></el-icon>
           共 {{ accountCount }} 台远程主机可通过网络硬盘访问
+          <span style="margin-left: 16px; color: var(--md3-on-surface-variant)">
+            映射账户：<strong>{{ authUsername }}</strong> / <strong>{{ authPasswordSet ? '******' : '(SSH默认)' }}</strong>
+          </span>
         </div>
 
         <el-collapse class="rd-tutorial" accordion>
@@ -70,21 +73,34 @@
 
               <h4>方法一：映射为 Windows 网络驱动器（推荐）</h4>
               <ol>
-                <li>确保上方开关为<strong>「已启用」</strong>且状态标签显示<strong>「服务运行中」</strong></li>
+                <li><strong style="color: #e6a23c">步骤一：确保 WebClient 服务已启动</strong>
+                  <ul>
+                    <li>按 <code>Win + R</code>，输入 <code>services.msc</code>，找到 <strong>WebClient</strong> 服务</li>
+                    <li>如未运行，右键 → <strong>启动</strong>；右键 → 属性 → 启动类型改为 <strong>自动</strong></li>
+                  </ul>
+                </li>
                 <li>打开 Windows 资源管理器（Win + E）</li>
                 <li>右键左侧的<strong>「此电脑」</strong> → 选择<strong>「映射网络驱动器」</strong></li>
                 <li>在弹出的窗口中：
                   <ul>
                     <li><strong>驱动器</strong>：选择一个空闲盘符（如 Z:）</li>
-                    <li><strong>文件夹</strong>：优先输入 <code>{{ windowsUrl }}</code>；也可输入 <code>{{ webdavUrl }}</code></li>
+                    <li><strong>文件夹</strong>：输入 <code>{{ webdavUrl }}</code></li>
+                    <li>勾选<strong>「使用其他凭据连接」</strong></li>
                     <li>勾选<strong>「登录时重新连接」</strong></li>
                   </ul>
                 </li>
-                <li>点击<strong>「完成」</strong>，稍等片刻即可在网络位置中看到远程服务器的文件</li>
-                <li>如果映射到某个特定服务器的根目录，请使用表格中的<strong>独立访问地址</strong></li>
+                <li>点击<strong>「完成」</strong>，在弹出的凭据窗口中输入任意用户名和密码（推荐 <code>opsv</code> / <code>opsv</code>）</li>
+                <li>稍等片刻即可在网络位置中看到远程服务器的文件</li>
               </ol>
 
-              <h4>方法二：直接在浏览器中访问</h4>
+              <h4>方法二：使用 net use 命令映射</h4>
+              <ol>
+                <li>以<strong>管理员身份</strong>打开命令提示符</li>
+                <li>执行：<code>net use Z: {{ webdavUrl }} /user:opsv opsv /persistent:yes</code></li>
+                <li>将 <code>Z:</code> 替换为实际盘符，<code>opsv/opsv</code> 为任意用户名/密码</li>
+              </ol>
+
+              <h4>方法三：直接在浏览器中访问</h4>
               <ol>
                 <li>复制上方 WebDAV 地址 <code>{{ webdavUrl }}</code></li>
                 <li>在浏览器地址栏中打开，可见所有已配置的远程服务器列表</li>
@@ -93,12 +109,17 @@
 
               <h4>注意事项</h4>
               <ul>
-                <li><strong>WebDAV 服务仅监听 <code>127.0.0.1</code></strong>（本机），其他设备无法访问，确保安全</li>
-                <li>映射网络驱动器时，Windows 可能需要启用 WebDAV 支持（Win10/11 默认已支持）</li>
-                <li>如果映射后长时间无响应，请在资源管理器中右键映射的驱动器 → <strong>「断开」</strong> 后重新映射</li>
-                <li>文件操作（上传/下载/删除/重命名/新建文件夹）均通过 SSH/SFTP 实时同步到远程服务器</li>
+                <li><strong style="color: #e6a23c">必须先启动 Windows WebClient 服务</strong>（<code>services.msc</code> → WebClient → 启动）</li>
+                <li>服务端已支持 NTLM + Basic 认证，Windows 可直接使用，无需修改注册表</li>
+                <li>映射时<strong>必须勾选「使用其他凭据连接」</strong>，并输入任意用户名和密码</li>
+                <li>Windows 默认限制 WebDAV 文件大小为 50MB，如需传输更大文件：
+                  <ul>
+                    <li>管理员 CMD 执行 <code>reg add HKLM\SYSTEM\CurrentControlSet\Services\WebClient\Parameters /v FileSizeLimitInBytes /t REG_DWORD /d 4294967295 /f</code></li>
+                    <li>然后执行 <code>net stop WebClient && net start WebClient</code></li>
+                  </ul>
+                </li>
+                <li>文件操作均通过 SSH/SFTP 实时同步到远程服务器</li>
                 <li>远程服务器必须已在 <strong>SSH 账户管理</strong> 中正确配置</li>
-                <li>如需关闭此功能，将上方开关切换为 <strong>「已关闭」</strong> 即可</li>
               </ul>
             </div>
           </el-collapse-item>
@@ -121,21 +142,21 @@
           <span><el-icon :size="16"><Refresh /></el-icon> 系统操作</span>
         </template>
         <div class="action-grid">
-          <el-button type="warning" @click="confirmAction('reboot')" :loading="loadingAction === 'reboot'">
-            <el-icon><Refresh /></el-icon> 重启服务器
-          </el-button>
-          <el-button type="danger" @click="confirmAction('shutdown')" :loading="loadingAction === 'shutdown'">
-            <el-icon><CircleClose /></el-icon> 关机
-          </el-button>
-          <el-button @click="executeAction('reload_network')" :loading="loadingAction === 'reload_network'">
-            <el-icon><Connection /></el-icon> 重启网络
-          </el-button>
-          <el-button @click="executeAction('reload_ssh')" :loading="loadingAction === 'reload_ssh'">
-            <el-icon><Key /></el-icon> 重启 SSH
-          </el-button>
-          <el-button @click="executeAction('clear_cache')" :loading="loadingAction === 'clear_cache'">
-            <el-icon><Delete /></el-icon> 清理缓存
-          </el-button>
+          <Md3Button variant="warning" :icon="Refresh" @click="confirmAction('reboot')" :loading="loadingAction === 'reboot'">
+            重启服务器
+          </Md3Button>
+          <Md3Button variant="danger" :icon="CircleClose" @click="confirmAction('shutdown')" :loading="loadingAction === 'shutdown'">
+            关机
+          </Md3Button>
+          <Md3Button :icon="Connection" @click="executeAction('reload_network')" :loading="loadingAction === 'reload_network'">
+            重启网络
+          </Md3Button>
+          <Md3Button :icon="Key" @click="executeAction('reload_ssh')" :loading="loadingAction === 'reload_ssh'">
+            重启 SSH
+          </Md3Button>
+          <Md3Button :icon="Delete" @click="executeAction('clear_cache')" :loading="loadingAction === 'clear_cache'">
+            清理缓存
+          </Md3Button>
         </div>
         <el-divider />
         <div class="selinux-row">
@@ -143,13 +164,13 @@
           <el-tag :type="selinuxStatus === 'Enforcing' ? 'danger' : selinuxStatus === 'Permissive' ? 'warning' : 'info'" size="small">
             {{ selinuxStatus || '未知' }}
           </el-tag>
-          <el-button size="small" v-if="selinuxStatus === 'Enforcing'" @click="setSelinux('permissive')" :loading="loadingSelinux">
+          <Md3Button size="sm" v-if="selinuxStatus === 'Enforcing'" @click="setSelinux('permissive')" :loading="loadingSelinux">
             设为 Permissive
-          </el-button>
-          <el-button size="small" v-if="selinuxStatus === 'Permissive'" @click="setSelinux('enforcing')" :loading="loadingSelinux">
+          </Md3Button>
+          <Md3Button size="sm" v-if="selinuxStatus === 'Permissive'" @click="setSelinux('enforcing')" :loading="loadingSelinux">
             设为 Enforcing
-          </el-button>
-          <el-button size="small" @click="loadSelinux" :loading="loadingSelinux">刷新</el-button>
+          </Md3Button>
+          <Md3Button size="sm" @click="loadSelinux" :loading="loadingSelinux">刷新</Md3Button>
         </div>
       </el-card>
 
@@ -160,9 +181,9 @@
             <el-tag :type="firewallActive ? 'success' : 'danger'" size="small">
               {{ firewallActive ? '运行中' : '已停止' }}
             </el-tag>
-            <el-button size="small" :type="firewallActive ? 'danger' : 'success'" @click="toggleFirewall">
+            <Md3Button size="sm" :variant="firewallActive ? 'danger' : 'success'" @click="toggleFirewall">
               {{ firewallActive ? '关闭防火墙' : '开启防火墙' }}
-            </el-button>
+            </Md3Button>
           </div>
         </template>
 
@@ -178,7 +199,7 @@
               </el-select>
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="addPortRule" :loading="loadingPort">添加端口规则</el-button>
+              <Md3Button variant="primary" @click="addPortRule" :loading="loadingPort">添加端口规则</Md3Button>
             </el-form-item>
           </el-form>
 
@@ -186,11 +207,9 @@
             <el-table-column prop="type" label="类型" width="80" />
             <el-table-column prop="value" label="规则内容" min-width="160" />
             <el-table-column prop="zone" label="区域" width="100" />
-            <el-table-column label="操作" width="80">
+            <el-table-column label="操作" width="100">
               <template #default="{ row }">
-                <el-button size="small" text type="danger" @click="removeRule(row)">
-                  <el-icon><Delete /></el-icon>
-                </el-button>
+                <Md3Button :icon="Delete" size="sm" variant="danger" @click="removeRule(row)">删除</Md3Button>
               </template>
             </el-table-column>
           </el-table>
@@ -206,6 +225,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, CircleClose, Connection, Key, Delete, FolderOpened, DocumentCopy, SuccessFilled } from '@element-plus/icons-vue'
+import Md3Button from '@/components/Md3Button.vue'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { request } from '@/api'
 
@@ -225,10 +245,12 @@ const loadingPort = ref(false)
 
 const remoteDriveEnabled = ref(true)
 const remoteDriveRunning = ref(false)
-const webdavUrl = ref('http://127.0.0.1:8081/')
-const windowsUrl = ref('\\\\127.0.0.1@8081\\DavWWWRoot\\')
+const webdavUrl = ref('http://localhost:8081/')
+const windowsUrl = ref('\\\\localhost@8081\\DavWWWRoot\\')
 const mounts = ref<any[]>([])
 const accountCount = ref(0)
+const authUsername = ref('opsv')
+const authPasswordSet = ref(false)
 
 function onAccountChange(alias: string) {
   selectedAlias.value = alias
@@ -344,6 +366,8 @@ async function loadDriveStatus() {
     windowsUrl.value = status.windows_url || webdavUrl.value
     mounts.value = status.mounts || []
     accountCount.value = status.account_count
+    authUsername.value = status.auth_username || 'opsv'
+    authPasswordSet.value = status.auth_password_set || false
   } catch {}
 }
 
@@ -390,47 +414,47 @@ onMounted(async () => {
 
 <style scoped>
 .tools { padding: 0; }
-.account-card { margin-bottom: 12px; }
-.account-selector { display: flex; align-items: center; gap: 8px; }
-.selector-label { font-size: 13px; color: #606266; white-space: nowrap; }
-.section-card { margin-bottom: 16px; }
+.account-card { margin-bottom: var(--md3-space-md); }
+.account-selector { display: flex; align-items: center; gap: var(--md3-space-sm); }
+.selector-label { font-size: 13px; color: var(--md3-on-surface-variant); white-space: nowrap; }
+.section-card { margin-bottom: var(--md3-space-lg); }
 .section-card :deep(.el-card__header) {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px; font-weight: 600; font-size: 14px;
+  padding: var(--md3-space-md) var(--md3-space-lg); font-weight: 600; font-size: 14px;
 }
-.card-header-right { display: flex; align-items: center; gap: 8px; }
+.card-header-right { display: flex; align-items: center; gap: var(--md3-space-sm); }
 .action-grid {
-  display: flex; flex-wrap: wrap; gap: 8px;
+  display: flex; flex-wrap: wrap; gap: var(--md3-space-sm);
 }
 .selinux-row {
-  display: flex; align-items: center; gap: 8px; font-size: 13px;
+  display: flex; align-items: center; gap: var(--md3-space-sm); font-size: 13px;
 }
-.selinux-row .label { color: #909399; }
-.firewall-actions { display: flex; flex-direction: column; gap: 12px; }
+.selinux-row .label { color: var(--md3-on-surface-variant); }
+.firewall-actions { display: flex; flex-direction: column; gap: var(--md3-space-md); }
 
-.remote-drive-body { display: flex; flex-direction: column; gap: 4px; }
-.rd-section { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.rd-field { display: flex; align-items: center; gap: 8px; }
-.rd-label { font-size: 13px; color: #606266; white-space: nowrap; }
+.remote-drive-body { display: flex; flex-direction: column; gap: var(--md3-space-xs); }
+.rd-section { display: flex; align-items: center; flex-wrap: wrap; gap: var(--md3-space-sm); }
+.rd-field { display: flex; align-items: center; gap: var(--md3-space-sm); }
+.rd-label { font-size: 13px; color: var(--md3-on-surface-variant); white-space: nowrap; }
 .rd-status {
-  font-size: 12px; color: #67c23a; margin-top: 8px;
-  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--md3-success); margin-top: var(--md3-space-sm);
+  display: flex; align-items: center; gap: var(--md3-space-xs);
 }
-.rd-tutorial { margin-top: 12px; }
+.rd-tutorial { margin-top: var(--md3-space-md); }
 .rd-tutorial :deep(.el-collapse-item__header) {
-  font-size: 13px; font-weight: 500; color: #409eff; padding-left: 4px;
+  font-size: 13px; font-weight: 500; color: var(--md3-primary); padding-left: var(--md3-space-xs);
 }
-.tutorial-content { font-size: 13px; line-height: 1.8; color: #303133; padding: 4px 0; }
+.tutorial-content { font-size: 13px; line-height: 1.8; color: var(--md3-on-surface); padding: var(--md3-space-xs) 0; }
 .tutorial-content h4 {
-  font-size: 14px; margin: 12px 0 6px; color: #303133;
+  font-size: 14px; margin: var(--md3-space-md) 0 6px; color: var(--md3-on-surface);
 }
 .tutorial-content h4:first-child { margin-top: 0; }
-.tutorial-content p { margin: 4px 0; color: #606266; }
-.tutorial-content ol, .tutorial-content ul { margin: 4px 0; padding-left: 20px; }
+.tutorial-content p { margin: var(--md3-space-xs) 0; color: var(--md3-on-surface-variant); }
+.tutorial-content ol, .tutorial-content ul { margin: var(--md3-space-xs) 0; padding-left: 20px; }
 .tutorial-content li { margin: 3px 0; }
 .tutorial-content code {
-  background: #f5f7fa; padding: 1px 6px; border-radius: 3px;
-  font-size: 12px; color: #e6a23c; font-family: Consolas, monospace;
+  background: var(--md3-surface-container-low); padding: 1px 6px; border-radius: var(--md3-shape-xs);
+  font-size: 12px; color: var(--md3-warning); font-family: var(--md3-font-mono);
 }
-.tutorial-content strong { color: #303133; }
+.tutorial-content strong { color: var(--md3-on-surface); }
 </style>

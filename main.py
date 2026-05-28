@@ -1,12 +1,12 @@
 """
-OpsV-Kits - Project Launcher
-Usage:
-    python main.py                    # Start backend + frontend dev server
-    python main.py --backend-only     # Start backend only
-    python main.py --frontend-only    # Start frontend dev server only
-    python main.py --prod             # Start backend and serve built frontend
-    python main.py --no-browser       # Don't auto-open browser
-    python main.py --help             # Show this help
+OpsV-Kits - 项目启动器
+用法:
+    python main.py                    # 启动后端 + 前端开发服务器
+    python main.py --backend-only     # 仅启动后端
+    python main.py --frontend-only    # 仅启动前端开发服务器
+    python main.py --prod             # 启动后端并服务构建后的前端
+    python main.py --no-browser       # 不自动打开浏览器
+    python main.py --help             # 显示帮助信息
 """
 
 from __future__ import annotations
@@ -72,55 +72,55 @@ def _clear_port_config() -> None:
 
 def print_banner():
     print(r"""
-================================================
- ::::::::   :::::::::    ::::::::   :::     :::
-:+:    :+:  :+:    :+:  :+:    :+:  :+:     :+:
-+:+    +:+  +:+    +:+  +:+         +:+     +:+
-+#+    +:+  +#++:++#+    +#++:++#   +#+     +:+
-+#+    +#+  +#+               +#+    +#+   +#+
-#+#    #+#  #+#         #+#    #+#    #+#+#+#
- ########   ###          ########       ###
-================================================
+<-===============================================->
+   ::::::::   :::::::::    ::::::::   :::     ::: 
+  :+:    :+:  :+:    :+:  :+:    :+:  :+:     :+: 
+  +:+    +:+  +:+    +:+  +:+         +:+     +:+ 
+  +#+    +:+  +#++:++#+    +#++:++#   +#+     +:+ 
+  +#+    +#+  +#+               +#+    +#+   +#+  
+  #+#    #+#  #+#         #+#    #+#    #+#+#+#   
+   ########   ###          ########       ###     
+<-===============================================->
     """)
 
 
 def check_python():
     if sys.version_info < (3, 10):
-        print(f"  ❌ Python 3.10+ required, current: {sys.version.split()[0]}")
+        print(f"  ❌ 需要 Python 3.10+，当前版本: {sys.version.split()[0]}")
         sys.exit(1)
     print(f"  ✅ Python {sys.version.split()[0]}")
 
 
 def install_nodejs_windows():
-    print("  ⏳ Installing Node.js via winget...")
+    print(f"  ⏳ 正在通过 winget 安装 Node.js...")
     result = subprocess.run(
         ["winget", "install", "--id", "OpenJS.NodeJS.LTS", "--accept-package-agreements", "--accept-source-agreements", "--silent"],
         capture_output=True, text=True,
         timeout=300,
     )
     if result.returncode == 0:
-        print("  ✅ Node.js installed via winget")
+        print("  ✅ Node.js 已通过 winget 安装")
         return True
-    print(f"  ⚠ winget install failed (exit={result.returncode}), trying direct download...")
+    print(f"  ⚠ winget 安装失败 (退出码={result.returncode})，尝试直接下载...")
     return False
 
 
 def install_nodejs_linux():
-    print("  ⏳ Installing Node.js via apt...")
+    print("  ⏳ 正在通过 apt 安装 Node.js...")
     subprocess.run(["sudo", "mkdir", "-p", "/etc/apt/keyrings"], capture_output=True)
     result = subprocess.run(
         "curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -",
         shell=True, capture_output=True, text=True, timeout=300,
     )
     if result.returncode != 0:
-        print("  ⚠ NodeSource setup failed, trying apt directly...")
+        print("  ⚠ NodeSource 设置失败，尝试直接使用 apt...")
         result = subprocess.run(["sudo", "apt", "install", "-y", "nodejs"], capture_output=True, text=True, timeout=300)
     else:
         result = subprocess.run(["sudo", "apt", "install", "-y", "nodejs"], capture_output=True, text=True, timeout=300)
     if result.returncode == 0:
-        print("  ✅ Node.js installed via apt")
+        print("  ✅ Node.js 已通过 apt 安装")
         return True
-    print("  ⚠ Linux install failed")
+    print("  ⚠ Linux 安装失败")
     return False
 
 
@@ -165,7 +165,7 @@ def ensure_nodejs():
     except FileNotFoundError:
         pass
 
-    print("  ⚠ Node.js not found, attempting auto-install... (按回车键跳过)", end='', flush=True)
+    print("  ⚠ 未找到 Node.js，尝试自动安装... (按回车键跳过)", end='', flush=True)
 
     if _check_skip_key(timeout=3.0):
         print("\r  ⏭️  已跳过 Node.js 自动安装")
@@ -180,7 +180,7 @@ def ensure_nodejs():
         ok = False
 
     if not ok:
-        print("  ❌ Auto-install failed. Please install Node.js 18+ manually:")
+        print("  ❌ 自动安装失败。请手动安装 Node.js 18+：")
         print("     Windows: winget install OpenJS.NodeJS.LTS")
         print("     Linux:   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt install -y nodejs")
         print("     macOS:   brew install node")
@@ -188,7 +188,7 @@ def ensure_nodejs():
 
     node_check = subprocess.run(["node", "--version"], capture_output=True, text=True)
     if node_check.returncode != 0:
-        print("  ❌ Node.js still not found after install. Please install manually.")
+        print("  ❌ 安装后仍未找到 Node.js。请手动安装。")
         sys.exit(1)
     print(f"  ✅ Node.js {node_check.stdout.strip()}")
 
@@ -216,9 +216,9 @@ def start_backend(port: int = 8000, reload: bool = True, log_level: str = "info"
     if reload:
         backend_cmd.append("--reload")
 
-    print(f"  ▶ Backend starting on http://localhost:{actual_port}")
+    print(f"  ▶ 后端服务启动中 http://localhost:{actual_port}")
     if reload:
-        print(f"    Auto-reload: enabled")
+        print(f"    自动重载: 已启用")
     print()
 
     proc = subprocess.Popen(
@@ -234,8 +234,8 @@ def start_backend(port: int = 8000, reload: bool = True, log_level: str = "info"
 def start_frontend_dev(port: int = 3000) -> subprocess.Popen:
     # 读取后端实际端口
     actual_backend_port = _get_backend_port()
-    print(f"  ▶ Frontend dev server starting (default port: {port})")
-    print(f"    API proxy: http://localhost:{port} -> http://localhost:{actual_backend_port}")
+    print(f"  ▶ 前端开发服务器启动中（默认端口: {port}）")
+    print(f"    API 代理: http://localhost:{port} -> http://localhost:{actual_backend_port}")
     print()
 
     return subprocess.Popen(
@@ -249,7 +249,7 @@ def start_frontend_dev(port: int = 3000) -> subprocess.Popen:
 
 
 def install_dependencies():
-    print("  ℹ Checking dependencies... (3s内按回车键跳过)", end='', flush=True)
+    print("  ℹ 正在检查依赖... (3秒内按回车键跳过)", end='', flush=True)
 
     if _check_skip_key(timeout=3.0):
         print("\r  ⏭️  已跳过依赖检查")
@@ -265,10 +265,10 @@ def install_dependencies():
             capture_output=True, text=True,
         )
         if result.returncode == 0:
-            print("    ✅ Backend dependencies installed")
+            print("    ✅ 后端依赖已安装")
             pip_install_done = True
         else:
-            print("    ⚠ Backend pip install warning (continue anyway)")
+            print("    ⚠ 后端 pip 安装警告（继续执行）")
 
     npm_install_done = (FRONTEND_DIR / "node_modules").is_dir()
     if not npm_install_done:
@@ -278,24 +278,24 @@ def install_dependencies():
             capture_output=True, text=True,
         )
         if result.returncode == 0:
-            print("    ✅ Frontend dependencies installed")
+            print("    ✅ 前端依赖已安装")
         else:
-            print("    ⚠ Frontend npm install warning (continue anyway)")
+            print("    ⚠ 前端 npm 安装警告（继续执行）")
 
     print()
 
 
 def build_frontend():
-    print("  ▶ Building frontend for production...")
+    print("  ▶ 正在构建前端生产版本...")
     result = subprocess.run(
         ["npm", "run", "build"],
         cwd=str(FRONTEND_DIR),
         capture_output=True, text=True,
     )
     if result.returncode == 0:
-        print("    ✅ Frontend built successfully")
+        print("    ✅ 前端构建成功")
     else:
-        print("    ❌ Frontend build failed:")
+        print("    ❌ 前端构建失败:")
         for line in result.stdout.splitlines()[-5:]:
             print(f"      {line}")
         for line in result.stderr.splitlines()[-5:]:
@@ -306,21 +306,21 @@ def build_frontend():
 def delayed_open_browser(url: str, delay: float = 2.0) -> None:
     def _open():
         time.sleep(delay)
-        print(f"  Opening browser: {url}")
+        print(f"  正在打开浏览器: {url}")
         try:
             webbrowser.open(url)
         except Exception as e:
-            print(f"    ⚠ Could not open browser: {e}")
+            print(f"    ⚠ 无法打开浏览器: {e}")
 
     thread = threading.Thread(target=_open, daemon=True)
     thread.start()
 
 
 def wait_for_shutdown(processes: list[subprocess.Popen]):
-    print("  ▶ All services started. Press Ctrl+C to stop all services.\n")
+    print("  ▶ 所有服务已启动。按 Ctrl+C 停止所有服务。\n")
 
     def signal_handler(sig, frame):
-        print("\n  ⏹ Stopping all services...")
+        print("\n  ⏹ 正在停止所有服务...")
         # 清理端口配置文件
         _clear_port_config()
         for proc in processes:
@@ -334,7 +334,7 @@ def wait_for_shutdown(processes: list[subprocess.Popen]):
                 proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 proc.kill()
-        print("  ✅ All services stopped.")
+        print("  ✅ 所有服务已停止。")
         sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
@@ -345,7 +345,7 @@ def wait_for_shutdown(processes: list[subprocess.Popen]):
             time.sleep(1)
             for proc in processes:
                 if proc.poll() is not None:
-                    print(f"  ⚠ A process exited unexpectedly (code={proc.returncode}).")
+                    print(f"  ⚠ 某个进程意外退出（退出码={proc.returncode}）。")
                     signal_handler(None, None)
     except KeyboardInterrupt:
         signal_handler(None, None)
@@ -353,29 +353,29 @@ def wait_for_shutdown(processes: list[subprocess.Popen]):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="OpsV-Kits - Remote File Sync & Build Tool Launcher",
+        description="OpsV-Kits - 远程文件同步与构建工具启动器",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""\
-            Examples:
-              python main.py                    # Start backend + frontend
-              python main.py --backend-only     # Backend only on port 8000
+            示例:
+              python main.py                    # 启动后端 + 前端
+              python main.py --backend-only     # 仅启动后端（端口 8000）
               python main.py --backend-only --port 8080
-              python main.py --frontend-only    # Frontend dev server only
-              python main.py --prod             # Backend + built frontend
-              python main.py --no-browser       # Don't auto-open browser
-              python main.py --skip-deps        # Skip dependency check
+              python main.py --frontend-only    # 仅启动前端开发服务器
+              python main.py --prod             # 后端 + 构建后的前端
+              python main.py --no-browser       # 不自动打开浏览器
+              python main.py --skip-deps        # 跳过依赖检查
         """),
     )
-    parser.add_argument("--backend-only", action="store_true", help="Start backend only")
-    parser.add_argument("--frontend-only", action="store_true", help="Start frontend dev server only")
-    parser.add_argument("--prod", action="store_true", help="Production mode: start backend and serve built frontend")
-    parser.add_argument("--port", type=int, default=8000, help="Backend port (default: 8000)")
-    parser.add_argument("--frontend-port", type=int, default=3000, help="Frontend dev server port (default: 3000)")
-    parser.add_argument("--skip-deps", action="store_true", help="Skip dependency installation check")
-    parser.add_argument("--no-reload", action="store_true", help="Disable backend auto-reload")
-    parser.add_argument("--no-browser", action="store_true", help="Don't automatically open browser on startup")
-    parser.add_argument("--browser-delay", type=float, default=2.0, help="Seconds to wait before opening browser (default: 2.0)")
-    parser.add_argument("--skip-node-check", action="store_true", help="Skip Node.js version check")
+    parser.add_argument("--backend-only", action="store_true", help="仅启动后端")
+    parser.add_argument("--frontend-only", action="store_true", help="仅启动前端开发服务器")
+    parser.add_argument("--prod", action="store_true", help="生产模式：启动后端并服务构建后的前端")
+    parser.add_argument("--port", type=int, default=8000, help="后端端口（默认: 8000）")
+    parser.add_argument("--frontend-port", type=int, default=3000, help="前端开发服务器端口（默认: 3000）")
+    parser.add_argument("--skip-deps", action="store_true", help="跳过依赖安装检查")
+    parser.add_argument("--no-reload", action="store_true", help="禁用后端自动重载")
+    parser.add_argument("--no-browser", action="store_true", help="启动时不自动打开浏览器")
+    parser.add_argument("--browser-delay", type=float, default=2.0, help="打开浏览器前的等待秒数（默认: 2.0）")
+    parser.add_argument("--skip-node-check", action="store_true", help="跳过 Node.js 版本检查")
 
     args = parser.parse_args()
 
@@ -415,7 +415,7 @@ def main():
         dist_dir = FRONTEND_DIR / "dist"
         if not dist_dir.is_dir():
             build_frontend()
-        print(f"  ▶ Frontend static file served by backend on http://localhost:{actual_backend_port}")
+        print(f"  ▶ 前端静态文件由后端服务提供 http://localhost:{actual_backend_port}")
         print()
         frontend_url = backend_url
 
@@ -428,7 +428,7 @@ def main():
     if processes:
         wait_for_shutdown(processes)
     else:
-        print("  Nothing to start. Use --help for usage.")
+        print("  没有需要启动的服务。使用 --help 查看用法。")
 
 
 if __name__ == "__main__":

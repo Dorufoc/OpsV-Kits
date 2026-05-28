@@ -88,6 +88,34 @@ export const useSshAccountStore = defineStore('sshAccount', () => {
     groups.value = res
   }
 
+  async function createGroup(name: string, accounts: string[] = []) {
+    const res = await request.post<SshGroup>('/accounts/groups', { name, accounts })
+    groups.value.push(res)
+    return res
+  }
+
+  async function updateGroup(name: string, data: { new_name?: string; accounts?: string[] }) {
+    const res = await request.put<SshGroup>(`/accounts/groups/${name}`, data)
+    const index = groups.value.findIndex(g => g.name === name)
+    if (index !== -1) {
+      groups.value[index] = res
+    }
+    if (data.new_name && data.new_name !== name) {
+      accounts.value.forEach(a => {
+        if (a.group === name) a.group = data.new_name
+      })
+    }
+    return res
+  }
+
+  async function deleteGroup(name: string) {
+    await request.delete(`/accounts/groups/${name}`)
+    groups.value = groups.value.filter(g => g.name !== name)
+    accounts.value.forEach(a => {
+      if (a.group === name) a.group = undefined
+    })
+  }
+
   return {
     accounts,
     groups,
@@ -100,5 +128,8 @@ export const useSshAccountStore = defineStore('sshAccount', () => {
     testConnection,
     setDefault,
     fetchGroups,
+    createGroup,
+    updateGroup,
+    deleteGroup,
   }
 })

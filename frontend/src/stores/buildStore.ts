@@ -68,6 +68,7 @@ export const useBuildStore = defineStore('build', () => {
           pipeToTerminal(newChunk)
         }
       } catch {
+        buildStatus.value = 'failed'
         stopPolling()
       }
     }, 500)
@@ -164,6 +165,20 @@ export const useBuildStore = defineStore('build', () => {
     currentTaskId.value = ''
   }
 
+  function waitForCompletion(): Promise<'success' | 'failed' | 'stopped'> {
+    return new Promise((resolve) => {
+      const check = () => {
+        const bs = buildStatus.value
+        const rs = runStatus.value
+        if (bs === 'success') return resolve('success')
+        if (bs === 'failed') return resolve('failed')
+        if (rs === 'stopped') return resolve('stopped')
+        setTimeout(check, 200)
+      }
+      check()
+    })
+  }
+
   function resetStatus() {
     stopPolling()
     buildStatus.value = 'idle'
@@ -182,6 +197,7 @@ export const useBuildStore = defineStore('build', () => {
     startTest,
     startRun,
     stopTask,
+    waitForCompletion,
     resetStatus,
   }
 })
