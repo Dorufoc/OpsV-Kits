@@ -3,13 +3,13 @@
     <div class="panel-section">
       <div class="panel-header">
         <span class="panel-title">编译状态</span>
-        <el-tag :type="buildTagType" size="small">{{ buildText }}</el-tag>
+        <Md3Tag :type="buildTagType" size="sm">{{ buildText }}</Md3Tag>
       </div>
     </div>
     <div class="panel-section">
       <div class="panel-header">
         <span class="panel-title">运行状态</span>
-        <el-tag :type="runTagType" size="small">{{ runText }}</el-tag>
+        <Md3Tag :type="runTagType" size="sm">{{ runText }}</Md3Tag>
       </div>
     </div>
   </div>
@@ -17,6 +17,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Md3Tag } from '@/components/md3'
 import type { BuildStatus, RunStatus } from '@/stores/buildStore'
 
 const props = defineProps<{
@@ -24,8 +25,10 @@ const props = defineProps<{
   runStatus: RunStatus
 }>()
 
-const buildTagType = computed(() => {
-  const map: Record<string, string> = {
+type TagType = 'primary' | 'success' | 'warning' | 'danger' | 'info'
+
+const buildTagType = computed((): TagType => {
+  const map: Partial<Record<BuildStatus, TagType>> = {
     idle: 'info',
     building: 'warning',
     success: 'success',
@@ -44,8 +47,8 @@ const buildText = computed(() => {
   return map[props.buildStatus] || '未知'
 })
 
-const runTagType = computed(() => {
-  const map: Record<string, string> = {
+const runTagType = computed((): TagType => {
+  const map: Partial<Record<RunStatus, TagType>> = {
     idle: 'info',
     running: 'success',
     stopped: 'warning',

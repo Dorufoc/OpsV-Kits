@@ -1,58 +1,64 @@
 <template>
   <div class="home">
     <template v-if="!loading && !accountsExist">
-      <el-empty description="OpsV-Kits 欢迎您" :image-size="200">
+      <Md3Empty description="开始使用前，请先配置您的第一个 SSH 远程服务器">
         <template #image>
           <div class="welcome-icon">
-            <el-icon :size="80" color="var(--ov-primary, #1a73e8)"><Connection /></el-icon>
+            <Md3Icon name="connection" class="icon-welcome" />
           </div>
         </template>
-        <p class="welcome-text">开始使用前，请先配置您的第一个 SSH 远程服务器</p>
-        <Md3Button variant="primary" size="lg" :icon="Plus" @click="dialogVisible = true">
-          添加 SSH 服务器
-        </Md3Button>
-      </el-empty>
+        <template #title>OpsV-Kits 欢迎您</template>
+        <template #action>
+          <Md3Button variant="primary" size="lg" :icon="Plus" @click="dialogVisible = true">
+            添加 SSH 服务器
+          </Md3Button>
+        </template>
+      </Md3Empty>
     </template>
 
     <template v-else>
-      <el-page-header title="OpsV-Kits">
-        <template #content>
+      <Md3PageHeader title="OpsV-Kits">
+        <template #subtitle>
           <span>控制台</span>
         </template>
-        <template #extra>
+        <template #actions>
           <Md3Button size="sm" :icon="Refresh" @click="dashboardAlias = ''; loadDashboard()" :disabled="!dashboardAlias">
             刷新
           </Md3Button>
         </template>
-      </el-page-header>
-      <el-divider />
+      </Md3PageHeader>
+      <Md3Divider />
 
       <div class="stats-row">
-        <el-card shadow="hover" class="stat-card" @click="$router.push('/ssh-accounts')">
+        <Md3Card shadow hoverable class="stat-card" @click="$router.push('/ssh-accounts')">
           <div class="stat-value">{{ sshStore.accounts.length }}</div>
           <div class="stat-label">SSH 账户</div>
-        </el-card>
-        <el-card shadow="hover" class="stat-card" @click="$router.push('/docker')">
+        </Md3Card>
+        <Md3Card shadow hoverable class="stat-card" @click="$router.push('/docker')">
           <div class="stat-value">{{ dockerStore.containers.length }}</div>
           <div class="stat-label">Docker 容器</div>
-        </el-card>
-        <el-card shadow="hover" class="stat-card" @click="$router.push('/project')">
+        </Md3Card>
+        <Md3Card shadow hoverable class="stat-card" @click="$router.push('/project')">
           <div class="stat-value">1</div>
           <div class="stat-label">一键部署</div>
-        </el-card>
-        <el-card shadow="hover" class="stat-card" @click="$router.push('/webssh')">
+        </Md3Card>
+        <Md3Card shadow hoverable class="stat-card" @click="$router.push('/webssh')">
           <div class="stat-value">{{ websshStore.sessions.length }}</div>
           <div class="stat-label">终端会话</div>
-        </el-card>
+        </Md3Card>
       </div>
 
-      <el-card shadow="never" class="dashboard-card">
+      <Md3Card shadow class="dashboard-card">
         <template #header>
           <div class="dashboard-header">
-            <span><el-icon><Monitor /></el-icon> 设备总览</span>
-            <el-select v-model="dashboardAlias" placeholder="选择服务器" size="small" style="width: 200px" @change="loadDashboard">
-              <el-option v-for="acc in sshStore.accounts" :key="acc.alias" :label="`${acc.alias} (${acc.host})`" :value="acc.alias" />
-            </el-select>
+            <span><Md3Icon name="monitor" class="icon-inline" /> 设备总览</span>
+            <Md3Select
+              v-model="dashboardAlias"
+              :options="selectOptions"
+              placeholder="选择服务器"
+              style="width: 200px"
+              @update:modelValue="loadDashboard"
+            />
           </div>
         </template>
 
@@ -61,120 +67,104 @@
         </div>
 
         <div v-else-if="dashboardLoading" class="loading-hint">
-          <el-icon class="is-loading" :size="20"><Loading /></el-icon> 加载中...
-        </div>
+            <Md3Icon name="loading" class="icon-loading" /> 加载中...
+          </div>
 
         <template v-else>
-          <el-row :gutter="16">
-            <el-col :span="12">
-              <div class="info-section">
-                <div class="info-title"><el-icon><InfoFilled /></el-icon> 系统信息</div>
-                <div class="info-grid">
-                  <div class="info-item"><span class="info-label">主机名</span><span class="info-value">{{ sysInfo.hostname || '-' }}</span></div>
-                  <div class="info-item"><span class="info-label">操作系统</span><span class="info-value">{{ sysInfo.os || '-' }}</span></div>
-                  <div class="info-item"><span class="info-label">内核版本</span><span class="info-value">{{ sysInfo.kernel || '-' }}</span></div>
-                  <div class="info-item"><span class="info-label">运行时间</span><span class="info-value">{{ sysInfo.uptime || '-' }}</span></div>
-                </div>
+          <div class="dashboard-grid">
+            <div class="info-section">
+              <div class="info-title"><Md3Icon name="information" class="icon-inline" /> 系统信息</div>
+              <div class="info-grid">
+                <div class="info-item"><span class="info-label">主机名</span><span class="info-value">{{ sysInfo.hostname || '-' }}</span></div>
+                <div class="info-item"><span class="info-label">操作系统</span><span class="info-value">{{ sysInfo.os || '-' }}</span></div>
+                <div class="info-item"><span class="info-label">内核版本</span><span class="info-value">{{ sysInfo.kernel || '-' }}</span></div>
+                <div class="info-item"><span class="info-label">运行时间</span><span class="info-value">{{ sysInfo.uptime || '-' }}</span></div>
               </div>
-            </el-col>
-            <el-col :span="12">
-              <div class="info-section">
-                <div class="info-title"><el-icon><Cpu /></el-icon> CPU</div>
-                <div class="info-grid">
-                  <div class="info-item"><span class="info-label">核心数</span><span class="info-value">{{ perf.cpu_cores || '-' }}</span></div>
-                  <div class="info-item"><span class="info-label">型号</span><span class="info-value" style="font-size: 12px">{{ perf.cpu_model || '-' }}</span></div>
-                  <div class="info-item"><span class="info-label">负载</span><span class="info-value">{{ perf.loadavg || '-' }}</span></div>
-                </div>
+            </div>
+            <div class="info-section">
+              <div class="info-title"><Md3Icon name="cpu" class="icon-inline" /> CPU</div>
+              <div class="info-grid">
+                <div class="info-item"><span class="info-label">核心数</span><span class="info-value">{{ perf.cpu_cores || '-' }}</span></div>
+                <div class="info-item"><span class="info-label">型号</span><span class="info-value" style="font-size: 12px">{{ perf.cpu_model || '-' }}</span></div>
+                <div class="info-item"><span class="info-label">负载</span><span class="info-value">{{ perf.loadavg || '-' }}</span></div>
               </div>
-            </el-col>
-          </el-row>
-
-          <el-row :gutter="16" style="margin-top: 16px">
-            <el-col :span="12">
-              <div class="info-section">
-                <div class="info-title"><el-icon><Coin /></el-icon> 内存</div>
-                <div class="progress-block" v-if="perf.memory">
-                  <div class="progress-header">
-                    <span>使用率 {{ perf.memory.usage_percent }}%</span>
-                    <span>{{ formatBytes(perf.memory.used) }} / {{ formatBytes(perf.memory.total) }}</span>
-                  </div>
-                  <el-progress :percentage="perf.memory.usage_percent" :color="memColor(perf.memory.usage_percent)" />
+            </div>
+            <div class="info-section">
+              <div class="info-title"><component :is="Coin" class="icon-inline" /> 内存</div>
+              <div class="progress-block" v-if="perf.memory">
+                <div class="progress-header">
+                  <span>使用率 {{ perf.memory.usage_percent }}%</span>
+                  <span>{{ formatBytes(perf.memory.used) }} / {{ formatBytes(perf.memory.total) }}</span>
                 </div>
-                <div v-else class="no-data">暂无数据</div>
+                <Md3Progress :percentage="perf.memory.usage_percent" :color="memColor(perf.memory.usage_percent)" />
               </div>
-            </el-col>
-            <el-col :span="12">
-              <div class="info-section">
-                <div class="info-title"><el-icon><Folder /></el-icon> 磁盘 (根分区)</div>
-                <div class="progress-block" v-if="perf.disk">
-                  <div class="progress-header">
-                    <span>使用率 {{ perf.disk.usage_percent }}%</span>
-                    <span>{{ formatBytes(perf.disk.used) }} / {{ formatBytes(perf.disk.total) }}</span>
-                  </div>
-                  <el-progress :percentage="perf.disk.usage_percent" :color="diskColor(perf.disk.usage_percent)" />
+              <div v-else class="no-data">暂无数据</div>
+            </div>
+            <div class="info-section">
+              <div class="info-title"><component :is="Folder" class="icon-inline" /> 磁盘 (根分区)</div>
+              <div class="progress-block" v-if="perf.disk">
+                <div class="progress-header">
+                  <span>使用率 {{ perf.disk.usage_percent }}%</span>
+                  <span>{{ formatBytes(perf.disk.used) }} / {{ formatBytes(perf.disk.total) }}</span>
                 </div>
-                <div v-else class="no-data">暂无数据</div>
+                <Md3Progress :percentage="perf.disk.usage_percent" :color="diskColor(perf.disk.usage_percent)" />
               </div>
-            </el-col>
-          </el-row>
+              <div v-else class="no-data">暂无数据</div>
+            </div>
+          </div>
 
           <div class="info-section" style="margin-top: 16px" v-if="disks.length > 0">
-            <div class="info-title"><el-icon><FolderOpened /></el-icon> 挂载点详情</div>
-            <el-table :data="disks" size="small" stripe>
-              <el-table-column prop="mount" label="挂载点" min-width="140" />
-              <el-table-column prop="filesystem" label="设备" min-width="120" />
-              <el-table-column label="已用" width="100">
-                <template #default="{ row }">{{ formatBytes(row.used) }}</template>
-              </el-table-column>
-              <el-table-column label="总量" width="100">
-                <template #default="{ row }">{{ formatBytes(row.size) }}</template>
-              </el-table-column>
-              <el-table-column label="使用率" width="140">
-                <template #default="{ row }">
-                  <el-progress :percentage="row.usage_percent" :color="diskColor(row.usage_percent)" :stroke-width="14" />
-                </template>
-              </el-table-column>
-            </el-table>
+            <div class="info-title"><component :is="FolderOpened" class="icon-inline" /> 挂载点详情</div>
+            <Md3Table :columns="diskColumns" :data="disks" stripe>
+              <template #mount="{ row }">{{ row.mount }}</template>
+              <template #filesystem="{ row }">{{ row.filesystem }}</template>
+              <template #used="{ row }">{{ formatBytes(row.used as number) }}</template>
+              <template #size="{ row }">{{ formatBytes(row.size as number) }}</template>
+              <template #usage_percent="{ row }">
+                <Md3Progress :percentage="row.usage_percent as number" :color="diskColor(row.usage_percent as number)" />
+              </template>
+            </Md3Table>
           </div>
         </template>
-      </el-card>
+      </Md3Card>
     </template>
 
-    <el-dialog
-      v-model="dialogVisible"
+    <Md3Dialog
+      v-model:visible="dialogVisible"
       title="首次配置 — 添加 SSH 服务器"
       width="520px"
-      top="8vh"
-      :close-on-click-modal="false"
-      :close-on-press-escape="false"
-      :show-close="accountsExist"
+      :closable="accountsExist"
+      :close-on-mask-click="false"
+      :close-on-esc="false"
     >
-      <el-alert
+      <Md3Alert
         type="info"
-        :closable="false"
-        show-icon
         title="第一次使用 OpsV-Kits"
-        description="请添加一个远程 Linux 服务器的 SSH 连接信息，之后可以随时在 SSH 账户管理中修改。"
+        message="请添加一个远程 Linux 服务器的 SSH 连接信息，之后可以随时在 SSH 账户管理中修改。"
         style="margin-bottom: 20px"
       />
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" label-position="left" @submit.prevent="handleSave">
-        <el-form-item label="账户别名" prop="alias">
-          <el-input v-model="form.alias" placeholder="例如：生产环境、测试服务器" />
-        </el-form-item>
-        <el-form-item label="主机地址" prop="host">
-          <el-input v-model="form.host" placeholder="192.168.1.100">
-            <template #append>
-              <el-input v-model.number="form.port" style="width: 80px" placeholder="22" />
-            </template>
-          </el-input>
-        </el-form-item>
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="root" />
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input v-model="form.password" type="password" show-password placeholder="SSH 登录密码" />
-        </el-form-item>
-      </el-form>
+      <div ref="formRef"></div>
+      <div class="dialog-form">
+        <div class="form-item">
+          <label>账户别名</label>
+          <Md3Input v-model="form.alias" placeholder="例如：生产环境、测试服务器" :error="formErrors.alias" />
+        </div>
+        <div class="form-item">
+          <label>主机地址</label>
+          <div class="host-input">
+            <Md3Input v-model="form.host" placeholder="192.168.1.100" :error="formErrors.host" />
+            <Md3Input v-model.number="form.port" type="number" placeholder="22" class="port-input" :error="formErrors.port" />
+          </div>
+        </div>
+        <div class="form-item">
+          <label>用户名</label>
+          <Md3Input v-model="form.username" placeholder="root" :error="formErrors.username" />
+        </div>
+        <div class="form-item">
+          <label>密码</label>
+          <Md3Input v-model="form.password" type="password" placeholder="SSH 登录密码" :error="formErrors.password" />
+        </div>
+      </div>
       <template #footer>
         <Md3Button :icon="Connection" @click="handleTest" :loading="testing" :disabled="!formValid">
           测试连接
@@ -183,52 +173,74 @@
           保存并开始使用
         </Md3Button>
       </template>
-    </el-dialog>
+    </Md3Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { Plus, Check, Connection, Refresh, Monitor, InfoFilled, Cpu, Coin, Folder, FolderOpened, Loading } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import type { FormInstance, FormRules } from 'element-plus'
+import { ref, computed, onMounted, h, defineComponent } from 'vue'
+import { Md3Icon, Md3Empty, Md3PageHeader, Md3Divider, Md3Card, Md3Select, Md3Progress, Md3Table, Md3Dialog, Md3Alert, Md3Input, Md3Message } from '@/components/md3'
 import Md3Button from '@/components/Md3Button.vue'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { useDockerStore } from '@/stores/dockerStore'
 import { useWebsshStore } from '@/stores/websshStore'
 import { request } from '@/api'
 
+const createIcon = (name: string) => defineComponent(() => () => h(Md3Icon, { name }))
+
+const Plus = createIcon('plus')
+const Check = createIcon('check')
+const Connection = createIcon('connection')
+const Refresh = createIcon('refresh')
+const Coin = createIcon('coin')
+const Folder = createIcon('folder')
+const FolderOpened = createIcon('folder-open')
+
 const sshStore = useSshAccountStore()
 const dockerStore = useDockerStore()
 const websshStore = useWebsshStore()
 
-const formRef = ref<FormInstance>()
+const formRef = ref<HTMLElement>()
 const dialogVisible = ref(false)
 const accountsExist = ref(true)
 const loading = ref(true)
 const saving = ref(false)
 const testing = ref(false)
 const testResult = ref<{ success: boolean; message: string } | null>(null)
+const formErrors = ref({ alias: '', host: '', port: '', username: '', password: '' })
 
 const form = ref({
   alias: '默认服务器', host: '', port: 22, username: 'root', password: '',
 })
 
-const rules: FormRules = {
-  alias: [{ required: true, message: '请输入账户别名', trigger: 'blur' }],
-  host: [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
-  port: [{ required: true, type: 'integer', min: 1, max: 65535, message: '端口范围 1-65535', trigger: 'blur' }],
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-}
-
 const formValid = computed(() => form.value.alias && form.value.host && form.value.username && form.value.password)
+
+const selectOptions = computed(() =>
+  sshStore.accounts.map(acc => ({ label: `${acc.alias} (${acc.host})`, value: acc.alias }))
+)
 
 const dashboardAlias = ref('')
 const dashboardLoading = ref(false)
 const sysInfo = ref<any>({})
 const perf = ref<any>({})
 const disks = ref<any[]>([])
+
+function ensurePerfData() {
+  if (!perf.value.memory) {
+    perf.value.memory = { total: 0, used: 0, available: 0, usage_percent: 0 }
+  }
+  if (!perf.value.disk) {
+    perf.value.disk = { total: 0, used: 0, available: 0, usage_percent: 0 }
+  }
+}
+
+const diskColumns = [
+  { prop: 'mount', label: '挂载点' },
+  { prop: 'filesystem', label: '设备' },
+  { prop: 'used', label: '已用' },
+  { prop: 'size', label: '总量' },
+  { prop: 'usage_percent', label: '使用率' },
+]
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes <= 0) return '0 B'
@@ -251,6 +263,7 @@ async function loadDashboard() {
     ])
     sysInfo.value = sysRes
     perf.value = perfRes
+    ensurePerfData()
     disks.value = disksRes.disks || []
   } catch {}
   finally { dashboardLoading.value = false }
@@ -280,36 +293,47 @@ async function checkFirstLaunch() {
   loading.value = false
 }
 
+function validateForm() {
+  formErrors.value = { alias: '', host: '', port: '', username: '', password: '' }
+  let valid = true
+  if (!form.value.alias) { formErrors.value.alias = '请输入账户别名'; valid = false }
+  if (!form.value.host) { formErrors.value.host = '请输入主机地址'; valid = false }
+  if (!form.value.port || form.value.port < 1 || form.value.port > 65535) { formErrors.value.port = '端口范围 1-65535'; valid = false }
+  if (!form.value.username) { formErrors.value.username = '请输入用户名'; valid = false }
+  if (!form.value.password) { formErrors.value.password = '请输入密码'; valid = false }
+  return valid
+}
+
 async function handleTest() {
+  if (!validateForm()) return
   testing.value = true
   try {
     const payload = { alias: form.value.alias, host: form.value.host, port: form.value.port, username: form.value.username, auth_type: 'password', password: form.value.password }
     const tempRes = await request.post('/accounts', payload)
     await request.post(`/accounts/${tempRes.alias}/test`)
     await request.delete(`/accounts/${tempRes.alias}`)
-    ElMessage.success('连接测试成功')
+    Md3Message.success('连接测试成功')
     testResult.value = { success: true, message: '连接成功' }
   } catch (e: any) {
     const msg = e?.response?.data?.detail || e?.message || '连接失败'
-    ElMessage.error(msg)
+    Md3Message.error(msg)
     testResult.value = { success: false, message: msg }
   } finally { testing.value = false }
 }
 
 async function handleSave() {
-  const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid) return
+  if (!validateForm()) return
   saving.value = true
   try {
     await sshStore.createAccount({ alias: form.value.alias, host: form.value.host, port: form.value.port, username: form.value.username, auth_type: 'password', password: form.value.password, default: true })
-    ElMessage.success(`SSH 账户「${form.value.alias}」已添加`)
+    Md3Message.success(`SSH 账户「${form.value.alias}」已添加`)
     dialogVisible.value = false
     accountsExist.value = true
     await sshStore.fetchAccounts()
     dashboardAlias.value = form.value.alias
     loadDashboard()
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.detail || '保存失败')
+    Md3Message.error(e?.response?.data?.detail || '保存失败')
   } finally { saving.value = false }
 }
 
@@ -319,15 +343,19 @@ onMounted(() => { checkFirstLaunch() })
 <style scoped>
 .home { padding: var(--md3-space-lg) 0; }
 .welcome-icon { display: flex; justify-content: center; align-items: center; margin-bottom: var(--md3-space-sm); }
-.welcome-text { color: var(--md3-on-surface-variant); font-size: 15px; margin: 0 0 var(--md3-space-xl) 0; }
+.icon-welcome { width: 80px; height: 80px; color: var(--ov-primary, #1a73e8); }
+.icon-inline { width: 16px; height: 16px; flex-shrink: 0; }
+.icon-loading { width: 20px; height: 20px; vertical-align: middle; animation: icon-spin 1s linear infinite; }
+@keyframes icon-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--md3-space-lg); margin-top: var(--md3-space-sm); }
-.stat-card { cursor: pointer; transition: all var(--md3-motion-duration-medium) var(--md3-motion-easing-standard); text-align: center; background: var(--md3-glass-bg); backdrop-filter: var(--md3-glass-blur); -webkit-backdrop-filter: var(--md3-glass-blur); border: 1px solid var(--md3-glass-border); }
-.stat-card:hover { transform: translateY(-2px); box-shadow: var(--md3-elevation-level2); }
+.stat-card { cursor: pointer; text-align: center; }
+.stat-card :deep(.md3-card-body) { padding: var(--md3-space-xl) var(--md3-space-lg); }
 .stat-value { font-size: 32px; font-weight: 700; color: var(--md3-primary); line-height: 1.2; }
 .stat-label { font-size: 14px; color: var(--md3-on-surface-variant); margin-top: var(--md3-space-xs); }
 .dashboard-card { margin-top: var(--md3-space-xl); }
 .dashboard-header { display: flex; align-items: center; justify-content: space-between; gap: var(--md3-space-md); }
 .select-hint, .loading-hint { text-align: center; color: var(--md3-on-surface-variant); padding: var(--md3-space-3xl) 0; font-size: 14px; }
+.dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 .info-section { background: var(--md3-glass-bg); backdrop-filter: var(--md3-glass-blur); -webkit-backdrop-filter: var(--md3-glass-blur); border: 1px solid var(--md3-glass-border); border-radius: var(--md3-shape-sm); padding: var(--md3-space-md) var(--md3-space-lg); transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard); }
 .info-section:hover { box-shadow: var(--md3-elevation-level1); }
 .info-title { font-size: 13px; font-weight: 600; color: var(--md3-on-surface); margin-bottom: var(--md3-space-sm); display: flex; align-items: center; gap: var(--md3-space-xs); }
@@ -338,4 +366,11 @@ onMounted(() => { checkFirstLaunch() })
 .progress-block { padding: var(--md3-space-xs) 0; }
 .progress-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--md3-on-surface-variant); margin-bottom: var(--md3-space-xs); }
 .no-data { color: var(--md3-outline-variant); font-size: 13px; padding: var(--md3-space-sm) 0; }
+
+.dialog-form { display: flex; flex-direction: column; gap: var(--md3-space-lg); }
+.form-item { display: flex; flex-direction: column; gap: var(--md3-space-xs); }
+.form-item label { font-size: 14px; font-weight: 500; color: var(--md3-on-surface); }
+.host-input { display: flex; gap: 0; }
+.host-input .md3-input-wrapper { flex: 1; }
+.port-input { max-width: 80px; }
 </style>

@@ -7,7 +7,7 @@
 [![Vue](https://img.shields.io/badge/Vue-3.3+-orange.svg)](https://vuejs.org/)
 [![License](https://img.shields.io/badge/License--AGPL--3.0-yellow.svg)](LICENSE)
 
----
+***
 
 ## 项目简介
 
@@ -15,30 +15,30 @@ OpsV-Kits 是一个面向 Java 开发者的远程开发自动化平台，通过 
 
 核心特性：
 
-| 模块 | 功能 | 说明 |
-|------|------|------|
-| 文件同步 | 增量同步 / .gitignore 过滤 / 双向策略 | 自动识别变更文件，仅传输差异内容，支持断点续传 |
-| 环境安装 | JDK / Maven 自动检测与安装 | 远程自动检查 Java/Maven 版本，不满足则通过 DNF 自动安装 |
-| 编译运行 | Maven 全生命周期 / 实时日志回传 | 支持 `mvn clean compile/package`，WebSocket 实时推送彩色日志 |
-| 文件管理 | 浏览 / 编辑 / 上传下载 / 权限管理 | 完整的远程 Linux 文件管理器，支持拖拽上传和权限修改 |
-| SSH 账户 | 多账户 / 多认证 / AES 加密存储 | 密码/密钥/Agent/TOTP 多种认证，敏感信息本地 AES 加密 |
-| WebSSH | xterm.js 原生终端 / 多标签会话 | VS Code 同款终端体验，支持多会话、全屏、SFTP 文件传输 |
-| Docker 管理 | 容器/镜像/网络/卷/Compose | 完整的 Docker 生命周期管理，支持实时日志和资源监控 |
+| 模块        | 功能                          | 说明                                                |
+| --------- | --------------------------- | ------------------------------------------------- |
+| 文件同步      | 增量同步 / .gitignore 过滤 / 双向策略 | 自动识别变更文件，仅传输差异内容，支持断点续传                           |
+| 环境安装      | JDK / Maven 自动检测与安装         | 远程自动检查 Java/Maven 版本，不满足则通过 DNF 自动安装              |
+| 编译运行      | Maven 全生命周期 / 实时日志回传        | 支持 `mvn clean compile/package`，WebSocket 实时推送彩色日志 |
+| 文件管理      | 浏览 / 编辑 / 上传下载 / 权限管理       | 完整的远程 Linux 文件管理器，支持拖拽上传和权限修改                     |
+| SSH 账户    | 多账户 / 多认证 / AES 加密存储        | 密码/密钥/Agent/TOTP 多种认证，敏感信息本地 AES 加密               |
+| WebSSH    | xterm.js 原生终端 / 多标签会话       | VS Code 同款终端体验，支持多会话、全屏、SFTP 文件传输                 |
+| Docker 管理 | 容器/镜像/网络/卷/Compose          | 完整的 Docker 生命周期管理，支持实时日志和资源监控                     |
 
----
+***
 
 ## 快速开始
 
-### 环境要求
+### 环境要求（需要自行安装）
 
 - Python 3.10+
-- Node.js 18+ (前端开发服务器)
+- Node.js 18+
 
 ### 安装与运行
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/yourname/OpsV-Kits.git
+git clone https://github.com/Dorufoc/OpsV-Kits.git
 cd OpsV-Kits
 
 # 2. 创建并激活虚拟环境
@@ -79,7 +79,7 @@ npm install
 npm run dev
 ```
 
----
+***
 
 ## 项目结构
 
@@ -133,111 +133,111 @@ OpsV-Kits/
 └── README.md
 ```
 
----
+***
 
 ## 使用的开源项目
 
 ### 后端依赖（直接依赖）
 
-| # | 项目名称 | 用途 | 最低版本 | 许可证 | 原始项目链接 |
-|---|----------|------|----------|---------|-------------|
-| 1 | FastAPI | Web 框架 | 0.104.0 | MIT | https://github.com/tiangolo/fastapi |
-| 2 | Uvicorn | ASGI 服务器 | 0.24.0 | BSD-3-Clause | https://github.com/encode/uvicorn |
-| 3 | Paramiko | SSH 连接库 | 3.3.0 | LGPL-2.1 | https://github.com/paramiko/paramiko |
-| 4 | Pydantic | 数据验证与类型检查 | 2.5.0 | MIT | https://github.com/pydantic/pydantic |
-| 5 | Pydantic-Settings | 配置管理 | 2.1.0 | MIT | https://github.com/pydantic/pydantic-settings |
-| 6 | PyYAML | YAML 配置文件解析 | 6.0.1 | MIT | https://github.com/yaml/pyyaml |
-| 7 | WebSockets | WebSocket 通信 | 12.0 | BSD-3-Clause | https://github.com/aaugustin/websockets |
-| 8 | Watchdog | 文件系统监控（文件变更检测） | 3.0.0 | Apache-2.0 | https://github.com/gorakhargosh/watchdog |
-| 9 | Pathspec | .gitignore 规则解析 | 0.11.0 | MPL-2.0 | https://github.com/cpburnz/pathspec |
-| 10 | python-multipart | 表单数据解析（multipart/form-data） | 0.0.6 | MIT | https://github.com/Kludex/python-multipart |
+| #  | 项目名称              | 用途                          | 最低版本    | 许可证          | 原始项目链接                                          |
+| -- | ----------------- | --------------------------- | ------- | ------------ | ----------------------------------------------- |
+| 1  | FastAPI           | Web 框架                      | 0.104.0 | MIT          | <https://github.com/tiangolo/fastapi>           |
+| 2  | Uvicorn           | ASGI 服务器                    | 0.24.0  | BSD-3-Clause | <https://github.com/encode/uvicorn>             |
+| 3  | Paramiko          | SSH 连接库                     | 3.3.0   | LGPL-2.1     | <https://github.com/paramiko/paramiko>          |
+| 4  | Pydantic          | 数据验证与类型检查                   | 2.5.0   | MIT          | <https://github.com/pydantic/pydantic>          |
+| 5  | Pydantic-Settings | 配置管理                        | 2.1.0   | MIT          | <https://github.com/pydantic/pydantic-settings> |
+| 6  | PyYAML            | YAML 配置文件解析                 | 6.0.1   | MIT          | <https://github.com/yaml/pyyaml>                |
+| 7  | WebSockets        | WebSocket 通信                | 12.0    | BSD-3-Clause | <https://github.com/aaugustin/websockets>       |
+| 8  | Watchdog          | 文件系统监控（文件变更检测）              | 3.0.0   | Apache-2.0   | <https://github.com/gorakhargosh/watchdog>      |
+| 9  | Pathspec          | .gitignore 规则解析             | 0.11.0  | MPL-2.0      | <https://github.com/cpburnz/pathspec>           |
+| 10 | python-multipart  | 表单数据解析（multipart/form-data） | 0.0.6   | MIT          | <https://github.com/Kludex/python-multipart>    |
 
 ### 后端依赖（间接依赖 / 传递依赖）
 
-| # | 项目名称 | 用途 | 许可证 | 原始项目链接 | 由以下直接依赖引入 |
-|---|----------|------|---------|-------------|-------------------|
-| 11 | Tornado | 异步 Web 框架（webssh 使用） | Apache-2.0 | https://github.com/tornadoweb/tornado | webssh |
-| 12 | cryptography | 加密原语（paramiko 使用） | Apache-2.0 / BSD | https://github.com/pyca/cryptography | paramiko |
-| 13 | bcrypt | 密码哈希（paramiko 使用） | Apache-2.0 / BSD | https://github.com/pyca/bcrypt | paramiko |
-| 14 | h11 | HTTP/1.1 协议实现（uvicorn 使用） | MIT | https://github.com/encode/h11 | uvicorn |
-| 15 | httptools | HTTP 解析器加速（uvicorn 使用） | MIT | https://github.com/MagicStack/httptools | uvicorn |
-| 16 | click | 命令行接口（uvicorn 使用） | BSD-3-Clause | https://github.com/pallets/click | uvicorn |
-| 17 | watchfiles | 文件变更检测（uvicorn reload 使用） | MIT | https://github.com/samuelcolvin/watchfiles | uvicorn |
+| #  | 项目名称         | 用途                        | 许可证              | 原始项目链接                                       | 由以下直接依赖引入 |
+| -- | ------------ | ------------------------- | ---------------- | -------------------------------------------- | --------- |
+| 11 | Tornado      | 异步 Web 框架（webssh 使用）      | Apache-2.0       | <https://github.com/tornadoweb/tornado>      | webssh    |
+| 12 | cryptography | 加密原语（paramiko 使用）         | Apache-2.0 / BSD | <https://github.com/pyca/cryptography>       | paramiko  |
+| 13 | bcrypt       | 密码哈希（paramiko 使用）         | Apache-2.0 / BSD | <https://github.com/pyca/bcrypt>             | paramiko  |
+| 14 | h11          | HTTP/1.1 协议实现（uvicorn 使用） | MIT              | <https://github.com/encode/h11>              | uvicorn   |
+| 15 | httptools    | HTTP 解析器加速（uvicorn 使用）    | MIT              | <https://github.com/MagicStack/httptools>    | uvicorn   |
+| 16 | click        | 命令行接口（uvicorn 使用）         | BSD-3-Clause     | <https://github.com/pallets/click>           | uvicorn   |
+| 17 | watchfiles   | 文件变更检测（uvicorn reload 使用） | MIT              | <https://github.com/samuelcolvin/watchfiles> | uvicorn   |
 
 ### 第三方集成项目
 
-| # | 项目名称 | 用途 | 许可证 | 原始项目链接 | 集成方式 |
-|---|----------|------|---------|-------------|---------|
-| 18 | webssh | WebSSH 终端核心引擎 | MIT | https://github.com/huashengdun/webssh | 本地 fork（third_party/webssh），基于其架构实现 WebSSH 服务 |
+| #  | 项目名称   | 用途            | 许可证 | 原始项目链接                                  | 集成方式                                           |
+| -- | ------ | ------------- | --- | --------------------------------------- | ---------------------------------------------- |
+| 18 | webssh | WebSSH 终端核心引擎 | MIT | <https://github.com/huashengdun/webssh> | 本地 fork（third\_party/webssh），基于其架构实现 WebSSH 服务 |
 
 ### 前端依赖（直接依赖）
 
-| # | 项目名称 | 用途 | 版本范围 | 许可证 | 原始项目链接 |
-|---|----------|------|----------|---------|-------------|
-| 1 | Vue | 前端框架 | ^3.3.8 | MIT | https://github.com/vuejs/core |
-| 2 | Vue Router | 路由管理 | ^4.2.5 | MIT | https://github.com/vuejs/router |
-| 3 | Pinia | 状态管理 | ^2.1.7 | MIT | https://github.com/vuejs/pinia |
-| 4 | Element Plus | UI 组件库 | ^2.4.4 | MIT | https://github.com/element-plus/element-plus |
-| 5 | Axios | HTTP 客户端 | ^1.6.2 | MIT | https://github.com/axios/axios |
-| 6 | xterm | 终端模拟器（VS Code 同款） | ^5.3.0 | MIT | https://github.com/xtermjs/xterm.js |
-| 7 | xterm-addon-fit | 终端自适应插件 | ^0.8.0 | MIT | https://github.com/xtermjs/xterm.js |
-| 8 | xterm-addon-web-links | 终端 URL 链接识别插件 | ^0.9.0 | MIT | https://github.com/xtermjs/xterm.js |
+| # | 项目名称                  | 用途                | 版本范围   | 许可证 | 原始项目链接                                         |
+| - | --------------------- | ----------------- | ------ | --- | ---------------------------------------------- |
+| 1 | Vue                   | 前端框架              | ^3.3.8 | MIT | <https://github.com/vuejs/core>                |
+| 2 | Vue Router            | 路由管理              | ^4.2.5 | MIT | <https://github.com/vuejs/router>              |
+| 3 | Pinia                 | 状态管理              | ^2.1.7 | MIT | <https://github.com/vuejs/pinia>               |
+| 4 | Element Plus          | UI 组件库            | ^2.4.4 | MIT | <https://github.com/element-plus/element-plus> |
+| 5 | Axios                 | HTTP 客户端          | ^1.6.2 | MIT | <https://github.com/axios/axios>               |
+| 6 | xterm                 | 终端模拟器（VS Code 同款） | ^5.3.0 | MIT | <https://github.com/xtermjs/xterm.js>          |
+| 7 | xterm-addon-fit       | 终端自适应插件           | ^0.8.0 | MIT | <https://github.com/xtermjs/xterm.js>          |
+| 8 | xterm-addon-web-links | 终端 URL 链接识别插件     | ^0.9.0 | MIT | <https://github.com/xtermjs/xterm.js>          |
 
 ### 前端依赖（开发依赖）
 
-| # | 项目名称 | 用途 | 版本范围 | 许可证 | 原始项目链接 |
-|---|----------|------|----------|---------|-------------|
-| 9 | Vite | 前端构建工具 | ^5.0.0 | MIT | https://github.com/vitejs/vite |
-| 10 | @vitejs/plugin-vue | Vite Vue 插件 | ^4.5.0 | MIT | https://github.com/vitejs/vite-plugin-vue |
-| 11 | TypeScript | 类型系统 | ^5.3.0 | Apache-2.0 | https://github.com/microsoft/TypeScript |
-| 12 | vue-tsc | Vue TypeScript 类型检查 | ^2.0.0 | MIT | https://github.com/vuejs/language-tools |
-| 13 | @types/node | Node.js 类型定义 | ^20.10.0 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
+| #  | 项目名称               | 用途                  | 版本范围     | 许可证        | 原始项目链接                                               |
+| -- | ------------------ | ------------------- | -------- | ---------- | ---------------------------------------------------- |
+| 9  | Vite               | 前端构建工具              | ^5.0.0   | MIT        | <https://github.com/vitejs/vite>                     |
+| 10 | @vitejs/plugin-vue | Vite Vue 插件         | ^4.5.0   | MIT        | <https://github.com/vitejs/vite-plugin-vue>          |
+| 11 | TypeScript         | 类型系统                | ^5.3.0   | Apache-2.0 | <https://github.com/microsoft/TypeScript>            |
+| 12 | vue-tsc            | Vue TypeScript 类型检查 | ^2.0.0   | MIT        | <https://github.com/vuejs/language-tools>            |
+| 13 | @types/node        | Node.js 类型定义        | ^20.10.0 | MIT        | <https://github.com/DefinitelyTyped/DefinitelyTyped> |
 
 ### 许可证汇总
 
-| 许可证 | 适用项目 |
-|--------|---------|
-| MIT | FastAPI, Pydantic, Pydantic-Settings, PyYAML, python-multipart, Vue, Vue Router, Pinia, Element Plus, Axios, xterm.js, xterm-addon-fit, xterm-addon-web-links, Vite, @vitejs/plugin-vue, vue-tsc, @types/node, webssh, h11, httptools, watchfiles |
-| BSD-3-Clause | Uvicorn, WebSockets, click |
-| Apache-2.0 | Watchdog, Tornado, cryptography, bcrypt, TypeScript |
-| LGPL-2.1 | Paramiko |
-| MPL-2.0 | Pathspec |
+| 许可证          | 适用项目                                                                                                                                                                                                                                              |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MIT          | FastAPI, Pydantic, Pydantic-Settings, PyYAML, python-multipart, Vue, Vue Router, Pinia, Element Plus, Axios, xterm.js, xterm-addon-fit, xterm-addon-web-links, Vite, @vitejs/plugin-vue, vue-tsc, @types/node, webssh, h11, httptools, watchfiles |
+| BSD-3-Clause | Uvicorn, WebSockets, click                                                                                                                                                                                                                        |
+| Apache-2.0   | Watchdog, Tornado, cryptography, bcrypt, TypeScript                                                                                                                                                                                               |
+| LGPL-2.1     | Paramiko                                                                                                                                                                                                                                          |
+| MPL-2.0      | Pathspec                                                                                                                                                                                                                                          |
 
 > 本项目所有依赖均采用商业友好型开源协议，未使用 GPL / AGPL 等强 copyleft 协议组件，依赖本身可独立于本项目协议使用。
 >
-> webssh 项目为本项目本地 fork，基于其架构和代码实现 WebSSH 终端功能。原始项目作者为 Shengdun Hua（https://github.com/huashengdun/webssh），采用 MIT 许可证。
+> webssh 项目为本项目本地 fork，基于其架构和代码实现 WebSSH 终端功能。原始项目作者为 Shengdun Hua（<https://github.com/huashengdun/webssh），采用> MIT 许可证。
 
----
+***
 
 ## API 概览
 
 所有 API 均以 `/api` 为前缀，支持 RESTful 风格和 WebSocket 实时通信。
 
-| 模块 | 端点 | 方法 | 描述 |
-|------|------|------|------|
-| Health | `/api/health` | GET | 服务健康检查 |
-| SSH 账户 | `/api/accounts` | GET/POST | 账户 CRUD |
-| | `/api/accounts/{alias}/test` | POST | 测试连接 |
-| 文件同步 | `/api/sync/start` | POST | 启动同步任务 |
-| | `/api/sync/status/{sync_id}` | GET | 查询同步状态 |
-| | `/api/sync/stop/{sync_id}` | POST | 停止同步任务 |
-| | `/ws/sync/{sync_id}` | WebSocket | 实时进度推送 |
-| 编译运行 | `/api/build/start` | POST | 启动构建任务 |
-| | `/api/build/logs/{task_id}` | GET | 获取构建日志 |
-| | `/ws/build/{task_id}` | WebSocket | 实时日志流 |
-| 文件管理 | `/api/files/list` | GET | 列出远程目录 |
-| | `/api/files/content` | GET/POST | 读写文件内容 |
-| | `/api/files/upload` | POST | 上传文件 |
-| | `/api/files/download` | GET | 下载文件 |
-| Docker | `/api/docker/containers` | GET | 容器列表 |
-| | `/api/docker/images` | GET | 镜像列表 |
-| | `/api/docker/{id}/start|stop|restart` | POST | 容器操作 |
-| | `/api/docker/install` | POST | 一键安装 Docker |
-| WebSSH | `/api/webssh/connect` | POST | 创建 SSH 会话 |
-| | `/api/webssh/sessions` | GET | 会话列表 |
-| | `/ws/webssh/{session_id}` | WebSocket | 终端数据流 |
+| 模块     | 端点                           | 方法        | 描述          | <br /> | <br /> |
+| ------ | ---------------------------- | --------- | ----------- | :----- | :----- |
+| Health | `/api/health`                | GET       | 服务健康检查      | <br /> | <br /> |
+| SSH 账户 | `/api/accounts`              | GET/POST  | 账户 CRUD     | <br /> | <br /> |
+| <br /> | `/api/accounts/{alias}/test` | POST      | 测试连接        | <br /> | <br /> |
+| 文件同步   | `/api/sync/start`            | POST      | 启动同步任务      | <br /> | <br /> |
+| <br /> | `/api/sync/status/{sync_id}` | GET       | 查询同步状态      | <br /> | <br /> |
+| <br /> | `/api/sync/stop/{sync_id}`   | POST      | 停止同步任务      | <br /> | <br /> |
+| <br /> | `/ws/sync/{sync_id}`         | WebSocket | 实时进度推送      | <br /> | <br /> |
+| 编译运行   | `/api/build/start`           | POST      | 启动构建任务      | <br /> | <br /> |
+| <br /> | `/api/build/logs/{task_id}`  | GET       | 获取构建日志      | <br /> | <br /> |
+| <br /> | `/ws/build/{task_id}`        | WebSocket | 实时日志流       | <br /> | <br /> |
+| 文件管理   | `/api/files/list`            | GET       | 列出远程目录      | <br /> | <br /> |
+| <br /> | `/api/files/content`         | GET/POST  | 读写文件内容      | <br /> | <br /> |
+| <br /> | `/api/files/upload`          | POST      | 上传文件        | <br /> | <br /> |
+| <br /> | `/api/files/download`        | GET       | 下载文件        | <br /> | <br /> |
+| Docker | `/api/docker/containers`     | GET       | 容器列表        | <br /> | <br /> |
+| <br /> | `/api/docker/images`         | GET       | 镜像列表        | <br /> | <br /> |
+| <br /> | \`/api/docker/{id}/start     | stop      | restart\`   | POST   | 容器操作   |
+| <br /> | `/api/docker/install`        | POST      | 一键安装 Docker | <br /> | <br /> |
+| WebSSH | `/api/webssh/connect`        | POST      | 创建 SSH 会话   | <br /> | <br /> |
+| <br /> | `/api/webssh/sessions`       | GET       | 会话列表        | <br /> | <br /> |
+| <br /> | `/ws/webssh/{session_id}`    | WebSocket | 终端数据流       | <br /> | <br /> |
 
----
+***
 
 ## 使用场景
 
@@ -272,18 +272,18 @@ OpsV-Kits/
 4. 支持 SFTP 文件拖拽传输
 5. 全屏模式、终端主题定制、命令历史
 
----
+***
 
 ## 安全特性
 
 - 凭证加密：所有 SSH 密码、私钥密码、TOTP 密钥使用 AES-256 加密存储
 - 连接池隔离：每个 SSH 账户独立连接池，会话间完全隔离
-- 主机密钥验证：支持 known_hosts 策略，防止中间人攻击
+- 主机密钥验证：支持 known\_hosts 策略，防止中间人攻击
 - 操作审计：记录所有账户操作日志，支持按账户筛选查询
 - 会话超时：空闲会话自动断开，支持自定义超时时间
 - 权限校验：文件操作前校验当前用户权限，防止越权操作
 
----
+***
 
 ## 贡献指南
 
@@ -309,20 +309,20 @@ npm install
 npm run dev
 ```
 
----
+***
 
 ## 开源协议
 
 本项目采用 GNU Affero General Public License v3.0 (AGPL-3.0) - 详见 LICENSE 文件。
 
----
+***
 
 ## 联系方式
 
-- 项目仓库: https://github.com/yourname/OpsV-Kits
-- Issue 反馈: https://github.com/yourname/OpsV-Kits/issues
+- 项目仓库: <https://github.com/yourname/OpsV-Kits>
+- Issue 反馈: <https://github.com/yourname/OpsV-Kits/issues>
 - 文档: 详见项目内的 `OpsV-Kits-需求文档.md`
 
----
+***
 
 OpsV-Kits - 让远程开发像本地一样简单。

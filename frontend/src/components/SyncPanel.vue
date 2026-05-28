@@ -2,7 +2,7 @@
   <div class="sync-panel">
     <div class="panel-header">
       <span class="panel-title">同步状态</span>
-      <el-tag :type="statusTagType" size="small">{{ statusText }}</el-tag>
+      <Md3Tag :type="statusTagType" size="sm">{{ statusText }}</Md3Tag>
     </div>
     <div class="panel-body">
       <div class="status-item">
@@ -23,9 +23,9 @@
       </div>
     </div>
     <div class="panel-progress" v-if="progress.total > 0">
-      <el-progress
+      <Md3Progress
         :percentage="syncPercentage"
-        :status="syncStatus === 'completed' ? 'success' : syncStatus === 'error' ? 'exception' : undefined"
+        :color="progressColor"
       />
     </div>
   </div>
@@ -33,6 +33,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Md3Tag, Md3Progress } from '@/components/md3'
 import type { SyncStatus, SyncProgress } from '@/stores/syncStore'
 
 const props = defineProps<{
@@ -41,7 +42,7 @@ const props = defineProps<{
 }>()
 
 const statusTagType = computed(() => {
-  const map: Record<string, string> = {
+  const map: Record<string, 'primary' | 'success' | 'warning' | 'danger' | 'info'> = {
     idle: 'info',
     scanning: 'warning',
     syncing: 'primary',
@@ -65,6 +66,12 @@ const statusText = computed(() => {
 const syncPercentage = computed(() => {
   if (props.progress.total === 0 && props.syncStatus === 'idle') return 0
   return props.progress.total
+})
+
+const progressColor = computed(() => {
+  if (props.syncStatus === 'completed') return 'var(--md3-success)'
+  if (props.syncStatus === 'error') return 'var(--md3-error)'
+  return ''
 })
 </script>
 

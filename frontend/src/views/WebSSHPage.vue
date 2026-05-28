@@ -1,14 +1,16 @@
 <template>
   <div class="webssh-page">
-    <el-page-header title="OpsV-Kits">
+    <Md3PageHeader title="OpsV-Kits">
       <template #content>
         <span>WebSSH 终端</span>
       </template>
       <template #extra>
-        <Md3Button size="sm" variant="primary" :icon="Plus" @click="showConnectDialog = true">新建</Md3Button>
+        <Md3Button size="sm" variant="primary" @click="showConnectDialog = true">
+  <template #icon><Md3Icon name="plus" /></template>新建
+</Md3Button>
       </template>
-    </el-page-header>
-    <el-divider />
+    </Md3PageHeader>
+    <Md3Divider />
 
     <div class="webssh-layout">
       <div class="webssh-sidebar">
@@ -27,7 +29,7 @@
       <div class="webssh-main">
         <div class="session-header" v-if="activeSession">
           <div class="session-info">
-            <el-icon :size="16"><Connection /></el-icon>
+            <component :is="Connection" class="session-icon" />
             <span class="session-label">
               当前会话: {{ activeSession.alias || activeSession.host }}
               ({{ activeSession.username }}@{{ activeSession.host }})
@@ -45,7 +47,7 @@
             @data="onTerminalData"
             @resize="onTerminalResize"
           />
-          <el-empty
+          <Md3Empty
             v-else
             description="请新建或选择一个 SSH 会话"
             :image-size="120"
@@ -69,54 +71,80 @@
       @connect="handleConnect"
     />
 
-    <el-dialog v-model="showSettings" title="终端设置" width="480px">
-      <el-form label-width="80px">
-        <el-form-item label="主题">
-          <el-select v-model="terminalSettings.theme" style="width: 100%">
-            <el-option label="Dark" value="dark" />
-            <el-option label="Light" value="light" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="字体">
-          <el-select v-model="terminalSettings.font_family" style="width: 100%">
-            <el-option label="Fira Code" value="'Fira Code', monospace" />
-            <el-option label="Cascadia Code" value="'Cascadia Code', monospace" />
-            <el-option label="Consolas" value="Consolas, monospace" />
-            <el-option label="Courier New" value="'Courier New', monospace" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="字号">
-          <el-input-number v-model="terminalSettings.font_size" :min="10" :max="24" />
-        </el-form-item>
-        <el-form-item label="编码">
-          <el-select v-model="terminalSettings.encoding" style="width: 100%">
-            <el-option label="UTF-8" value="utf-8" />
-            <el-option label="GBK" value="gbk" />
-            <el-option label="ISO-8859-1" value="iso-8859-1" />
-          </el-select>
-        </el-form-item>
-      </el-form>
+    <Md3Dialog v-model:visible="showSettings" title="终端设置">
+      <div class="settings-form">
+        <div class="settings-row">
+          <span class="settings-label">主题</span>
+          <Md3Select
+            v-model="terminalSettings.theme"
+            :options="themeOptions"
+            class="settings-select"
+          />
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">字体</span>
+          <Md3Select
+            v-model="terminalSettings.font_family"
+            :options="fontOptions"
+            class="settings-select"
+          />
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">字号</span>
+          <Md3Input
+            type="number"
+            v-model.number="terminalSettings.font_size"
+            :min="10"
+            :max="24"
+            class="settings-input-narrow"
+          />
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">编码</span>
+          <Md3Select
+            v-model="terminalSettings.encoding"
+            :options="encodingOptions"
+            class="settings-select"
+          />
+        </div>
+      </div>
       <template #footer>
         <Md3Button @click="showSettings = false">关闭</Md3Button>
       </template>
-    </el-dialog>
+    </Md3Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import {
-  Plus, Connection, FullScreen,
-  DocumentCopy, Search, Upload, Download,
-  Setting, Tickets, QuestionFilled,
-} from '@element-plus/icons-vue'
+import { ref, computed, onMounted, onBeforeUnmount, h, defineComponent } from 'vue'
+import { Md3Icon } from '@/components/md3'
 import Md3Button from '@/components/Md3Button.vue'
+import {
+  Md3PageHeader,
+  Md3Divider,
+  Md3Dialog,
+  Md3Select,
+  Md3Input,
+  Md3Empty,
+} from '@/components/md3'
 import { useWebsshStore, type HistoryRecord } from '@/stores/websshStore'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { request } from '@/api'
 import Terminal from '@/components/Terminal.vue'
 import SessionManager from '@/components/SessionManager.vue'
 import WebSSHConnectDialog from '@/views/WebSSHConnectDialog.vue'
+
+const createIcon = (name: string) => defineComponent(() => () => h(Md3Icon, { name }))
+
+const Connection = createIcon('connection')
+const FullScreen = createIcon('fullscreen')
+const DocumentCopy = createIcon('content-copy')
+const Search = createIcon('magnify')
+const Upload = createIcon('upload')
+const Download = createIcon('download')
+const Setting = createIcon('cog')
+const Tickets = createIcon('tag')
+const QuestionFilled = createIcon('help-circle')
 
 const websshStore = useWebsshStore()
 const sshStore = useSshAccountStore()
@@ -135,6 +163,24 @@ const terminalSettings = ref({
   encoding: 'utf-8',
 })
 
+const themeOptions = [
+  { label: 'Dark', value: 'dark' },
+  { label: 'Light', value: 'light' },
+]
+
+const fontOptions = [
+  { label: 'Fira Code', value: "'Fira Code', monospace" },
+  { label: 'Cascadia Code', value: "'Cascadia Code', monospace" },
+  { label: 'Consolas', value: 'Consolas, monospace' },
+  { label: 'Courier New', value: "'Courier New', monospace" },
+]
+
+const encodingOptions = [
+  { label: 'UTF-8', value: 'utf-8' },
+  { label: 'GBK', value: 'gbk' },
+  { label: 'ISO-8859-1', value: 'iso-8859-1' },
+]
+
 const activeSession = computed(() => {
   return websshStore.sessions.find(s => s.id === websshStore.activeSessionId)
 })
@@ -150,14 +196,33 @@ async function handleConnect(config: any) {
 
 function switchSession(sessionId: string) {
   websshStore.setActiveSession(sessionId)
+  const session = websshStore.sessions.find(s => s.id === sessionId)
+  if (session && session.status === 'online') {
+    initWebSocket(sessionId)
+  }
 }
 
 async function handleDisconnect(sessionId: string) {
   await websshStore.disconnect(sessionId)
+  if (webSocketRef.value) {
+    webSocketRef.value.close()
+    webSocketRef.value = null
+  }
 }
 
-function handleReconnect(_record: HistoryRecord) {
-  showConnectDialog.value = true
+async function handleReconnect(record: HistoryRecord) {
+  try {
+    const config: any = {
+      account_alias: record.account_alias || undefined,
+      host: record.host,
+      port: record.port,
+      username: record.username,
+      use_saved_account: !!record.account_alias,
+    }
+    const session = await websshStore.connect(config)
+    initWebSocket(session.id)
+  } catch {
+  }
 }
 
 async function handleDeleteHistory(sessionId: string) {
@@ -321,5 +386,37 @@ onBeforeUnmount(() => {
   border: 1px solid var(--md3-glass-border);
   border-top: none;
   border-radius: 0 0 var(--md3-shape-sm) var(--md3-shape-sm);
+}
+
+.session-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-lg);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-md);
+}
+
+.settings-label {
+  width: 80px;
+  font-size: 14px;
+  color: var(--md3-on-surface);
+  flex-shrink: 0;
+}
+
+.settings-select {
+  flex: 1;
+}
+
+.settings-input-narrow {
+  width: 120px;
 }
 </style>

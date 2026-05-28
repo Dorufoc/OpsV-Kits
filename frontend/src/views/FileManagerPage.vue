@@ -1,28 +1,24 @@
 <template>
   <div class="file-manager-page">
-    <el-page-header title="OpsV-Kits">
-      <template #content>
-        <span>远程文件管理</span>
-      </template>
-    </el-page-header>
-    <el-divider />
+    <Md3PageHeader title="远程文件管理" />
+    <Md3Divider />
 
     <div class="file-manager-layout">
       <div class="file-sidebar">
         <div class="sidebar-section">
           <div class="sidebar-label">SSH 账户</div>
-          <el-menu :default-active="selectedAccount" class="account-menu">
-            <el-menu-item
+          <nav class="account-menu">
+            <div
               v-for="acc in sshAccounts"
               :key="acc.alias"
-              :index="acc.alias"
+              :class="['account-item', { active: selectedAccount === acc.alias }]"
               @click="switchAccount(acc)"
             >
-              <el-icon><User /></el-icon>
+              <Md3Icon name="account" class="icon-sidebar" />
               <span>{{ acc.alias }}</span>
-            </el-menu-item>
-          </el-menu>
-          <Md3Button size="sm" class="add-account-btn" :icon="Plus" @click="goToSshAccounts">添加</Md3Button>
+            </div>
+          </nav>
+          <Md3Button size="sm" class="add-account-btn" @click="goToSshAccounts"><Md3Icon name="plus" size="sm" />添加</Md3Button>
         </div>
         <div class="sidebar-section">
           <div class="sidebar-label">快速导航</div>
@@ -33,7 +29,7 @@
               class="bookmark-item"
               @click="navigateTo(bm.path)"
             >
-              <el-icon><Collection /></el-icon>
+                <Md3Icon name="collection" class="icon-sidebar" />
               <span>{{ bm.label }}</span>
             </div>
           </div>
@@ -60,7 +56,7 @@
     </div>
 
     <div class="quick-command-area">
-      <el-divider />
+      <Md3Divider />
       <div class="command-header">
         <span class="command-title">快速命令</span>
         <div class="command-actions">
@@ -68,17 +64,12 @@
         </div>
       </div>
       <div class="command-input-row">
-        <el-input
+        <Md3Input
           v-model="quickCommand"
           placeholder="输入 Linux 命令（如：df -h）"
-          size="small"
-          clearable
           @keyup.enter="executeCommand"
-        >
-          <template #append>
-            <Md3Button @click="executeCommand">执行</Md3Button>
-          </template>
-        </el-input>
+        />
+        <Md3Button @click="executeCommand">执行</Md3Button>
       </div>
       <div class="command-output" ref="commandOutputRef">
         <div v-for="(entry, index) in commandHistory" :key="index" class="command-entry">
@@ -88,28 +79,34 @@
       </div>
     </div>
 
-    <el-dialog v-model="showMkdirDialog" title="新建文件夹" width="400px">
-      <el-input v-model="newDirName" placeholder="文件夹名称" />
+    <Md3Dialog v-model:visible="showMkdirDialog" title="新建文件夹" width="400px">
+      <Md3Input v-model="newDirName" placeholder="文件夹名称" />
       <template #footer>
         <Md3Button @click="showMkdirDialog = false">取消</Md3Button>
         <Md3Button variant="primary" @click="createDirectory">确定</Md3Button>
       </template>
-    </el-dialog>
+    </Md3Dialog>
 
-    <el-dialog v-model="showCreateFileDialog" title="新建文件" width="400px">
-      <el-input v-model="newFileName" placeholder="文件名（如：test.txt）" />
+    <Md3Dialog v-model:visible="showCreateFileDialog" title="新建文件" width="400px">
+      <Md3Input v-model="newFileName" placeholder="文件名（如：test.txt）" />
       <template #footer>
         <Md3Button @click="showCreateFileDialog = false">取消</Md3Button>
         <Md3Button variant="primary" @click="createFile">确定</Md3Button>
       </template>
-    </el-dialog>
+    </Md3Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { 
+  Md3PageHeader, 
+  Md3Divider, 
+  Md3Dialog, 
+  Md3Input,
+} from '@/components/md3'
 import Md3Button from '@/components/Md3Button.vue'
-import { User, Plus, Collection } from '@element-plus/icons-vue'
+import { Md3Icon } from '@/components/md3'
 import { useRouter } from 'vue-router'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { request } from '@/api'
@@ -356,8 +353,39 @@ onMounted(() => {
 }
 
 .account-menu {
-  border-right: none !important;
+  border: none;
   background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.account-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: var(--md3-shape-sm);
+  font-size: 14px;
+  color: var(--md3-on-surface);
+  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+}
+
+.account-item .icon-sidebar {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.account-item:hover {
+  background: var(--md3-on-surface-variant);
+  opacity: 0.1;
+}
+
+.account-item.active {
+  background: var(--md3-primary-container);
+  color: var(--md3-primary);
 }
 
 .add-account-btn {
@@ -381,6 +409,12 @@ onMounted(() => {
   color: var(--md3-on-surface-variant);
   transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard),
               color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+}
+
+.bookmark-item .icon-sidebar {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .bookmark-item:hover {

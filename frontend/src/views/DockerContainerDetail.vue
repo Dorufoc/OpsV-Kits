@@ -1,88 +1,110 @@
 <template>
   <div class="docker-detail-page">
-    <el-page-header title="Docker 管理" @back="goBack">
+    <Md3PageHeader title="Docker 管理" @back="goBack">
       <template #content>
         <span>容器: {{ containerName }}</span>
       </template>
       <template #extra>
-        <Md3Button :icon="Close" size="sm" variant="default" @click="goBack">关闭</Md3Button>
+        <Md3Button size="sm" variant="default" @click="goBack"><Md3Icon name="close" size="sm" />关闭</Md3Button>
       </template>
-    </el-page-header>
-    <el-divider />
+    </Md3PageHeader>
+    <Md3Divider />
 
-    <el-card shadow="never" class="info-card">
-      <el-descriptions :column="3" border size="small" v-if="containerDetail">
-        <el-descriptions-item label="ID" :span="1">
-          <code class="mono-text">{{ containerDetail.id }}</code>
-        </el-descriptions-item>
-        <el-descriptions-item label="名称" :span="1">{{ containerDetail.name }}</el-descriptions-item>
-        <el-descriptions-item label="状态" :span="1">
-          <el-tag :type="containerDetail.state === 'running' ? 'success' : 'info'" size="small">
-            {{ containerDetail.state === 'running' ? '🟢 运行中' : '⚪ 已停止' }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="镜像" :span="1">{{ containerDetail.image }}</el-descriptions-item>
-        <el-descriptions-item label="端口" :span="1">{{ containerDetail.ports || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="创建时间" :span="1">{{ containerDetail.created }}</el-descriptions-item>
-        <el-descriptions-item label="命令" :span="3">
-          <code class="mono-text">{{ containerDetail.command || '-' }}</code>
-        </el-descriptions-item>
-      </el-descriptions>
-      <div v-else>
-        <el-skeleton :rows="4" animated />
+    <Md3Card :shadow="false" class="info-card">
+      <div class="description-grid" v-if="containerDetail">
+        <div class="desc-item">
+          <span class="desc-label">ID</span>
+          <span class="desc-value mono-text">{{ containerDetail.id }}</span>
+        </div>
+        <div class="desc-item">
+          <span class="desc-label">名称</span>
+          <span class="desc-value">{{ containerDetail.name }}</span>
+        </div>
+        <div class="desc-item">
+          <span class="desc-label">状态</span>
+          <span class="desc-value">
+            <Md3Tag :type="containerDetail.state === 'running' ? 'success' : 'info'" size="sm">
+              {{ containerDetail.state === 'running' ? '🟢 运行中' : '⚪ 已停止' }}
+            </Md3Tag>
+          </span>
+        </div>
+        <div class="desc-item">
+          <span class="desc-label">镜像</span>
+          <span class="desc-value">{{ containerDetail.image }}</span>
+        </div>
+        <div class="desc-item">
+          <span class="desc-label">端口</span>
+          <span class="desc-value">{{ containerDetail.ports || '-' }}</span>
+        </div>
+        <div class="desc-item">
+          <span class="desc-label">创建时间</span>
+          <span class="desc-value">{{ containerDetail.created }}</span>
+        </div>
+        <div class="desc-item desc-full">
+          <span class="desc-label">命令</span>
+          <span class="desc-value mono-text">{{ containerDetail.command || '-' }}</span>
+        </div>
       </div>
-    </el-card>
+      <div v-else>
+        <div class="skeleton-loader">
+          <div class="skeleton-line" v-for="i in 4" :key="i"></div>
+        </div>
+      </div>
+    </Md3Card>
 
-    <el-tabs v-model="activeTab" class="detail-tabs">
-      <el-tab-pane label="概览" name="overview">
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-card shadow="never" class="stat-card">
-              <template #header><span>资源监控</span></template>
-              <div class="stat-list">
-                <div class="stat-item">
-                  <span class="stat-label">CPU</span>
-                  <el-progress :percentage="45" :stroke-width="16" />
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">内存</span>
-                  <el-progress :percentage="32" :stroke-width="16" status="warning" />
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">磁盘</span>
-                  <el-progress :percentage="56" :stroke-width="16" status="exception" />
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">网络</span>
-                  <span class="stat-value">12 MB/s</span>
-                </div>
+    <Md3Tabs v-model="activeTab" :tabs="tabItems" class="detail-tabs" />
+    <div class="tab-content">
+      <div v-show="activeTab === 'overview'">
+        <div class="overview-grid">
+          <Md3Card :shadow="false" class="stat-card">
+            <template #header><span>资源监控</span></template>
+            <div class="stat-list">
+              <div class="stat-item">
+                <span class="stat-label">CPU</span>
+                <Md3Progress :percentage="45" type="line" :stroke-width="16" />
               </div>
-            </el-card>
-          </el-col>
-          <el-col :span="12">
-            <el-card shadow="never" class="info-card">
-              <template #header><span>健康检查</span></template>
-              <div class="health-info">
-                <div class="health-status">
-                  <el-icon :size="32" color="#67c23a"><CircleCheck /></el-icon>
-                  <span class="health-text">健康状态正常</span>
-                </div>
-                <div class="health-detail">
-                  <div>检查间隔: 30s</div>
-                  <div>超时时间: 10s</div>
-                  <div>重试次数: 3</div>
-                </div>
+              <div class="stat-item">
+                <span class="stat-label">内存</span>
+                <Md3Progress :percentage="32" type="line" :stroke-width="16" color="var(--md3-warning)" />
               </div>
-            </el-card>
-          </el-col>
-        </el-row>
-      </el-tab-pane>
+              <div class="stat-item">
+                <span class="stat-label">磁盘</span>
+                <Md3Progress :percentage="56" type="line" :stroke-width="16" color="var(--md3-error)" />
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">网络</span>
+                <span class="stat-value">12 MB/s</span>
+              </div>
+            </div>
+          </Md3Card>
+          <Md3Card :shadow="false" class="info-card">
+            <template #header><span>健康检查</span></template>
+            <div class="health-info">
+              <div class="health-status">
+                <Md3Icon name="check-circle" :size="32" class="health-icon" />
+                <span class="health-text">健康状态正常</span>
+              </div>
+              <div class="health-detail">
+                <div>检查间隔: 30s</div>
+                <div>超时时间: 10s</div>
+                <div>重试次数: 3</div>
+              </div>
+            </div>
+          </Md3Card>
+        </div>
+      </div>
 
-      <el-tab-pane label="日志" name="logs">
+      <div v-show="activeTab === 'logs'">
         <div class="log-controls">
           <Md3Button size="sm" :variant="isLogStreaming ? 'danger' : 'primary'" @click="toggleLogStream">{{ isLogStreaming ? '暂停' : '实时日志' }}</Md3Button>
-          <Md3Button size="sm" :icon="Download" @click="downloadLogs">下载</Md3Button>
-          <el-input-number v-model="logTailLines" :min="50" :max="1000" :step="50" size="small" />
+          <Md3Button size="sm" @click="downloadLogs"><Md3Icon name="download" size="sm" />下载</Md3Button>
+          <Md3Input
+            type="number"
+            v-model.number="logTailLines"
+            :min="50"
+            :max="1000"
+            class="log-tail-input"
+          />
         </div>
         <div class="log-viewer" ref="logViewerRef">
           <div
@@ -94,45 +116,47 @@
             {{ line }}
           </div>
         </div>
-      </el-tab-pane>
+      </div>
 
-      <el-tab-pane label="终端" name="terminal">
+      <div v-show="activeTab === 'terminal'">
         <Terminal ref="containerTerminalRef" session-name="容器终端" :show-toolbar="true" />
-      </el-tab-pane>
+      </div>
 
-      <el-tab-pane label="配置" name="config">
-        <el-descriptions :column="1" border size="small">
-          <el-descriptions-item label="环境变量">
+      <div v-show="activeTab === 'config'">
+        <div class="config-section">
+          <div class="config-item">
+            <span class="config-label">环境变量</span>
             <pre class="config-pre">JAVA_HOME=/usr/lib/jvm/java-17
 SPRING_PROFILES_ACTIVE=dev</pre>
-          </el-descriptions-item>
-          <el-descriptions-item label="挂载卷">
+          </div>
+          <div class="config-item">
+            <span class="config-label">挂载卷</span>
             <pre class="config-pre">/host/data:/app/data
 /host/config:/app/config</pre>
-          </el-descriptions-item>
-          <el-descriptions-item label="网络">
+          </div>
+          <div class="config-item">
+            <span class="config-label">网络</span>
             <pre class="config-pre">bridge (172.17.0.2)
 ports: 0.0.0.0:8080->8080/tcp</pre>
-          </el-descriptions-item>
-          <el-descriptions-item label="标签">
-            <el-tag size="small">version=1.0</el-tag>
-            <el-tag size="small" style="margin-left: 4px">env=production</el-tag>
-          </el-descriptions-item>
-        </el-descriptions>
-      </el-tab-pane>
-    </el-tabs>
+          </div>
+          <div class="config-item">
+            <span class="config-label">标签</span>
+            <div class="config-tags">
+              <Md3Tag size="sm">version=1.0</Md3Tag>
+              <Md3Tag size="sm">env=production</Md3Tag>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="detail-actions">
-      <Md3Button :icon="Refresh" @click="restartContainer">重启</Md3Button>
-      <Md3Button :icon="VideoPause" @click="stopContainer">停止</Md3Button>
-      <Md3Button variant="danger" :icon="Remove" @click="killContainer">强制停止</Md3Button>
-      <el-popconfirm title="确认删除容器?" @confirm="deleteContainer">
-        <template #reference>
-          <Md3Button variant="danger" :icon="Delete">删除</Md3Button>
-        </template>
-      </el-popconfirm>
-      <Md3Button :icon="DataAnalysis" @click="openStats">资源监控</Md3Button>
-      <Md3Button :icon="Monitor" @click="activeTab = 'terminal'">进入终端</Md3Button>
+      <Md3Button @click="restartContainer"><Md3Icon name="refresh" size="sm" />重启</Md3Button>
+      <Md3Button @click="stopContainer"><Md3Icon name="pause" size="sm" />停止</Md3Button>
+      <Md3Button variant="danger" @click="killContainer"><Md3Icon name="remove" size="sm" />强制停止</Md3Button>
+      <Md3Button variant="danger" @click="deleteContainer"><Md3Icon name="delete" size="sm" />删除</Md3Button>
+      <Md3Button @click="openStats"><Md3Icon name="chart-bar" size="sm" />资源监控</Md3Button>
+      <Md3Button @click="activeTab = 'terminal'"><Md3Icon name="monitor" size="sm" />进入终端</Md3Button>
     </div>
   </div>
 </template>
@@ -140,17 +164,30 @@ ports: 0.0.0.0:8080->8080/tcp</pre>
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  Close, Download, Refresh, VideoPause, Remove,
-  Delete, DataAnalysis, Monitor, CircleCheck,
-} from '@element-plus/icons-vue'
 import { useDockerStore, type DockerContainer } from '@/stores/dockerStore'
 import Md3Button from '@/components/Md3Button.vue'
 import Terminal from '@/components/Terminal.vue'
+import {
+  Md3PageHeader,
+  Md3Divider,
+  Md3Card,
+  Md3Tag,
+  Md3Progress,
+  Md3Tabs,
+  Md3Input,
+  Md3Icon,
+} from '@/components/md3'
 
 const route = useRoute()
 const router = useRouter()
 const dockerStore = useDockerStore()
+
+const tabItems = [
+  { label: '概览', value: 'overview' },
+  { label: '日志', value: 'logs' },
+  { label: '终端', value: 'terminal' },
+  { label: '配置', value: 'config' },
+]
 
 const containerId = ref(route.params.id as string)
 const containerName = ref('')
@@ -261,8 +298,65 @@ onMounted(() => {
   border-radius: var(--md3-shape-xs);
 }
 
+.description-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--md3-space-md) var(--md3-space-lg);
+}
+
+.desc-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-xs);
+  padding: var(--md3-space-sm) 0;
+}
+
+.desc-full {
+  grid-column: 1 / -1;
+}
+
+.desc-label {
+  font-size: 12px;
+  color: var(--md3-on-surface-variant);
+  font-weight: 500;
+}
+
+.desc-value {
+  font-size: 14px;
+  color: var(--md3-on-surface);
+  word-break: break-all;
+}
+
+.skeleton-loader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-md);
+}
+
+.skeleton-line {
+  height: 16px;
+  background: var(--md3-surface-container-low);
+  border-radius: var(--md3-shape-xs);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 .detail-tabs {
   margin-top: var(--md3-space-sm);
+}
+
+.tab-content {
+  min-height: 200px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--md3-space-lg);
 }
 
 .stat-card {
@@ -308,6 +402,12 @@ onMounted(() => {
   gap: var(--md3-space-sm);
 }
 
+.health-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--md3-success);
+}
+
 .health-text {
   font-weight: 600;
   color: var(--md3-success);
@@ -326,6 +426,10 @@ onMounted(() => {
   align-items: center;
   gap: var(--md3-space-sm);
   margin-bottom: var(--md3-space-md);
+}
+
+.log-tail-input {
+  width: 100px;
 }
 
 .log-viewer {
@@ -356,12 +460,38 @@ onMounted(() => {
   color: #f44747;
 }
 
+.config-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-md);
+}
+
+.config-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-xs);
+}
+
+.config-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--md3-on-surface);
+}
+
 .config-pre {
   margin: 0;
   font-family: var(--md3-font-mono);
   font-size: 12px;
   line-height: 1.5;
   white-space: pre-wrap;
+  background: var(--md3-surface-container-low);
+  padding: var(--md3-space-sm);
+  border-radius: var(--md3-shape-xs);
+}
+
+.config-tags {
+  display: flex;
+  gap: var(--md3-space-sm);
 }
 
 .detail-actions {

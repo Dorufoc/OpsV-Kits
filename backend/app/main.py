@@ -11,6 +11,7 @@ from app.api.routes import build
 from app.api.routes import docker
 from app.api.routes import file_manager
 from app.api.routes import health
+from app.api.routes import monitor
 from app.api.routes import project
 from app.api.routes import remote_drive
 from app.api.routes import settings as settings_route
@@ -60,6 +61,7 @@ app.include_router(system.router, prefix="/api", tags=["system"])
 app.include_router(project.router, prefix="/api", tags=["projects"])
 app.include_router(webssh.router, prefix="/api", tags=["webssh"])
 app.include_router(remote_drive.router, prefix="/api", tags=["remote-drive"])
+app.include_router(monitor.router, prefix="/api", tags=["monitor"])
 
 
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"

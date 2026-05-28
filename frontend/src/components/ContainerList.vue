@@ -1,56 +1,81 @@
 <template>
   <div class="container-list">
-    <el-table :data="containers" style="width: 100%" size="small" stripe @selection-change="onSelectionChange">
-      <el-table-column type="selection" width="40" />
-      <el-table-column label="名称" min-width="160">
-        <template #default="{ row }">
-          <div class="container-name">
-            <el-tag :type="stateTagType(row.state)" size="small" round>{{ row.state }}</el-tag>
-            <span>{{ row.name }}</span>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="image" label="镜像" min-width="160" />
-      <el-table-column prop="status" label="状态" min-width="140">
-        <template #default="{ row }">
-          <span :style="{ color: row.state === 'running' ? '#67c23a' : '#909399' }">
-            {{ row.status }}
-          </span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="ports" label="端口" min-width="160">
-        <template #default="{ row }">
-          <span class="ports-text">{{ row.ports || '-' }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="created" label="创建时间" width="160" />
-      <el-table-column label="操作" width="420" fixed="right">
-        <template #default="{ row }">
-          <Md3Button :icon="VideoPlay" size="sm" @click="$emit('start', row)" :disabled="row.state === 'running'">启动</Md3Button>
-          <Md3Button :icon="VideoPause" size="sm" @click="$emit('stop', row)" :disabled="row.state !== 'running'">停止</Md3Button>
-          <Md3Button :icon="Refresh" size="sm" @click="$emit('restart', row)">重启</Md3Button>
-          <Md3Button :icon="Tickets" size="sm" @click="$emit('logs', row)">日志</Md3Button>
-          <Md3Button :icon="Monitor" size="sm" @click="$emit('terminal', row)" :disabled="row.state !== 'running'">终端</Md3Button>
-          <el-popconfirm title="确认删除?" @confirm="$emit('delete', row)">
-            <template #reference>
-              <Md3Button :icon="Delete" size="sm" variant="danger">删除</Md3Button>
-            </template>
-          </el-popconfirm>
-        </template>
-      </el-table-column>
-    </el-table>
+    <div class="file-table-wrapper">
+      <table class="md3-table md3-table--stripe md3-table--hover">
+        <thead>
+          <tr>
+            <th class="md3-table-cell md3-table-header" style="width: 40px; text-align: center">
+              <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
+            </th>
+            <th class="md3-table-cell md3-table-header" style="min-width: 160px">名称</th>
+            <th class="md3-table-cell md3-table-header" style="min-width: 160px">镜像</th>
+            <th class="md3-table-cell md3-table-header" style="min-width: 140px">状态</th>
+            <th class="md3-table-cell md3-table-header" style="min-width: 160px">端口</th>
+            <th class="md3-table-cell md3-table-header" style="width: 160px">创建时间</th>
+            <th class="md3-table-cell md3-table-header" style="width: 420px; text-align: right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(row, idx) in containers" :key="idx" class="md3-table-row">
+            <td class="md3-table-cell md3-table-body" style="text-align: center">
+              <input type="checkbox" :checked="isSelected(row)" @change="toggleRow(row)" />
+            </td>
+            <td class="md3-table-cell md3-table-body">
+              <div class="container-name">
+                <Md3Tag :variant="stateTagVariant(row.state)">{{ row.state }}</Md3Tag>
+                <span>{{ row.name }}</span>
+              </div>
+            </td>
+            <td class="md3-table-cell md3-table-body">{{ row.image }}</td>
+            <td class="md3-table-cell md3-table-body">
+              <span :style="{ color: row.state === 'running' ? 'var(--md3-success)' : 'var(--md3-on-surface-variant)' }">
+                {{ row.status }}
+              </span>
+            </td>
+            <td class="md3-table-cell md3-table-body">
+              <span class="ports-text">{{ row.ports || '-' }}</span>
+            </td>
+            <td class="md3-table-cell md3-table-body">{{ row.created }}</td>
+            <td class="md3-table-cell md3-table-body" style="text-align: right">
+              <div class="action-buttons">
+                <Md3Button size="sm" @click="$emit('start', row)" :disabled="row.state === 'running'">
+                  <Md3Icon name="play" size="14" />启动
+                </Md3Button>
+                <Md3Button size="sm" @click="$emit('stop', row)" :disabled="row.state !== 'running'">
+                  <Md3Icon name="pause" size="14" />停止
+                </Md3Button>
+                <Md3Button size="sm" @click="$emit('restart', row)">
+                  <Md3Icon name="refresh" size="14" />重启
+                </Md3Button>
+                <Md3Button size="sm" @click="$emit('logs', row)">
+                  <Md3Icon name="tag" size="14" />日志
+                </Md3Button>
+                <Md3Button size="sm" @click="$emit('terminal', row)" :disabled="row.state !== 'running'">
+                  <Md3Icon name="monitor" size="14" />终端
+                </Md3Button>
+                <Md3Button size="sm" variant="danger" @click="confirmDelete(row)">
+                  <Md3Icon name="delete" size="14" />删除
+                </Md3Button>
+              </div>
+            </td>
+          </tr>
+          <tr v-if="containers.length === 0">
+            <td colspan="7" class="md3-table-empty">暂无容器</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import Md3Button from '@/components/Md3Button.vue'
-import {
-  VideoPlay, VideoPause, Refresh,
-  Tickets, Monitor, Delete,
-} from '@element-plus/icons-vue'
+import Md3Tag from '@/components/md3/Md3Tag.vue'
+import { Md3Confirm, Md3Icon } from '@/components/md3'
 import type { DockerContainer } from '@/stores/dockerStore'
+import { ref, computed } from 'vue'
 
-defineProps<{
+const props = defineProps<{
   containers: DockerContainer[]
 }>()
 
@@ -64,8 +89,10 @@ const emit = defineEmits<{
   selectionChange: [items: DockerContainer[]]
 }>()
 
-function stateTagType(state: string) {
-  const map: Record<string, string> = {
+const selectedRows = ref<DockerContainer[]>([])
+
+function stateTagVariant(state: string) {
+  const map: Record<string, 'success' | 'info' | 'warning' | 'primary'> = {
     running: 'success',
     exited: 'info',
     paused: 'warning',
@@ -74,8 +101,41 @@ function stateTagType(state: string) {
   return map[state] || 'info'
 }
 
-function onSelectionChange(selection: DockerContainer[]) {
-  emit('selectionChange', selection)
+function isSelected(row: DockerContainer): boolean {
+  return selectedRows.value.includes(row)
+}
+
+const isAllSelected = computed(() => {
+  return props.containers.length > 0 && selectedRows.value.length === props.containers.length
+})
+
+function toggleRow(row: DockerContainer) {
+  const idx = selectedRows.value.indexOf(row)
+  if (idx === -1) {
+    selectedRows.value.push(row)
+  } else {
+    selectedRows.value.splice(idx, 1)
+  }
+  emit('selectionChange', selectedRows.value)
+}
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    selectedRows.value = []
+  } else {
+    selectedRows.value = [...props.containers]
+  }
+  emit('selectionChange', selectedRows.value)
+}
+
+async function confirmDelete(row: DockerContainer) {
+  const confirmed = await Md3Confirm.show({
+    title: '确认删除',
+    message: `确认删除容器 "${row.name}"?`,
+  })
+  if (confirmed) {
+    emit('delete', row)
+  }
 }
 </script>
 
@@ -94,10 +154,20 @@ function onSelectionChange(selection: DockerContainer[]) {
   box-shadow: var(--md3-elevation-level1);
 }
 
+.file-table-wrapper {
+  overflow-x: auto;
+}
+
 .container-name {
   display: flex;
   align-items: center;
   gap: var(--md3-space-sm);
+}
+
+.action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md3-space-xs);
 }
 
 .ports-text {

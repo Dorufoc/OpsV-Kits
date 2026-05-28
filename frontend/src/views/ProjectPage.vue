@@ -1,88 +1,34 @@
 <template>
   <div class="project-page">
-    <el-page-header title="OpsV-Kits">
-      <template #content>
-        <span>项目配置与一键部署</span>
-      </template>
-    </el-page-header>
-    <el-divider />
+    <Md3PageHeader title="OpsV-Kits" subtitle="项目配置与一键部署" />
+    <Md3Divider />
 
     <div class="project-layout">
       <div class="project-sidebar">
         <div class="sidebar-title">项目列表</div>
-        <el-menu :default-active="currentProject" class="project-menu">
-          <el-menu-item
+        <nav class="project-menu">
+          <div
             v-for="proj in projectStore.projects"
             :key="proj.alias"
-            :index="proj.alias"
+            class="project-menu-item"
+            :class="{ 'project-menu-item--active': currentProject === proj.alias }"
             @click="selectProject(proj)"
           >
-            <el-icon><Folder /></el-icon>
-            <span>{{ proj.alias }}</span>
-          </el-menu-item>
-        </el-menu>
-        <Md3Button class="new-project-btn" size="sm" :icon="Plus" @click="showNewProject = true">新建项目</Md3Button>
+            <Md3Icon name="folder" class="project-menu-icon" />
+            <span class="project-menu-text">{{ proj.alias }}</span>
+            <button
+              class="project-menu-edit"
+              @click.stop="openEditDialog(proj)"
+              title="编辑项目"
+            >
+              <Md3Icon name="pencil" class="project-menu-edit-icon" />
+            </button>
+          </div>
+        </nav>
+        <Md3Button class="new-project-btn" size="sm" icon="plus" @click="showNewProject = true">新建项目</Md3Button>
       </div>
 
       <div class="project-main">
-        <el-card class="config-card" shadow="never">
-          <template #header>
-            <div class="config-header">
-              <span>项目配置</span>
-              <div class="config-header-actions">
-                <Md3Button
-                  v-if="currentProject && selectedProject"
-                  size="sm"
-                  variant="danger"
-                  :icon="Delete"
-                  @click="confirmDelete"
-                >删除项目</Md3Button>
-                <Md3Button
-                  v-if="currentProject"
-                  variant="primary"
-                  :icon="Check"
-                  @click="saveConfig"
-                  :loading="savingConfig"
-                >保存配置</Md3Button>
-              </div>
-            </div>
-          </template>
-          <el-form :model="projectConfig" label-width="100px" label-position="left">
-            <el-form-item label="本地路径">
-              <el-input v-model="projectConfig.local_path" placeholder="E:\Projects\MyJavaApp" />
-            </el-form-item>
-            <el-form-item label="远程路径">
-              <el-input v-model="projectConfig.remote_path" placeholder="/home/dev/projects/MyJavaApp" />
-            </el-form-item>
-            <el-form-item label="SSH 账户">
-              <el-select v-model="projectConfig.ssh_alias" placeholder="选择 SSH 账户" style="width: 100%">
-                <el-option
-                  v-for="acc in sshAccounts"
-                  :key="acc.alias"
-                  :label="acc.alias"
-                  :value="acc.alias"
-                >
-                  <span>{{ acc.alias }}</span>
-                  <span class="account-host">({{ acc.host }})</span>
-                </el-option>
-              </el-select>
-            </el-form-item>
-            <el-form-item label="当前用户">
-              <el-tag v-if="currentUser" type="info" size="small">{{ currentUser }}</el-tag>
-              <span v-else class="text-muted">请选择 SSH 账户</span>
-            </el-form-item>
-            <el-form-item label="JDK 版本">
-              <el-select v-model="projectConfig.jdk_version" placeholder="JDK 21" style="width: 160px">
-                <el-option label="JDK 8 (1.8)" value="8" />
-                <el-option label="JDK 11" value="11" />
-                <el-option label="JDK 17" value="17" />
-                <el-option label="JDK 21" value="21" />
-              </el-select>
-              <span style="margin-left: 8px; font-size: 12px;" class="text-muted">默认 JDK 21</span>
-            </el-form-item>
-          </el-form>
-        </el-card>
-
         <div class="action-bar">
           <Md3Button variant="primary" size="lg" @click="handleDeploy" :loading="isRunning">一键部署</Md3Button>
           <Md3Button @click="handleSync" :disabled="!canSync">仅同步</Md3Button>
@@ -95,7 +41,7 @@
         <div class="status-area">
           <div class="status-sidebar">
             <SyncPanel :sync-status="syncStore.syncStatus" :progress="syncStore.progress" />
-            <el-divider />
+            <Md3Divider />
             <BuildPanel
               :build-status="buildStore.buildStatus"
               :run-status="buildStore.runStatus"
@@ -112,51 +58,40 @@
     </div>
 
     <!-- 新建项目对话框 -->
-    <el-dialog v-model="showNewProject" title="新建项目" width="480px">
-      <el-form :model="newProjectForm" label-width="100px" label-position="left">
-        <el-form-item label="项目别名" required>
-          <el-input v-model="newProjectForm.alias" placeholder="如：MyApp" />
-        </el-form-item>
-        <el-form-item label="本地路径">
-          <el-input v-model="newProjectForm.local_path" placeholder="E:\Projects\MyJavaApp" />
-        </el-form-item>
-        <el-form-item label="远程路径">
-          <el-input v-model="newProjectForm.remote_path" placeholder="/home/dev/projects/MyJavaApp" />
-        </el-form-item>
-        <el-form-item label="SSH 账户">
-          <el-select v-model="newProjectForm.ssh_alias" placeholder="选择 SSH 账户" style="width: 100%">
-            <el-option
-              v-for="acc in sshAccounts"
-              :key="acc.alias"
-              :label="acc.alias"
-              :value="acc.alias"
-            >
-              <span>{{ acc.alias }}</span>
-              <span class="account-host">({{ acc.host }})</span>
-            </el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="JDK 版本">
-          <el-select v-model="newProjectForm.jdk_version" placeholder="JDK 21" style="width: 160px">
-            <el-option label="JDK 8 (1.8)" value="8" />
-            <el-option label="JDK 11" value="11" />
-            <el-option label="JDK 17" value="17" />
-            <el-option label="JDK 21" value="21" />
-          </el-select>
-        </el-form-item>
-      </el-form>
+    <Md3Dialog v-model:visible="showNewProject" title="新建项目" width="480px">
+      <div class="dialog-form">
+        <Md3Input v-model="newProjectForm.alias" label="项目别名" placeholder="如：MyApp" />
+        <Md3Input v-model="newProjectForm.local_path" label="本地路径" placeholder="E:\Projects\MyJavaApp" />
+        <Md3Input v-model="newProjectForm.remote_path" label="远程路径" placeholder="/home/dev/projects/MyJavaApp" />
+        <Md3Select v-model="newProjectForm.ssh_alias" label="SSH 账户" placeholder="选择 SSH 账户" :options="sshAccountOptions" />
+        <Md3Select v-model="newProjectForm.jdk_version" label="JDK 版本" placeholder="JDK 21" :options="jdkOptions" />
+      </div>
       <template #footer>
         <Md3Button @click="showNewProject = false">取消</Md3Button>
         <Md3Button variant="primary" @click="handleCreateProject" :loading="creatingProject">确定创建</Md3Button>
       </template>
-    </el-dialog>
+    </Md3Dialog>
+
+    <!-- 编辑项目对话框 -->
+    <Md3Dialog v-model:visible="showEditProject" title="编辑项目" width="480px">
+      <div class="dialog-form">
+        <Md3Input v-model="editProjectForm.local_path" label="本地路径" placeholder="E:\Projects\MyJavaApp" />
+        <Md3Input v-model="editProjectForm.remote_path" label="远程路径" placeholder="/home/dev/projects/MyJavaApp" />
+        <Md3Select v-model="editProjectForm.ssh_alias" label="SSH 账户" placeholder="选择 SSH 账户" :options="sshAccountOptions" />
+        <Md3Select v-model="editProjectForm.jdk_version" label="JDK 版本" placeholder="JDK 21" :options="jdkOptions" />
+      </div>
+      <template #footer>
+        <Md3Button @click="showEditProject = false">取消</Md3Button>
+        <Md3Button variant="primary" @click="handleEditProject" :loading="editingProject">确定保存</Md3Button>
+      </template>
+    </Md3Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { Folder, Plus, Delete, Check } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { Md3Icon } from '@/components/md3'
+import { Md3Message, Md3PageHeader, Md3Divider, Md3Input, Md3Select, Md3Dialog } from '@/components/md3'
 import { useSyncStore } from '@/stores/syncStore'
 import { useBuildStore } from '@/stores/buildStore'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
@@ -175,8 +110,9 @@ const terminalRef = ref<InstanceType<typeof Terminal>>()
 const currentProject = ref('')
 const selectedProject = ref<ProjectItem | null>(null)
 const showNewProject = ref(false)
+const showEditProject = ref(false)
 const creatingProject = ref(false)
-const savingConfig = ref(false)
+const editingProject = ref(false)
 
 const projectConfig = ref<ProjectItem>({
   alias: '',
@@ -187,6 +123,14 @@ const projectConfig = ref<ProjectItem>({
 })
 
 const newProjectForm = ref({
+  alias: '',
+  local_path: '',
+  remote_path: '',
+  ssh_alias: '',
+  jdk_version: '21',
+})
+
+const editProjectForm = ref({
   alias: '',
   local_path: '',
   remote_path: '',
@@ -224,10 +168,15 @@ const canRun = computed(() =>
 )
 
 const sshAccounts = computed(() => sshStore.accounts)
-const currentUser = computed(() => {
-  const acc = sshAccounts.value.find(a => a.alias === projectConfig.value.ssh_alias)
-  return acc ? `${acc.username} (${acc.host})` : ''
-})
+const sshAccountOptions = computed(() =>
+  sshAccounts.value.map(a => ({ label: a.alias, value: a.alias }))
+)
+const jdkOptions = [
+  { label: 'JDK 8 (1.8)', value: '8' },
+  { label: 'JDK 11', value: '11' },
+  { label: 'JDK 17', value: '17' },
+  { label: 'JDK 21', value: '21' },
+]
 
 watch(() => projectConfig.value.ssh_alias, (newAlias) => {
   if (!newAlias) return
@@ -243,49 +192,49 @@ function selectProject(proj: ProjectItem) {
   currentProject.value = proj.alias
 }
 
-async function saveConfig() {
-  if (!currentProject.value || !selectedProject.value) return
-  savingConfig.value = true
-  try {
-    const updated = await projectStore.updateProject(selectedProject.value.alias, {
-      local_path: projectConfig.value.local_path,
-      remote_path: projectConfig.value.remote_path,
-      ssh_alias: projectConfig.value.ssh_alias,
-    })
-    selectedProject.value = updated
-    ElMessage.success('配置已保存')
-  } catch {
-    ElMessage.error('保存配置失败')
-  } finally {
-    savingConfig.value = false
+function openEditDialog(proj: ProjectItem) {
+  editProjectForm.value = {
+    alias: proj.alias,
+    local_path: proj.local_path,
+    remote_path: proj.remote_path,
+    ssh_alias: proj.ssh_alias,
+    jdk_version: proj.jdk_version || '21',
   }
+  showEditProject.value = true
 }
 
-async function confirmDelete() {
-  if (!selectedProject.value) return
+async function handleEditProject() {
+  if (!editProjectForm.value.local_path || !editProjectForm.value.remote_path) {
+    Md3Message.warning('请填写完整信息')
+    return
+  }
+  editingProject.value = true
   try {
-    await ElMessageBox.confirm(
-      `确定要删除项目「${selectedProject.value.alias}」吗？`,
-      '删除项目',
-      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
-    )
-    await projectStore.deleteProject(selectedProject.value.alias)
-    selectedProject.value = null
-    currentProject.value = ''
-    projectConfig.value = { alias: '', local_path: '', remote_path: '', ssh_alias: '', jdk_version: '' }
-    ElMessage.success('项目已删除')
+    const updated = await projectStore.updateProject(editProjectForm.value.alias, {
+      local_path: editProjectForm.value.local_path,
+      remote_path: editProjectForm.value.remote_path,
+      ssh_alias: editProjectForm.value.ssh_alias,
+    })
+    if (selectedProject.value?.alias === editProjectForm.value.alias) {
+      selectedProject.value = updated
+      projectConfig.value = { ...updated }
+    }
+    showEditProject.value = false
+    Md3Message.success('项目配置已更新')
   } catch {
-    // cancelled
+    Md3Message.error('更新项目配置失败')
+  } finally {
+    editingProject.value = false
   }
 }
 
 async function handleCreateProject() {
   if (!newProjectForm.value.alias) {
-    ElMessage.warning('请输入项目别名')
+    Md3Message.warning('请输入项目别名')
     return
   }
   if (projectStore.projects.some(p => p.alias === newProjectForm.value.alias)) {
-    ElMessage.warning('项目别名已存在')
+    Md3Message.warning('项目别名已存在')
     return
   }
   creatingProject.value = true
@@ -294,9 +243,9 @@ async function handleCreateProject() {
     showNewProject.value = false
     newProjectForm.value = { alias: '', local_path: '', remote_path: '', ssh_alias: '', jdk_version: '' }
     selectProject(project)
-    ElMessage.success('项目已创建')
+    Md3Message.success('项目已创建')
   } catch {
-    ElMessage.error('创建项目失败')
+    Md3Message.error('创建项目失败')
   } finally {
     creatingProject.value = false
   }
@@ -434,6 +383,7 @@ onMounted(async () => {
   display: flex;
   gap: var(--md3-space-lg);
   height: calc(100vh - 160px);
+  overflow: hidden;
 }
 
 .project-sidebar {
@@ -462,9 +412,86 @@ onMounted(async () => {
 }
 
 .project-menu {
-  border-right: none !important;
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.project-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-sm);
+  padding: var(--md3-space-sm) var(--md3-space-md);
+  border-radius: var(--md3-shape-sm);
+  cursor: pointer;
+  transition: all var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+  font: var(--md3-type-body-medium);
+  color: var(--md3-on-surface-variant);
+  user-select: none;
+  position: relative;
+}
+
+.project-menu-item:hover {
+  background: var(--md3-surface-container-highest);
+  color: var(--md3-on-surface);
+}
+
+.project-menu-item--active {
+  background: var(--md3-primary-container);
+  color: var(--md3-on-primary-container);
+  font-weight: 500;
+}
+
+.project-menu-item--active:hover {
+  background: var(--md3-primary-container);
+  color: var(--md3-on-primary-container);
+}
+
+.project-menu-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.project-menu-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-menu-edit {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
   background: transparent;
+  border-radius: var(--md3-shape-sm);
+  cursor: pointer;
+  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+}
+
+.project-menu-item:hover .project-menu-edit {
+  display: flex;
+}
+
+.project-menu-edit:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.project-menu-item--active .project-menu-edit:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.project-menu-edit-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--md3-on-surface-variant);
 }
 
 .new-project-btn {
@@ -477,6 +504,8 @@ onMounted(async () => {
   flex-direction: column;
   gap: var(--md3-space-lg);
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 .config-card {
@@ -491,6 +520,35 @@ onMounted(async () => {
 
 .config-header-actions {
   display: flex;
+  gap: var(--md3-space-sm);
+}
+
+.config-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-md);
+}
+
+.form-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-xs);
+}
+
+.form-label {
+  font-size: 0.75rem;
+  color: var(--md3-on-surface-variant);
+  padding-left: var(--md3-space-sm);
+}
+
+.jdk-item {
+  flex-direction: row;
+  align-items: center;
+}
+
+.jdk-row {
+  display: flex;
+  align-items: center;
   gap: var(--md3-space-sm);
 }
 
@@ -516,6 +574,7 @@ onMounted(async () => {
   border: 1px solid var(--md3-glass-border);
   border-radius: var(--md3-shape-md);
   transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  flex-shrink: 0;
 }
 
 .action-bar:hover {
@@ -526,7 +585,8 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   gap: var(--md3-space-lg);
-  min-height: 300px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .status-sidebar {
@@ -541,6 +601,8 @@ onMounted(async () => {
   border-radius: var(--md3-shape-md);
   padding: var(--md3-space-md);
   transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 .status-sidebar:hover {
@@ -551,6 +613,8 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .terminal-header {
@@ -564,6 +628,7 @@ onMounted(async () => {
   border: 1px solid var(--md3-glass-border);
   border-bottom: none;
   border-radius: var(--md3-shape-sm) var(--md3-shape-sm) 0 0;
+  flex-shrink: 0;
 }
 
 .terminal-title {
@@ -576,5 +641,12 @@ onMounted(async () => {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
   flex: 1;
+  overflow: hidden;
+}
+
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-md);
 }
 </style>

@@ -23,29 +23,85 @@ from app.services.settings_service import settings_service
 logger = logging.getLogger(__name__)
 
 
+class _DirCache:
+    _instance = None
+
+    def __init__(self, ttl: float = 3.0):
+        self._ttl = ttl
+        self._dirs: dict[tuple, tuple] = {}
+        self._stats: dict[tuple, tuple] = {}
+        self._lock = threading.Lock()
+
+    @classmethod
+    def get(cls) -> "_DirCache":
+        if cls._instance is None:
+            cls._instance = _DirCache()
+        return cls._instance
+
+    def get_dir(self, alias: str, path: str):
+        key = (alias, path.rstrip("/"))
+        with self._lock:
+            entry = self._dirs.get(key)
+            if entry is not None:
+                items, ts = entry
+                if time.time() - ts < self._ttl:
+                    return items
+                del self._dirs[key]
+        return None
+
+    def set_dir(self, alias: str, path: str, items):
+        key = (alias, path.rstrip("/"))
+        with self._lock:
+            self._dirs[key] = (items, time.time())
+
+    def get_stat(self, alias: str, path: str):
+        key = (alias, path.rstrip("/"))
+        with self._lock:
+            entry = self._stats.get(key)
+            if entry is not None:
+                stat_info, ts = entry
+                if time.time() - ts < self._ttl:
+                    return stat_info
+                del self._stats[key]
+        return None
+
+    def set_stat(self, alias: str, path: str, stat_info):
+        key = (alias, path.rstrip("/"))
+        with self._lock:
+            self._stats[key] = (stat_info, time.time())
+
+    def invalidate(self, alias: str, path: str = ""):
+        with self._lock:
+            prefix = (alias, path.rstrip("/"))
+            for cache in (self._dirs, self._stats):
+                keys_to_del = [k for k in cache if k[0] == prefix[0] and (not prefix[1] or k[1] == prefix[1] or k[1].startswith(prefix[1] + "/"))]
+                for k in keys_to_del:
+                    del cache[k]
+
+
+_dir_cache = _DirCache.get()
+
+
 def _ntlm_type2_challenge():
-    target_info = b""
-    target_info += struct.pack("<HH", 0x0002, len(b"OPSV")) + b"OPSV"
-    target_info += struct.pack("<HH", 0x0001, len(b"OPSV-KITS")) + b"OPSV-KITS"
-    target_info += struct.pack("<HH", 0x0004, 0) + b""
-    target_info += struct.pack("<HH", 0x0003, 0) + b""
-    target_info += struct.pack("<HH", 0x0007, 8) + b"\x00" * 8
-    target_info += struct.pack("<HH", 0x0006, 8) + b"\x00" * 8
-    target_info += struct.pack("<HH", 0x0000, 0)
-
-    target_info_offset = 32 + 8
-    msg_size = target_info_offset + len(target_info)
-    msg = struct.pack("<I", 2)
-    msg += struct.pack("<HH", 0x0002, msg_size)
-    msg += struct.pack("<I", 0)
-    msg += struct.pack("<I", 0)
-    msg += struct.pack("<I", target_info_offset)
-    msg += struct.pack("<I", 0)
-    msg += struct.pack("<I", 0)
-    msg += struct.pack("<I", 0)
+    import os
+    nonce = os.urandom(8)
+    target_name = b"OPSV"
+    target_name_offset = 32 + 8
+    target_name_fields = struct.pack("<HHI", len(target_name), len(target_name), target_name_offset)
+    flags = 0x00000200 | 0x00000001 | 0x00020000 | 0x00800000
+    msg = b"NTLMSSP\x00"
+    msg += struct.pack("<I", 2)
+    msg += target_name_fields
+    msg += struct.pack("<I", flags)
+    msg += nonce
     msg += b"\x00" * 8
-    msg += target_info
-
+    msg += struct.pack("<I", 0)
+    msg += struct.pack("<I", 0)
+    msg += struct.pack("<I", 0)
+    msg += struct.pack("<I", 0)
+    msg += target_name
+    total_len = len(msg)
+    msg = msg[:12] + struct.pack("<HHI", len(target_name), total_len, target_name_offset) + msg[20:]
     return base64.b64encode(msg).decode("ascii")
 
 
@@ -65,6 +121,7 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
     SSH_SERVICE = None
 
     def handle(self):
+        self._ntlm_authenticated = False
         try:
             self.close_connection = True
             self.handle_one_request()
@@ -84,6 +141,7 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             remaining = 0
         if remaining > 0:
             try:
+                self.rfile._sock.settimeout(2)
                 while remaining > 0:
                     chunk = self.rfile.read(min(65536, remaining))
                     if not chunk:
@@ -91,19 +149,25 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
                     remaining -= len(chunk)
             except Exception:
                 pass
+            finally:
+                try:
+                    self.rfile._sock.settimeout(None)
+                except Exception:
+                    pass
 
     def _safe_send_error(self, code: int, message: str = ""):
-        self._drain_request_body()
         body = message.encode("utf-8") if message else b""
         self.send_response(code)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
         self.end_headers()
         try:
             self.wfile.write(body)
             self.wfile.flush()
         except Exception:
             pass
+        self.close_connection = True
 
     def _check_auth(self):
         auth_header = self.headers.get("Authorization", "")
@@ -113,48 +177,50 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             try:
                 creds = base64.b64decode(auth_header[6:]).decode("utf-8")
                 username, password = creds.split(":", 1)
-                expected_user = settings_service.get("remote_drive_username", "opsv")
-                expected_pass = settings_service.get_decrypted_password()
-                if not expected_pass:
-                    accounts = self.SSH_SERVICE.list_accounts() or []
-                    if accounts:
-                        default_acct = next((a for a in accounts if a.is_default), accounts[0])
-                        expected_user = default_acct.username or "opsv"
-                        expected_pass = default_acct.password or ""
-                if username == expected_user and password == expected_pass:
+                if self._validate_credentials(username, password):
                     return True
             except Exception:
                 pass
         if auth_header.startswith("NTLM "):
             try:
                 token = base64.b64decode(auth_header[5:])
-                if len(token) >= 8:
-                    msg_type = struct.unpack_from("<I", token, 0)[0]
+                if len(token) >= 12 and token[:8] == b"NTLMSSP\x00":
+                    msg_type = struct.unpack_from("<I", token, 8)[0]
                     if msg_type == 3:
                         return True
             except Exception:
                 pass
         return False
 
+    def _validate_credentials(self, username: str, password: str) -> bool:
+        configured_user = settings_service.get("remote_drive_username", "opsv")
+        configured_pass = settings_service.get_decrypted_password()
+        if configured_pass:
+            return username == configured_user and password == configured_pass
+        accounts = self.SSH_SERVICE.list_accounts() or []
+        for acct in accounts:
+            if acct.username == username and acct.password == password:
+                return True
+        return False
+
     def _send_auth_required(self):
-        self._drain_request_body()
         body = b"Authentication required"
         self.send_response(401)
         self.send_header("WWW-Authenticate", "NTLM")
         self.send_header("WWW-Authenticate", 'Basic realm="OpsV-Kits WebDAV"')
         self.send_header("Content-Type", "text/plain")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
         self.end_headers()
         try:
             self.wfile.write(body)
             self.wfile.flush()
         except Exception:
             pass
+        self.close_connection = True
 
     def _send_ntlm_challenge(self):
-        self._drain_request_body()
         challenge = _ntlm_type2_challenge()
-        body = b""
         self.send_response(401)
         self.send_header("WWW-Authenticate", f"NTLM {challenge}")
         self.send_header("Content-Length", "0")
@@ -165,14 +231,26 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             pass
 
     def _require_auth(self):
+        if getattr(self, '_ntlm_authenticated', False):
+            return True
         if self._check_auth():
+            auth_header = self.headers.get("Authorization", "")
+            if auth_header.startswith("NTLM "):
+                try:
+                    token = base64.b64decode(auth_header[5:])
+                    if len(token) >= 12 and token[:8] == b"NTLMSSP\x00":
+                        msg_type = struct.unpack_from("<I", token, 8)[0]
+                        if msg_type == 3:
+                            self._ntlm_authenticated = True
+                except Exception:
+                    pass
             return True
         auth_header = self.headers.get("Authorization", "")
         if auth_header.startswith("NTLM "):
             try:
                 token = base64.b64decode(auth_header[5:])
-                if len(token) >= 4:
-                    msg_type = struct.unpack_from("<I", token, 0)[0]
+                if len(token) >= 12 and token[:8] == b"NTLMSSP\x00":
+                    msg_type = struct.unpack_from("<I", token, 8)[0]
                     if msg_type == 1:
                         self._send_ntlm_challenge()
                         return False
@@ -292,18 +370,23 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
         return "\n".join(lines)
 
     def _stat_to_xml(self, alias: str, remote_path: str, stat: paramiko.SFTPAttributes, is_root: bool = False):
+        is_dir = stat.st_mode is not None and stat.st_mode & 0o40000
         if is_root:
             href = f"/{urllib.parse.quote(alias, safe='')}/"
             name = alias
         else:
-            parts = remote_path.strip("/").split("/")
-            name = parts[-1] if parts else alias
-            encoded_parts = [urllib.parse.quote(alias, safe='')] + [urllib.parse.quote(p, safe='') for p in parts]
-            href = "/" + "/".join(encoded_parts)
-            if stat.st_mode is not None and stat.st_mode & 0o40000:
-                href += "/"
+            stripped = remote_path.strip("/")
+            if not stripped:
+                href = f"/{urllib.parse.quote(alias, safe='')}/"
+                name = alias
+            else:
+                parts = stripped.split("/")
+                name = parts[-1]
+                encoded_parts = [urllib.parse.quote(alias, safe='')] + [urllib.parse.quote(p, safe='') for p in parts]
+                href = "/" + "/".join(encoded_parts)
+                if is_dir:
+                    href += "/"
 
-        is_dir = stat.st_mode is not None and stat.st_mode & 0o40000
         if is_dir:
             content_type = "httpd/unix-directory"
             content_length = 0
@@ -378,15 +461,23 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self._safe_send_error(404, "Account not found or connection failed")
             return
         try:
-            stat_info = sftp.stat(remote_path)
+            stat_info = _dir_cache.get_stat(alias, remote_path)
+            if stat_info is None:
+                stat_info = sftp.stat(remote_path)
+                _dir_cache.set_stat(alias, remote_path, stat_info)
             depth = self.headers.get("Depth", "infinity").lower()
             if stat_info.st_mode is not None and stat_info.st_mode & 0o40000:
-                items = sftp.listdir_attr(remote_path)
+                items = None
+                if depth != "0":
+                    items = _dir_cache.get_dir(alias, remote_path)
+                    if items is None:
+                        items = sftp.listdir_attr(remote_path)
+                        _dir_cache.set_dir(alias, remote_path, items)
                 lines = []
                 lines.append('<?xml version="1.0" encoding="utf-8"?>')
                 lines.append('<D:multistatus xmlns:D="DAV:" xmlns:Z="urn:schemas-microsoft-com:">')
                 lines.append(self._stat_to_xml(alias, remote_path, stat_info))
-                if depth != "0":
+                if items is not None:
                     base_path = remote_path.rstrip("/")
                     for item in items:
                         item_path = posixpath.join(base_path, item.filename) if base_path else "/" + item.filename
@@ -427,7 +518,10 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self._safe_send_error(404, "Account not found or connection failed")
             return
         try:
-            stat_info = sftp.stat(remote_path)
+            stat_info = _dir_cache.get_stat(alias, remote_path)
+            if stat_info is None:
+                stat_info = sftp.stat(remote_path)
+                _dir_cache.set_stat(alias, remote_path, stat_info)
             if stat_info.st_mode is not None and stat_info.st_mode & 0o40000:
                 if not self.path.endswith("/"):
                     self.send_response(302)
@@ -509,6 +603,7 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(b"Created")))
             self.end_headers()
             self.wfile.write(b"Created")
+            _dir_cache.invalidate(alias, dir_path)
         except PermissionError:
             self._safe_send_error(403, "Permission denied")
         except Exception as e:
@@ -532,6 +627,7 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.send_response(204)
             self.send_header("Content-Length", "0")
             self.end_headers()
+            _dir_cache.invalidate(alias, posixpath.dirname(remote_path))
         except FileNotFoundError:
             self._safe_send_error(404, "File not found")
         except PermissionError:
@@ -553,6 +649,7 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.send_response(201)
             self.send_header("Content-Length", "0")
             self.end_headers()
+            _dir_cache.invalidate(alias, posixpath.dirname(remote_path))
         except FileExistsError:
             self._safe_send_error(405, "Method Not Allowed")
         except PermissionError:
@@ -595,11 +692,12 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.send_response(201 if created else 204)
             self.send_header("Content-Length", "0")
             self.end_headers()
+            _dir_cache.invalidate(alias, posixpath.dirname(remote_path))
+            _dir_cache.invalidate(alias, posixpath.dirname(dest_remote_path))
         except PermissionError:
             self._safe_send_error(403, "Permission denied")
         except Exception as e:
             logger.error("MOVE error: %s", e)
-            self._safe_send_error(500, str(e))
         finally:
             self._close_sftp(sftp)
             self._release(conn)
@@ -635,6 +733,7 @@ class _WebDAVRequestHandler(BaseHTTPRequestHandler):
             self.send_response(201 if created else 204)
             self.send_header("Content-Length", "0")
             self.end_headers()
+            _dir_cache.invalidate(alias, posixpath.dirname(dest_remote_path))
         except FileNotFoundError:
             self._safe_send_error(404, "Path not found")
         except PermissionError:
@@ -785,7 +884,6 @@ a:hover {{ text-decoration: underline; }}
         self.end_headers()
 
     def do_PROPFIND(self):
-        self._drain_request_body()
         if not self._require_auth():
             return
         alias, remote_path = self._parse_path()
@@ -793,9 +891,9 @@ a:hover {{ text-decoration: underline; }}
             self._handle_propfind_root()
         else:
             self._handle_propfind(alias, remote_path)
+        self._drain_request_body()
 
     def do_PROPPATCH(self):
-        self._drain_request_body()
         if not self._require_auth():
             return
         href = _xml_escape(self._normalise_dav_path(urllib.parse.urlparse(self.path).path))
@@ -867,9 +965,9 @@ a:hover {{ text-decoration: underline; }}
             self._handle_put(alias, remote_path)
 
     def do_DELETE(self):
-        self._drain_request_body()
         if not self._require_auth():
             return
+        self._drain_request_body()
         alias, remote_path = self._parse_path()
         if alias is None:
             self._safe_send_error(400, "Account alias required")
@@ -877,9 +975,9 @@ a:hover {{ text-decoration: underline; }}
             self._handle_delete(alias, remote_path)
 
     def do_MKCOL(self):
-        self._drain_request_body()
         if not self._require_auth():
             return
+        self._drain_request_body()
         alias, remote_path = self._parse_path()
         if alias is None:
             self._safe_send_error(400, "Account alias required")
@@ -887,9 +985,9 @@ a:hover {{ text-decoration: underline; }}
             self._handle_mkcol(alias, remote_path)
 
     def do_MOVE(self):
-        self._drain_request_body()
         if not self._require_auth():
             return
+        self._drain_request_body()
         alias, remote_path = self._parse_path()
         if alias is None:
             self._safe_send_error(400, "Account alias required")
@@ -897,9 +995,9 @@ a:hover {{ text-decoration: underline; }}
             self._handle_move(alias, remote_path)
 
     def do_COPY(self):
-        self._drain_request_body()
         if not self._require_auth():
             return
+        self._drain_request_body()
         alias, remote_path = self._parse_path()
         if alias is None:
             self._safe_send_error(400, "Account alias required")
@@ -907,9 +1005,9 @@ a:hover {{ text-decoration: underline; }}
             self._handle_copy(alias, remote_path)
 
     def do_LOCK(self):
-        self._drain_request_body()
         if not self._require_auth():
             return
+        self._drain_request_body()
         token = f"opaquelocktoken:{uuid.uuid4()}"
         body = f"""<?xml version="1.0" encoding="utf-8"?>
 <D:prop xmlns:D="DAV:">
@@ -933,9 +1031,9 @@ a:hover {{ text-decoration: underline; }}
         self.wfile.write(encoded)
 
     def do_UNLOCK(self):
-        self._drain_request_body()
         if not self._require_auth():
             return
+        self._drain_request_body()
         self.send_response(204)
         self.send_header("Content-Length", "0")
         self.end_headers()

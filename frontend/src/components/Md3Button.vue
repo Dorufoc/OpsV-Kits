@@ -20,6 +20,7 @@
         <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
       </svg>
     </span>
+    <Md3Icon v-else-if="typeof icon === 'string'" :name="icon" class="md3-btn__icon" />
     <component v-else-if="icon" :is="icon" class="md3-btn__icon" />
     <span v-if="$slots.default" class="md3-btn__label">
       <slot />
@@ -30,12 +31,14 @@
 <script setup lang="ts">
 import { computed, useSlots } from 'vue'
 import type { Component } from 'vue'
+import { Md3Icon } from '@/components/md3'
 
 type ButtonVariant = 'default' | 'primary' | 'danger' | 'success' | 'warning' | 'text'
 type ButtonSize = 'sm' | 'md' | 'lg'
+type ButtonIcon = Component | string
 
 const props = withDefaults(defineProps<{
-  icon?: Component
+  icon?: ButtonIcon
   variant?: ButtonVariant
   size?: ButtonSize
   disabled?: boolean

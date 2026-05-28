@@ -28,7 +28,7 @@
           class="nav-link"
           :class="{ active: route.path === item.path || (item.path !== '/' && route.path.startsWith(item.path)) }"
         >
-          <component :is="item.icon" class="nav-icon" />
+          <Md3Icon :name="item.icon" class="nav-icon" />
           <span class="nav-label">{{ item.label }}</span>
         </router-link>
       </nav>
@@ -51,7 +51,7 @@
             :class="{ active: route.path === item.path || (item.path !== '/' && route.path.startsWith(item.path)) }"
             @click="drawerOpen = false"
           >
-            <component :is="item.icon" class="sidebar-icon" />
+            <Md3Icon :name="item.icon" class="sidebar-icon" />
             <span class="sidebar-label">{{ item.label }}</span>
           </router-link>
         </nav>
@@ -73,16 +73,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import {
-  Monitor,
-  HomeFilled,
-  TrendCharts,
-  FolderOpened,
-  UserFilled,
-  Coin,
-  Setting,
-  Tools,
-} from '@element-plus/icons-vue'
+import { Md3Icon } from '@/components/md3'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 
 const route = useRoute()
@@ -95,27 +86,29 @@ function toggleDrawer() {
 interface NavItem {
   path: string
   label: string
-  icon: object
+  icon: string
 }
 
 const navItems: NavItem[] = [
-  { path: '/', label: '首页', icon: HomeFilled },
-  { path: '/project', label: '项目', icon: TrendCharts },
-  { path: '/file-manager', label: '文件', icon: FolderOpened },
-  { path: '/ssh-accounts', label: 'SSH', icon: UserFilled },
-  { path: '/docker', label: 'Docker', icon: Coin },
-  { path: '/webssh', label: '终端', icon: Monitor },
+  { path: '/', label: '首页', icon: 'home' },
+  { path: '/project', label: '项目', icon: 'chart-line' },
+  { path: '/file-manager', label: '文件', icon: 'folder-open' },
+  { path: '/ssh-accounts', label: 'SSH', icon: 'account-box' },
+  { path: '/docker', label: 'Docker', icon: 'coin' },
+  { path: '/webssh', label: '终端', icon: 'monitor' },
+  { path: '/monitor', label: '监控', icon: 'chart-bar' },
 ]
 
 const sidebarItems: NavItem[] = [
-  { path: '/', label: '控制台', icon: HomeFilled },
-  { path: '/project', label: '项目部署', icon: TrendCharts },
-  { path: '/file-manager', label: '远程文件管理', icon: FolderOpened },
-  { path: '/ssh-accounts', label: 'SSH 账户管理', icon: UserFilled },
-  { path: '/docker', label: 'Docker 管理', icon: Coin },
-  { path: '/webssh', label: 'WebSSH 终端', icon: Monitor },
-  { path: '/tools', label: '工具箱', icon: Tools },
-  { path: '/settings', label: '系统设置', icon: Setting },
+  { path: '/', label: '控制台', icon: 'home' },
+  { path: '/project', label: '项目部署', icon: 'chart-line' },
+  { path: '/file-manager', label: '远程文件管理', icon: 'folder-open' },
+  { path: '/ssh-accounts', label: 'SSH 账户管理', icon: 'account-box' },
+  { path: '/docker', label: 'Docker 管理', icon: 'coin' },
+  { path: '/webssh', label: 'WebSSH 终端', icon: 'monitor' },
+  { path: '/monitor', label: '资源监控', icon: 'chart-bar' },
+  { path: '/tools', label: '工具箱', icon: 'wrench' },
+  { path: '/settings', label: '系统设置', icon: 'cog' },
 ]
 </script>
 

@@ -7,12 +7,24 @@
         </slot>
       </div>
       <div class="toolbar-right">
-        <Md3Button variant="text" size="sm" :icon="DocumentCopy" @click="handleCopy">复制选中</Md3Button>
-        <Md3Button variant="text" size="sm" :icon="CopyDocument" @click="handleCopyAll">复制全部</Md3Button>
-        <Md3Button variant="text" size="sm" :icon="Upload" @click="handlePaste">粘贴</Md3Button>
-        <Md3Button variant="text" size="sm" :icon="Delete" @click="handleClear">清屏</Md3Button>
-        <Md3Button :variant="isFrozen ? 'warning' : 'text'" size="sm" :icon="isFrozen ? VideoPlay : VideoPause" @click="handleFreeze">{{ isFrozen ? '已冻结' : '冻结' }}</Md3Button>
-        <Md3Button variant="text" size="sm" :icon="FullScreen" @click="handleFullscreen">全屏</Md3Button>
+        <Md3Button variant="text" size="sm" @click="handleCopy">
+          <Md3Icon name="content-copy" size="14" />复制选中
+        </Md3Button>
+        <Md3Button variant="text" size="sm" @click="handleCopyAll">
+          <Md3Icon name="content-copy" size="14" />复制全部
+        </Md3Button>
+        <Md3Button variant="text" size="sm" @click="handlePaste">
+          <Md3Icon name="upload" size="14" />粘贴
+        </Md3Button>
+        <Md3Button variant="text" size="sm" @click="handleClear">
+          <Md3Icon name="delete" size="14" />清屏
+        </Md3Button>
+        <Md3Button :variant="isFrozen ? 'warning' : 'text'" size="sm" @click="handleFreeze">
+          <Md3Icon :name="isFrozen ? 'play' : 'pause'" size="14" />{{ isFrozen ? '已冻结' : '冻结' }}
+        </Md3Button>
+        <Md3Button variant="text" size="sm" @click="handleFullscreen">
+          <Md3Icon name="fullscreen" size="14" />全屏
+        </Md3Button>
       </div>
     </div>
     <div class="terminal-container" ref="containerRef"></div>
@@ -24,7 +36,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
-import { DocumentCopy, CopyDocument, Upload, Delete, FullScreen, VideoPause, VideoPlay } from '@element-plus/icons-vue'
+import { Md3Icon } from '@/components/md3'
 import Md3Button from '@/components/Md3Button.vue'
 
 const props = defineProps<{

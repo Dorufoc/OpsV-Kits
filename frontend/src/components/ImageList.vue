@@ -1,56 +1,82 @@
 <template>
   <div class="image-list">
-    <el-table :data="images" style="width: 100%" size="small" stripe>
-      <el-table-column label="镜像名称" min-width="240">
-        <template #default="{ row }">
-          <div class="image-name">
-            <el-icon :size="16"><Coin /></el-icon>
-            <span>{{ row.repository || '<none>' }}:{{ row.tag || '<none>' }}</span>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="id" label="ID" width="100">
-        <template #default="{ row }">
-          <code class="image-id">{{ row.id.substring(0, 12) }}</code>
-        </template>
-      </el-table-column>
-      <el-table-column prop="size" label="大小" width="100" align="right" />
-      <el-table-column prop="created" label="创建时间" width="160" />
-      <el-table-column label="使用" width="80" align="center">
-        <template #default="{ row }">
-          <el-tag v-if="row.in_use" type="success" size="small">使用中</el-tag>
-          <el-tag v-else type="info" size="small">未使用</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="300" fixed="right">
-        <template #default="{ row }">
-          <Md3Button :icon="Download" size="sm" @click="$emit('pull', row)">拉取</Md3Button>
-          <Md3Button :icon="Refresh" size="sm" @click="$emit('build', row)">构建</Md3Button>
-          <el-popconfirm title="确认删除镜像?" @confirm="$emit('delete', row)">
-            <template #reference>
-              <Md3Button :icon="Delete" size="sm" variant="danger" :disabled="row.in_use">删除</Md3Button>
-            </template>
-          </el-popconfirm>
-        </template>
-      </el-table-column>
-    </el-table>
+    <div class="file-table-wrapper">
+      <table class="md3-table md3-table--stripe md3-table--hover">
+        <thead>
+          <tr>
+            <th class="md3-table-cell md3-table-header" style="min-width: 240px">镜像名称</th>
+            <th class="md3-table-cell md3-table-header" style="width: 100px">ID</th>
+            <th class="md3-table-cell md3-table-header" style="width: 100px; text-align: right">大小</th>
+            <th class="md3-table-cell md3-table-header" style="width: 160px">创建时间</th>
+            <th class="md3-table-cell md3-table-header" style="width: 80px; text-align: center">使用</th>
+            <th class="md3-table-cell md3-table-header" style="width: 300px; text-align: right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(row, idx) in images" :key="idx" class="md3-table-row">
+            <td class="md3-table-cell md3-table-body">
+              <div class="image-name">
+                <Md3Icon name="coin" size="16" class="icon-inline" />
+                <span>{{ row.repository || '<none>' }}:{{ row.tag || '<none>' }}</span>
+              </div>
+            </td>
+            <td class="md3-table-cell md3-table-body">
+              <code class="image-id">{{ row.id.substring(0, 12) }}</code>
+            </td>
+            <td class="md3-table-cell md3-table-body" style="text-align: right">{{ row.size }}</td>
+            <td class="md3-table-cell md3-table-body">{{ row.created }}</td>
+            <td class="md3-table-cell md3-table-body" style="text-align: center">
+              <Md3Tag v-if="row.in_use" variant="success">使用中</Md3Tag>
+              <Md3Tag v-else variant="info">未使用</Md3Tag>
+            </td>
+            <td class="md3-table-cell md3-table-body" style="text-align: right">
+              <div class="action-buttons">
+                <Md3Button size="sm" @click="$emit('pull', row)">
+                  <Md3Icon name="download" size="14" />拉取
+                </Md3Button>
+                <Md3Button size="sm" @click="$emit('build', row)">
+                  <Md3Icon name="refresh" size="14" />构建
+                </Md3Button>
+                <Md3Button size="sm" variant="danger" :disabled="row.in_use" @click="confirmDelete(row)">
+                  <Md3Icon name="delete" size="14" />删除
+                </Md3Button>
+              </div>
+            </td>
+          </tr>
+          <tr v-if="images.length === 0">
+            <td colspan="6" class="md3-table-empty">暂无镜像</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import Md3Button from '@/components/Md3Button.vue'
-import { Coin, Download, Refresh, Delete } from '@element-plus/icons-vue'
+import Md3Tag from '@/components/md3/Md3Tag.vue'
+import { Md3Confirm, Md3Icon } from '@/components/md3'
 import type { DockerImage } from '@/stores/dockerStore'
 
 defineProps<{
   images: DockerImage[]
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   pull: [item: DockerImage]
   build: [item: DockerImage]
   delete: [item: DockerImage]
 }>()
+
+async function confirmDelete(row: DockerImage) {
+  const confirmed = await Md3Confirm.show({
+    title: '确认删除镜像',
+    message: '确认删除该镜像？此操作不可撤销。',
+  })
+  if (confirmed) {
+    emit('delete', row)
+  }
+}
 </script>
 
 <style scoped>
@@ -68,10 +94,26 @@ defineEmits<{
   box-shadow: var(--md3-elevation-level1);
 }
 
+.file-table-wrapper {
+  overflow-x: auto;
+}
+
 .image-name {
   display: flex;
   align-items: center;
   gap: var(--md3-space-sm);
+}
+
+.icon-inline {
+  width: 16px;
+  height: 16px;
+  color: var(--md3-on-surface-variant);
+}
+
+.action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md3-space-xs);
 }
 
 .image-id {

@@ -1,48 +1,52 @@
 <template>
   <div class="ssh-account-page">
-    <el-page-header title="OpsV-Kits">
-      <template #content>
-        <span>SSH 账户管理</span>
-      </template>
-    </el-page-header>
-    <el-divider />
+    <Md3PageHeader title="OpsV-Kits" subtitle="SSH 账户管理" />
+    <Md3Divider />
 
     <div class="account-layout">
       <div class="account-sidebar">
         <div class="sidebar-header">
           <span class="sidebar-title">账户列表</span>
-          <Md3Button size="sm" variant="primary" :icon="Plus" @click="showAddDialog = true">添加</Md3Button>
-          <Md3Button size="sm" :icon="Refresh" @click="loadAccounts">刷新</Md3Button>
+          <Md3Button size="sm" variant="primary" @click="showAddDialog = true"><Md3Icon name="plus" size="1em" />添加</Md3Button>
+          <Md3Button size="sm" @click="loadAccounts"><Md3Icon name="refresh" size="1em" />刷新</Md3Button>
         </div>
 
         <div class="sidebar-section">
           <div class="section-label">账户分组</div>
-          <el-menu :default-active="selectedGroup" class="group-menu">
-            <el-menu-item index="all" @click="selectedGroup = 'all'">
-              <el-icon><FolderOpened /></el-icon>
-              <span>全部账户</span>
-            </el-menu-item>
-            <el-sub-menu
-              v-for="g in groups"
-              :key="g.name"
-              :index="g.name"
+          <nav class="group-nav">
+            <div
+              class="nav-item"
+              :class="{ active: selectedGroup === 'all' }"
+              @click="selectedGroup = 'all'"
             >
-              <template #title>
-                <el-icon><Folder /></el-icon>
-                <span>{{ g.name }}</span>
-              </template>
-              <el-menu-item :index="g.name" @click="selectedGroup = g.name">
-                <span>查看账户</span>
-              </el-menu-item>
-              <el-menu-item @click="openRenameGroup(g.name)">
-                <span>重命名</span>
-              </el-menu-item>
-              <el-menu-item @click="confirmDeleteGroup(g.name)">
-                <span style="color: var(--el-color-danger)">删除分组</span>
-              </el-menu-item>
-            </el-sub-menu>
-          </el-menu>
-          <Md3Button size="sm" class="add-group-btn" :icon="Plus" @click="showNewGroupDialog = true">新建分组</Md3Button>
+              <Md3Icon name="folder-open" class="nav-icon" />
+              <span>全部账户</span>
+            </div>
+            <template v-for="g in groups" :key="g.name">
+              <div class="nav-group">
+                <div
+                  class="nav-item nav-group-header"
+                  :class="{ active: selectedGroup === g.name }"
+                  @click="selectedGroup = g.name"
+                >
+                  <Md3Icon name="folder" class="nav-icon" />
+                  <span>{{ g.name }}</span>
+                </div>
+                <div class="nav-group-actions">
+                  <div class="nav-item nav-sub-item" @click="selectedGroup = g.name">
+                    <span>查看账户</span>
+                  </div>
+                  <div class="nav-item nav-sub-item" @click="openRenameGroup(g.name)">
+                    <span>重命名</span>
+                  </div>
+                  <div class="nav-item nav-sub-item" @click="confirmDeleteGroup(g.name)">
+                    <span class="text-danger">删除分组</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </nav>
+          <Md3Button size="sm" class="add-group-btn" @click="showNewGroupDialog = true"><Md3Icon name="plus" size="1em" />新建分组</Md3Button>
         </div>
 
         <div class="account-list">
@@ -55,178 +59,157 @@
           >
             <div class="acc-info">
               <div class="acc-alias">
-                <el-icon v-if="acc.default" class="star-icon"><StarFilled /></el-icon>
-                <span>{{ acc.alias }}</span>
-              </div>
+              <Md3Icon v-if="acc.default" name="star" class="nav-icon star-icon" />
+              <span>{{ acc.alias }}</span>
+            </div>
               <div class="acc-host">{{ acc.host }}:{{ acc.port }}</div>
             </div>
-            <el-tag
+            <Md3Tag
               :type="acc.status === 'online' ? 'success' : 'info'"
-              size="small"
-              round
+              size="sm"
             >
               {{ acc.status === 'online' ? '在线' : '离线' }}
-            </el-tag>
+            </Md3Tag>
           </div>
         </div>
       </div>
 
       <div class="account-detail">
-        <el-card v-if="selectedAccount" shadow="never">
+        <Md3Card v-if="selectedAccount" :shadow="false">
           <template #header>
             <span>账户详情</span>
           </template>
 
-          <el-descriptions :column="1" border size="small">
-            <el-descriptions-item label="别名">{{ selectedAccount.alias }}</el-descriptions-item>
-            <el-descriptions-item label="主机">
-              {{ selectedAccount.host }}:{{ selectedAccount.port }}
-            </el-descriptions-item>
-            <el-descriptions-item label="用户名">{{ selectedAccount.username }}</el-descriptions-item>
-            <el-descriptions-item label="认证方式">
-              <el-tag size="small">
-                {{ authTypeLabel(selectedAccount.auth_type) }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="私钥路径" v-if="selectedAccount.auth_type === 'key'">
-              {{ selectedAccount.private_key || '-' }}
-            </el-descriptions-item>
-            <el-descriptions-item label="分组">{{ selectedAccount.group || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="远程工作目录">
-              <div class="workplace-row">
-                <code>{{ selectedAccount.workplace_path || '~/projects' }}</code>
-                <Md3Button size="sm" variant="text" :icon="FolderOpened" @click="initWorkplace" :loading="initWorkplaceLoading">初始化</Md3Button>
-              </div>
-            </el-descriptions-item>
-            <el-descriptions-item label="连接状态">
-              <el-tag :type="selectedAccount.status === 'online' ? 'success' : 'info'" size="small" round>
-                {{ selectedAccount.status === 'online' ? '已连接' : '未连接' }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="最后连接">
-              {{ selectedAccount.last_connected || '从未连接' }}
-            </el-descriptions-item>
-          </el-descriptions>
+          <div class="descriptions">
+            <div class="desc-item" v-for="(item, idx) in descriptionItems" :key="idx">
+              <span class="desc-label">{{ item.label }}</span>
+              <span class="desc-value">
+                <template v-if="item.key === 'auth_type'">
+                  <Md3Tag size="sm">{{ authTypeLabel(selectedAccount.auth_type) }}</Md3Tag>
+                </template>
+                <template v-else-if="item.key === 'workplace_path'">
+                  <div class="workplace-row">
+                    <code>{{ selectedAccount.workplace_path || '~/projects' }}</code>
+                    <Md3Button size="sm" variant="text" @click="initWorkplace" :loading="initWorkplaceLoading"><Md3Icon name="folder-open" size="1em" />初始化</Md3Button>
+                  </div>
+                </template>
+                <template v-else-if="item.key === 'private_key'">
+                  {{ selectedAccount.private_key || '-' }}
+                </template>
+                <template v-else-if="item.key === 'group'">
+                  {{ selectedAccount.group || '-' }}
+                </template>
+                <template v-else-if="item.key === 'status'">
+                  <Md3Tag :type="selectedAccount.status === 'online' ? 'success' : 'info'" size="sm">
+                    {{ selectedAccount.status === 'online' ? '已连接' : '未连接' }}
+                  </Md3Tag>
+                </template>
+                <template v-else>
+                  {{ item.value }}
+                </template>
+              </span>
+            </div>
+          </div>
 
           <div class="detail-actions">
-            <Md3Button variant="primary" :icon="Connection" @click="testConnection">测试连接</Md3Button>
-            <Md3Button :icon="Edit" @click="editAccount">编辑</Md3Button>
-            <el-popconfirm title="确认删除该账户?" @confirm="removeAccount">
-              <template #reference>
-                <Md3Button variant="danger" :icon="Delete">删除</Md3Button>
-              </template>
-            </el-popconfirm>
-            <Md3Button :icon="StarFilled" @click="setAsDefault">设为默认</Md3Button>
+            <Md3Button variant="primary" @click="testConnection"><Md3Icon name="connection" size="1em" />测试连接</Md3Button>
+            <Md3Button @click="editAccount"><Md3Icon name="pencil" size="1em" />编辑</Md3Button>
+            <Md3Button variant="danger" @click="confirmRemoveAccount"><Md3Icon name="delete" size="1em" />删除</Md3Button>
+            <Md3Button @click="setAsDefault"><Md3Icon name="star" size="1em" />设为默认</Md3Button>
           </div>
-        </el-card>
+        </Md3Card>
 
-        <el-empty v-else description="请选择一个 SSH 账户" />
+        <Md3Empty v-if="!selectedAccount" description="请选择一个 SSH 账户" />
 
-        <el-card v-if="selectedAccount" shadow="never" class="permission-card">
+        <Md3Card v-if="selectedAccount" :shadow="false" class="permission-card">
           <template #header>
             <span>权限测试</span>
           </template>
           <div class="permission-list">
             <div class="permission-item">
-              <el-icon class="perm-success"><CircleCheck /></el-icon>
+              <Md3Icon name="check-circle" class="perm-icon perm-success" />
               <span>读取权限: /home/dev/projects</span>
             </div>
             <div class="permission-item">
-              <el-icon class="perm-success"><CircleCheck /></el-icon>
+              <Md3Icon name="check-circle" class="perm-icon perm-success" />
               <span>写入权限: /home/dev/projects</span>
             </div>
             <div class="permission-item">
-              <el-icon class="perm-success"><CircleCheck /></el-icon>
+              <Md3Icon name="check-circle" class="perm-icon perm-success" />
               <span>执行权限: /home/dev/projects</span>
             </div>
             <div class="permission-item">
-              <el-icon class="perm-warning"><Warning /></el-icon>
+              <Md3Icon name="alert" class="perm-icon perm-warning" />
               <span>sudo 权限: 需要密码</span>
             </div>
             <div class="permission-item">
-              <el-icon class="perm-error"><CircleClose /></el-icon>
+              <Md3Icon name="close" class="perm-icon perm-error" />
               <span>root 权限: 未获取</span>
             </div>
           </div>
           <div class="permission-actions">
-            <Md3Button size="sm" :icon="Top">提升权限</Md3Button>
-            <Md3Button size="sm" :icon="Tickets">查看日志</Md3Button>
+            <Md3Button size="sm"><Md3Icon name="arrow-up" size="1em" />提升权限</Md3Button>
+            <Md3Button size="sm"><Md3Icon name="tag" size="1em" />查看日志</Md3Button>
           </div>
-        </el-card>
+        </Md3Card>
       </div>
     </div>
 
-    <el-dialog v-model="showAddDialog" :title="isEditing ? '编辑账户' : '添加账户'" width="560px">
-      <el-form :model="formData" label-width="100px" label-position="left">
-        <el-form-item label="别名" required>
-          <el-input v-model="formData.alias" placeholder="如：生产环境" />
-        </el-form-item>
-        <el-form-item label="主机" required>
-          <el-input v-model="formData.host" placeholder="192.168.1.100" style="width: calc(100% - 80px)" />
-          <el-input v-model.number="formData.port" placeholder="22" style="width: 70px" class="port-input" />
-        </el-form-item>
-        <el-form-item label="用户名" required>
-          <el-input v-model="formData.username" placeholder="root" />
-        </el-form-item>
-        <el-form-item label="认证方式">
-          <el-radio-group v-model="formData.auth_type">
-            <el-radio value="password">密码</el-radio>
-            <el-radio value="key">SSH 密钥</el-radio>
-            <el-radio value="agent">SSH Agent</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="密码" v-if="formData.auth_type === 'password'">
-          <el-input v-model="formData.password" type="password" show-password placeholder="登录密码" />
-        </el-form-item>
-        <el-form-item label="私钥路径" v-if="formData.auth_type === 'key'">
-          <el-input v-model="formData.private_key" placeholder="~/.ssh/id_rsa" />
-        </el-form-item>
-        <el-form-item label="密钥密码" v-if="formData.auth_type === 'key'">
-          <el-input v-model="formData.key_passphrase" type="password" show-password placeholder="私钥密码（可选）" />
-        </el-form-item>
-        <el-form-item label="分组">
-          <el-select v-model="formData.group" clearable placeholder="选择分组" style="width: calc(100% - 70px)">
-            <el-option v-for="g in groups" :key="g.name" :label="g.name" :value="g.name" />
-          </el-select>
-          <Md3Button size="sm" variant="text" :icon="Plus" @click="showNewGroupDialog = true" style="margin-left: 4px">新建</Md3Button>
-        </el-form-item>
-      </el-form>
+    <Md3Dialog v-model:visible="showAddDialog" :title="isEditing ? '编辑账户' : '添加账户'" width="560px">
+      <div class="dialog-form">
+        <Md3Input v-model="formData.alias" label="别名" placeholder="如：生产环境" />
+        <div class="host-row">
+          <Md3Input v-model="formData.host" label="主机" placeholder="192.168.1.100" style="flex:1" />
+          <Md3Input v-model.number="formData.port" label="" placeholder="22" type="number" class="port-input" />
+        </div>
+        <Md3Input v-model="formData.username" label="用户名" placeholder="root" />
+        <div class="auth-type-section">
+          <span class="form-label">认证方式</span>
+          <div class="radio-group">
+            <Md3Radio v-model="formData.auth_type" value="password" label="密码" />
+            <Md3Radio v-model="formData.auth_type" value="key" label="SSH 密钥" />
+            <Md3Radio v-model="formData.auth_type" value="agent" label="SSH Agent" />
+          </div>
+        </div>
+        <Md3Input v-if="formData.auth_type === 'password'" v-model="formData.password" label="密码" type="password" placeholder="登录密码" />
+        <Md3Input v-if="formData.auth_type === 'key'" v-model="formData.private_key" label="私钥路径" placeholder="~/.ssh/id_rsa" />
+        <Md3Input v-if="formData.auth_type === 'key'" v-model="formData.key_passphrase" label="密钥密码" type="password" placeholder="私钥密码（可选）" />
+        <div class="group-select-row">
+          <Md3Select v-model="formData.group" label="分组" placeholder="选择分组" :options="groupOptions" style="flex:1" clearable />
+          <Md3Button size="sm" variant="text" @click="showNewGroupDialog = true"><Md3Icon name="plus" size="1em" />新建</Md3Button>
+        </div>
+      </div>
       <template #footer>
         <Md3Button @click="showAddDialog = false">取消</Md3Button>
         <Md3Button variant="primary" @click="saveAccount">保存</Md3Button>
       </template>
-    </el-dialog>
+    </Md3Dialog>
 
-    <el-dialog v-model="showNewGroupDialog" title="新建分组" width="400px">
-      <el-input v-model="newGroupName" placeholder="分组名称" />
+    <Md3Dialog v-model:visible="showNewGroupDialog" title="新建分组" width="400px">
+      <Md3Input v-model="newGroupName" label="" placeholder="分组名称" />
       <template #footer>
         <Md3Button @click="showNewGroupDialog = false">取消</Md3Button>
         <Md3Button variant="primary" @click="createGroup">确定</Md3Button>
       </template>
-    </el-dialog>
+    </Md3Dialog>
 
-    <el-dialog v-model="showRenameGroupDialog" title="重命名分组" width="400px">
-      <el-input v-model="renameGroupNewName" placeholder="新分组名称" />
+    <Md3Dialog v-model:visible="showRenameGroupDialog" title="重命名分组" width="400px">
+      <Md3Input v-model="renameGroupNewName" label="" placeholder="新分组名称" />
       <template #footer>
         <Md3Button @click="showRenameGroupDialog = false">取消</Md3Button>
         <Md3Button variant="primary" @click="renameGroup">确定</Md3Button>
       </template>
-    </el-dialog>
+    </Md3Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import {
-  Plus, Refresh, FolderOpened, Folder,
-  StarFilled, Connection, Edit, Delete,
-  CircleCheck, Warning, CircleClose,
-  Top, Tickets,
-} from '@element-plus/icons-vue'
+import { Md3Icon } from '@/components/md3'
 import Md3Button from '@/components/Md3Button.vue'
 import { useSshAccountStore, type SshAccount } from '@/stores/sshAccountStore'
 import { request } from '@/api'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { Md3Message, Md3Confirm, Md3PageHeader, Md3Divider, Md3Card, Md3Empty, Md3Tag, Md3Input, Md3Radio, Md3Select, Md3Dialog } from '@/components/md3'
 
 const sshStore = useSshAccountStore()
 
@@ -254,6 +237,9 @@ const formData = ref<SshAccount>({
 
 const accounts = computed(() => sshStore.accounts)
 const groups = computed(() => sshStore.groups)
+const groupOptions = computed(() =>
+  groups.value.map(g => ({ label: g.name, value: g.name }))
+)
 
 const filteredAccounts = computed(() => {
   if (selectedGroup.value === 'all') return accounts.value
@@ -269,6 +255,25 @@ function authTypeLabel(type: string) {
   return map[type] || type
 }
 
+const descriptionItems = computed(() => {
+  const acc = selectedAccount.value
+  if (!acc) return []
+  const items: { label: string; key: string; value?: string }[] = [
+    { label: '别名', key: 'alias', value: acc.alias },
+    { label: '主机', key: 'host', value: `${acc.host}:${acc.port}` },
+    { label: '用户名', key: 'username', value: acc.username },
+    { label: '认证方式', key: 'auth_type' },
+    { label: '远程工作目录', key: 'workplace_path' },
+    { label: '分组', key: 'group' },
+    { label: '连接状态', key: 'status' },
+    { label: '最后连接', key: 'last_connected', value: acc.last_connected || '从未连接' },
+  ]
+  if (acc.auth_type === 'key') {
+    items.splice(4, 0, { label: '私钥路径', key: 'private_key' })
+  }
+  return items
+})
+
 function selectAccount(acc: SshAccount) {
   selectedAccount.value = acc
 }
@@ -281,9 +286,9 @@ async function testConnection() {
   if (!selectedAccount.value) return
   const res = await sshStore.testConnection(selectedAccount.value.alias)
   if (res.success) {
-    ElMessage.success(res.message || '连接测试成功')
+    Md3Message.success(res.message || '连接测试成功')
   } else {
-    ElMessage.error(res.message || '连接测试失败')
+    Md3Message.error(res.message || '连接测试失败')
   }
 }
 
@@ -292,6 +297,19 @@ function editAccount() {
   isEditing.value = true
   formData.value = { ...selectedAccount.value }
   showAddDialog.value = true
+}
+
+async function confirmRemoveAccount() {
+  if (!selectedAccount.value) return
+  const confirmed = await Md3Confirm.show({
+    title: '删除账户',
+    message: `确认删除账户「${selectedAccount.value.alias}」吗？`,
+    confirmText: '删除',
+    cancelText: '取消',
+    type: 'danger',
+  })
+  if (!confirmed) return
+  await removeAccount()
 }
 
 async function removeAccount() {
@@ -333,7 +351,7 @@ async function createGroup() {
     showNewGroupDialog.value = false
     newGroupName.value = ''
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.detail || '创建分组失败')
+    Md3Message.error(e?.response?.data?.detail || '创建分组失败')
   }
 }
 
@@ -351,28 +369,30 @@ async function renameGroup() {
     if (selectedGroup.value === renameGroupOldName.value) {
       selectedGroup.value = renameGroupNewName.value
     }
-    ElMessage.success('分组已重命名')
+    Md3Message.success('分组已重命名')
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.detail || '重命名失败')
+    Md3Message.error(e?.response?.data?.detail || '重命名失败')
   }
 }
 
-function confirmDeleteGroup(name: string) {
-  ElMessageBox.confirm(`确认删除分组 "${name}"？该分组下的账户将解除分组关联。`, '删除分组', {
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
-    type: 'warning',
-  }).then(async () => {
-    try {
-      await sshStore.deleteGroup(name)
-      if (selectedGroup.value === name) {
-        selectedGroup.value = 'all'
-      }
-      ElMessage.success('分组已删除')
-    } catch (e: any) {
-      ElMessage.error(e?.response?.data?.detail || '删除分组失败')
+async function confirmDeleteGroup(name: string) {
+  const confirmed = await Md3Confirm.show({
+    title: '删除分组',
+    message: `确认删除分组 "${name}"？该分组下的账户将解除分组关联。`,
+    confirmText: '删除',
+    cancelText: '取消',
+    type: 'danger',
+  })
+  if (!confirmed) return
+  try {
+    await sshStore.deleteGroup(name)
+    if (selectedGroup.value === name) {
+      selectedGroup.value = 'all'
     }
-  }).catch(() => {})
+    Md3Message.success('分组已删除')
+  } catch (e: any) {
+    Md3Message.error(e?.response?.data?.detail || '删除分组失败')
+  }
 }
 
 const initWorkplaceLoading = ref(false)
@@ -382,9 +402,9 @@ async function initWorkplace() {
   initWorkplaceLoading.value = true
   try {
     const res = await request.post('/accounts/workplace/init', null, { params: { alias: selectedAccount.value.alias } })
-    ElMessage.success(res.message)
+    Md3Message.success(res.message)
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.detail || '初始化失败')
+    Md3Message.error(e?.response?.data?.detail || '初始化失败')
   } finally {
     initWorkplaceLoading.value = false
   }
@@ -451,9 +471,68 @@ onMounted(() => {
   padding: var(--md3-space-xs) 0;
 }
 
-.group-menu {
-  border-right: none !important;
-  background: transparent;
+.group-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-xs);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-sm);
+  padding: var(--md3-space-xs) var(--md3-space-sm);
+  border-radius: var(--md3-shape-sm);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--md3-on-surface);
+  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+}
+
+.nav-item:hover {
+  background: var(--md3-surface-container-high);
+}
+
+.nav-item.active {
+  background: var(--md3-primary-container);
+  color: var(--md3-on-primary-container);
+}
+
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.nav-group-header {
+  font-weight: 500;
+}
+
+.nav-group-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.nav-sub-item {
+  padding-left: calc(var(--md3-space-sm) + 18px + var(--md3-space-xs));
+  font-size: 12px;
+}
+
+.text-danger {
+  color: var(--md3-error);
+}
+
+.perm-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .add-group-btn {
@@ -518,6 +597,33 @@ onMounted(() => {
   gap: var(--md3-space-lg);
 }
 
+.descriptions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-sm);
+}
+
+.desc-item {
+  display: flex;
+  align-items: flex-start;
+  padding: var(--md3-space-sm) 0;
+  border-bottom: 1px solid var(--md3-outline-variant);
+}
+
+.desc-label {
+  font-size: 0.75rem;
+  color: var(--md3-on-surface-variant);
+  width: 100px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.desc-value {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--md3-on-surface);
+}
+
 .detail-actions {
   display: flex;
   gap: var(--md3-space-sm);
@@ -575,6 +681,41 @@ onMounted(() => {
 }
 
 .port-input {
-  margin-left: var(--md3-space-xs);
+  width: 80px;
+}
+
+.host-row {
+  display: flex;
+  gap: var(--md3-space-sm);
+}
+
+.auth-type-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-xs);
+}
+
+.form-label {
+  font-size: 0.75rem;
+  color: var(--md3-on-surface-variant);
+  padding-left: var(--md3-space-sm);
+}
+
+.radio-group {
+  display: flex;
+  gap: var(--md3-space-md);
+  padding-left: var(--md3-space-sm);
+}
+
+.group-select-row {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-sm);
+}
+
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-md);
 }
 </style>

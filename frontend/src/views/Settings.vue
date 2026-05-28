@@ -1,15 +1,15 @@
 <template>
   <div class="settings">
-    <el-page-header title="OpsV-Kits">
+    <Md3PageHeader title="OpsV-Kits">
       <template #content>
         <span>系统设置</span>
       </template>
-    </el-page-header>
-    <el-divider />
+    </Md3PageHeader>
+    <Md3Divider />
 
-    <el-card shadow="never" class="theme-card">
+    <Md3Card class="theme-card">
       <template #header>
-        <span><el-icon><Monitor /></el-icon> 主题设置</span>
+        <span><Md3Icon name="monitor" class="header-icon" /> 主题设置</span>
       </template>
 
       <div class="theme-section">
@@ -24,7 +24,7 @@
           </div>
         </div>
 
-        <el-divider />
+        <Md3Divider />
 
         <div class="preset-section">
           <div class="theme-info">
@@ -34,61 +34,73 @@
           <ColorPresets />
         </div>
       </div>
-    </el-card>
+    </Md3Card>
 
-    <el-card shadow="never">
+    <Md3Card>
       <template #header>
-        <span><el-icon><Clock /></el-icon> 会话历史管理</span>
+        <span><Md3Icon name="clock" class="header-icon" /> 会话历史管理</span>
       </template>
 
-      <el-form label-width="200px" label-position="left" @submit.prevent="saveSettings">
-        <el-form-item label="会话历史保留时间">
-          <el-input-number v-model="sessionTtlHours" :min="1" :max="720" style="width: 160px" />
+      <div class="form-group">
+        <div class="form-row">
+          <span class="form-label">会话历史保留时间</span>
+          <Md3Input type="number" v-model="sessionTtlHours" :min="1" :max="720" class="form-input-narrow" />
           <span class="settings-hint">小时（1小时~30天，默认72小时）</span>
-        </el-form-item>
-        <el-form-item label="已保存的历史会话数">
-          <el-tag type="info">{{ historyCount }} 条</el-tag>
+        </div>
+        <div class="form-row">
+          <span class="form-label">已保存的历史会话数</span>
+          <Md3Tag type="info">{{ historyCount }} 条</Md3Tag>
           <Md3Button size="sm" class="action-btn" @click="clearAllHistory" :disabled="historyCount === 0">
             清空全部历史
           </Md3Button>
-        </el-form-item>
-        <el-form-item>
+        </div>
+        <div class="form-row form-actions">
           <Md3Button variant="primary" @click="saveSettings" :loading="saving">保存设置</Md3Button>
-          <el-tag v-if="saved" type="success" class="saved-tag">已保存</el-tag>
-        </el-form-item>
-      </el-form>
-    </el-card>
+          <Md3Tag v-if="saved" type="success" class="saved-tag">已保存</Md3Tag>
+        </div>
+      </div>
+    </Md3Card>
 
-    <el-card shadow="never" style="margin-top: 16px">
+    <Md3Card style="margin-top: 16px">
       <template #header>
-        <span><el-icon><FolderOpened /></el-icon> 远程硬盘映射账户</span>
+        <span><Md3Icon name="folder-open" class="header-icon" /> 远程硬盘映射账户</span>
       </template>
 
-      <el-form label-width="200px" label-position="left" @submit.prevent="saveDriveAuth">
-        <el-form-item label="登录用户名">
-          <el-input v-model="driveUsername" placeholder="opsv" style="width: 200px" />
+      <div class="form-group">
+        <div class="form-row">
+          <span class="form-label">登录用户名</span>
+          <Md3Input v-model="driveUsername" placeholder="opsv" class="form-input-wide" />
           <span class="settings-hint">映射网络驱动器时使用的用户名</span>
-        </el-form-item>
-        <el-form-item label="登录密码">
-          <el-input v-model="drivePassword" type="password" show-password placeholder="留空则使用SSH默认账户密码" style="width: 200px" />
+        </div>
+        <div class="form-row">
+          <span class="form-label">登录密码</span>
+          <Md3Input v-model="drivePassword" type="password" placeholder="留空则使用SSH默认账户密码" class="form-input-wide" />
           <span class="settings-hint">留空时自动使用SSH默认账户的密码</span>
-        </el-form-item>
-        <el-form-item label="当前状态">
-          <el-tag v-if="drivePasswordSet" type="success">已设置自定义密码</el-tag>
-          <el-tag v-else type="info">使用SSH默认账户密码</el-tag>
-        </el-form-item>
-        <el-form-item>
+        </div>
+        <div class="form-row">
+          <span class="form-label">当前状态</span>
+          <Md3Tag v-if="drivePasswordSet" type="success">已设置自定义密码</Md3Tag>
+          <Md3Tag v-else type="info">使用SSH默认账户密码</Md3Tag>
+        </div>
+        <div class="form-row form-actions">
           <Md3Button variant="primary" @click="saveDriveAuth" :loading="savingDrive">保存</Md3Button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+        </div>
+      </div>
+    </Md3Card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Clock, Monitor, FolderOpened } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { Md3Icon } from '@/components/md3'
+import {
+  Md3PageHeader,
+  Md3Divider,
+  Md3Card,
+  Md3Input,
+  Md3Tag,
+  Md3Message,
+} from '@/components/md3'
 import Md3Button from '@/components/Md3Button.vue'
 import { request } from '@/api'
 import { useThemeStore } from '@/stores/themeStore'
@@ -126,10 +138,10 @@ async function saveSettings() {
   try {
     await request.put('/settings', { session_ttl_hours: sessionTtlHours.value })
     saved.value = true
-    ElMessage.success('设置已保存')
+    Md3Message.success('设置已保存')
     setTimeout(() => { saved.value = false }, 2000)
   } catch {
-    ElMessage.error('保存失败')
+    Md3Message.error('保存失败')
   } finally { saving.value = false }
 }
 
@@ -143,9 +155,9 @@ async function saveDriveAuth() {
     await request.put('/settings', data)
     drivePassword.value = ''
     drivePasswordSet.value = !!data.remote_drive_password
-    ElMessage.success('映射账户已保存')
+    Md3Message.success('映射账户已保存')
   } catch {
-    ElMessage.error('保存失败')
+    Md3Message.error('保存失败')
   } finally { savingDrive.value = false }
 }
 
@@ -157,9 +169,9 @@ async function clearAllHistory() {
       await request.delete(`/webssh/sessions/history/${s.session_id}`)
     }
     historyCount.value = 0
-    ElMessage.success('历史已清空')
+    Md3Message.success('历史已清空')
   } catch {
-    ElMessage.error('清空失败')
+    Md3Message.error('清空失败')
   }
 }
 
@@ -169,6 +181,12 @@ onMounted(loadSettings)
 <style scoped>
 .settings {
   padding: 0;
+}
+
+.header-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
 }
 
 .theme-card {
@@ -230,5 +248,37 @@ onMounted(loadSettings)
 
 .saved-tag {
   margin-left: var(--md3-space-md);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-md);
+  padding: var(--md3-space-sm) 0;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-sm);
+}
+
+.form-label {
+  width: 200px;
+  font-size: 14px;
+  color: var(--md3-on-surface);
+  flex-shrink: 0;
+}
+
+.form-input-narrow {
+  width: 160px;
+}
+
+.form-input-wide {
+  width: 200px;
+}
+
+.form-actions {
+  margin-top: var(--md3-space-xs);
 }
 </style>

@@ -22,7 +22,7 @@ async def get_status():
     accounts = ssh_account_service.list_accounts() or []
     if not password_set and accounts:
         default_acct = next((a for a in accounts if a.is_default), accounts[0])
-        username = default_acct.username or "opsv"
+        username = default_acct.username or accounts[0].username or "opsv"
     mount_list = [
         {
             "alias": a.alias,

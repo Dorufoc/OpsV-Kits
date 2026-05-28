@@ -1,88 +1,94 @@
 <template>
   <div class="file-browser">
     <div class="browser-toolbar">
-      <Md3Button size="sm" :disabled="!canGoBack" @click="$emit('navigate', parentPath)" :icon="Back">上级</Md3Button>
-      <el-breadcrumb class="path-breadcrumb" separator="/">
-        <el-breadcrumb-item
-          v-for="(seg, index) in pathSegments"
-          :key="index"
-          :to="index < pathSegments.length - 1 ? '' : undefined"
-        >
-          <span
-            v-if="index < pathSegments.length - 1"
-            class="breadcrumb-link"
-            @click="navigateToSegment(index)"
-          >{{ seg.name }}</span>
-          <span v-else>{{ seg.name }}</span>
-        </el-breadcrumb-item>
-      </el-breadcrumb>
+      <Md3Button size="sm" :disabled="!canGoBack" @click="$emit('navigate', parentPath)" :icon="BackIcon">上级</Md3Button>
+      <nav class="path-breadcrumb" aria-label="Breadcrumb">
+        <ol class="breadcrumb-list">
+          <li v-for="(seg, index) in pathSegments" :key="index" class="breadcrumb-item">
+            <span
+              v-if="index < pathSegments.length - 1"
+              class="breadcrumb-link"
+              @click="navigateToSegment(index)"
+            >{{ seg.name }}</span>
+            <span v-else class="breadcrumb-current">{{ seg.name }}</span>
+            <span v-if="index < pathSegments.length - 1" class="breadcrumb-separator">/</span>
+          </li>
+        </ol>
+      </nav>
     </div>
 
     <div class="browser-actions">
-      <el-dropdown trigger="click" v-if="showCreate">
-        <Md3Button size="sm" variant="primary" :icon="Plus">新建</Md3Button>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item @click="$emit('mkdir')">文件夹</el-dropdown-item>
-            <el-dropdown-item @click="$emit('createFile')">文件</el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-      <Md3Button size="sm" @click="$emit('upload')" :icon="Upload" v-if="showUpload">上传</Md3Button>
-      <el-input
+      <div class="dropdown-wrapper" v-if="showCreate">
+        <Md3Button size="sm" variant="primary" :icon="PlusIcon" @click="toggleDropdown">新建</Md3Button>
+        <div v-if="dropdownOpen" class="dropdown-menu" @click.stop>
+          <button class="dropdown-item" @click="handleMkdir">文件夹</button>
+          <button class="dropdown-item" @click="handleCreateFile">文件</button>
+        </div>
+      </div>
+      <Md3Button size="sm" @click="$emit('upload')" :icon="UploadIcon" v-if="showUpload">上传</Md3Button>
+      <Md3Input
         v-model="searchQuery"
         placeholder="搜索文件..."
-        size="small"
-        clearable
+        type="search"
         class="search-input"
-        @input="onSearch"
+        @update:modelValue="onSearch"
       >
         <template #prefix>
-          <el-icon><Search /></el-icon>
+          <Md3Icon name="magnify" size="16" class="icon-inline" />
         </template>
-      </el-input>
+      </Md3Input>
     </div>
 
-    <el-table
-      :data="filteredItems"
-      style="width: 100%"
-      size="small"
-      stripe
-      highlight-current-row
-      @row-click="onRowClick"
-      @row-dblclick="onRowDblClick"
-    >
-      <el-table-column label="名称" min-width="240">
-        <template #default="{ row }">
-          <div class="file-name">
-            <el-icon v-if="row.is_dir" class="folder-icon"><FolderOpened /></el-icon>
-            <el-icon v-else class="file-icon"><Document /></el-icon>
-            <span>{{ row.name }}</span>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="size" label="大小" width="100" align="right">
-        <template #default="{ row }">
-          <span v-if="row.is_dir">-</span>
-          <span v-else>{{ formatSize(row.size) }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="permission" label="权限" width="120" />
-      <el-table-column prop="owner" label="所有者" width="120" />
-      <el-table-column prop="modified" label="修改时间" width="160" />
-      <el-table-column label="操作" width="300" fixed="right">
-        <template #default="{ row }">
-          <Md3Button :icon="Download" size="sm" @click.stop="$emit('download', row)">下载</Md3Button>
-          <Md3Button :icon="Edit" size="sm" @click.stop="$emit('rename', row)">重命名</Md3Button>
-          <Md3Button :icon="CopyDocument" size="sm" @click.stop="$emit('copy', row)">复制</Md3Button>
-          <el-popconfirm title="确认删除?" @confirm="$emit('delete', row)">
-            <template #reference>
-              <Md3Button :icon="Delete" size="sm" variant="danger">删除</Md3Button>
-            </template>
-          </el-popconfirm>
-        </template>
-      </el-table-column>
-    </el-table>
+    <div class="file-table-wrapper">
+      <table class="md3-table md3-table--stripe md3-table--hover">
+        <thead>
+          <tr>
+            <th class="md3-table-cell md3-table-header" style="min-width: 240px">名称</th>
+            <th class="md3-table-cell md3-table-header" style="width: 100px; text-align: right">大小</th>
+            <th class="md3-table-cell md3-table-header" style="width: 120px">权限</th>
+            <th class="md3-table-cell md3-table-header" style="width: 120px">所有者</th>
+            <th class="md3-table-cell md3-table-header" style="width: 160px">修改时间</th>
+            <th class="md3-table-cell md3-table-header" style="width: 300px; text-align: right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="(row, idx) in filteredItems"
+            :key="idx"
+            class="md3-table-row"
+            :class="{ 'md3-table-row--selected': selectedItem === row }"
+            @click="onRowClick(row)"
+            @dblclick="onRowDblClick(row)"
+          >
+            <td class="md3-table-cell md3-table-body">
+              <div class="file-name">
+                <Md3Icon v-if="row.is_dir" name="folder-open" size="18" class="folder-icon" />
+                <Md3Icon v-else name="text-box" size="18" class="file-icon" />
+                <span>{{ row.name }}</span>
+              </div>
+            </td>
+            <td class="md3-table-cell md3-table-body" style="text-align: right">
+              <span v-if="row.is_dir">-</span>
+              <span v-else>{{ formatSize(row.size) }}</span>
+            </td>
+            <td class="md3-table-cell md3-table-body">{{ row.permission }}</td>
+            <td class="md3-table-cell md3-table-body">{{ row.owner }}</td>
+            <td class="md3-table-cell md3-table-body">{{ row.modified }}</td>
+            <td class="md3-table-cell md3-table-body" style="text-align: right">
+              <div class="action-buttons">
+                <Md3Button :icon="DownloadIcon" size="sm" @click.stop="$emit('download', row)">下载</Md3Button>
+                <Md3Button :icon="EditIcon" size="sm" @click.stop="$emit('rename', row)">重命名</Md3Button>
+                <Md3Button :icon="CopyIcon" size="sm" @click.stop="$emit('copy', row)">复制</Md3Button>
+                <Md3Button :icon="DeleteIcon" size="sm" variant="danger" @click.stop="confirmDelete(row)">删除</Md3Button>
+              </div>
+            </td>
+          </tr>
+          <tr v-if="filteredItems.length === 0">
+            <td colspan="6" class="md3-table-empty">暂无文件</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div class="browser-status">
       <span>{{ filteredItems.length }} 项</span>
@@ -95,12 +101,18 @@
 
 <script setup lang="ts">
 import Md3Button from '@/components/Md3Button.vue'
-import { computed, ref } from 'vue'
-import {
-  Back, Plus, Upload, Search,
-  FolderOpened, Document,
-  Download, Edit, CopyDocument, Delete,
-} from '@element-plus/icons-vue'
+import Md3Input from '@/components/md3/Md3Input.vue'
+import { Md3Confirm, Md3Icon } from '@/components/md3'
+import { computed, ref, onMounted, onUnmounted, defineComponent, h } from 'vue'
+
+// Icon wrappers for Md3Button compatibility
+const BackIcon = defineComponent(() => () => h(Md3Icon, { name: 'arrow-left' }))
+const PlusIcon = defineComponent(() => () => h(Md3Icon, { name: 'plus' }))
+const UploadIcon = defineComponent(() => () => h(Md3Icon, { name: 'upload' }))
+const DownloadIcon = defineComponent(() => () => h(Md3Icon, { name: 'download' }))
+const EditIcon = defineComponent(() => () => h(Md3Icon, { name: 'pencil' }))
+const CopyIcon = defineComponent(() => () => h(Md3Icon, { name: 'content-copy' }))
+const DeleteIcon = defineComponent(() => () => h(Md3Icon, { name: 'delete' }))
 
 export interface FileItem {
   name: string
@@ -136,6 +148,33 @@ const emit = defineEmits<{
 
 const searchQuery = ref('')
 const selectedItem = ref<FileItem | null>(null)
+const dropdownOpen = ref(false)
+
+function toggleDropdown() {
+  dropdownOpen.value = !dropdownOpen.value
+}
+
+function closeDropdown() {
+  dropdownOpen.value = false
+}
+
+function handleMkdir() {
+  closeDropdown()
+  emit('mkdir')
+}
+
+function handleCreateFile() {
+  closeDropdown()
+  emit('createFile')
+}
+
+onMounted(() => {
+  document.addEventListener('click', closeDropdown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeDropdown)
+})
 
 const pathSegments = computed(() => {
   const parts = props.currentPath.replace(/\\/g, '/').split('/').filter(Boolean)
@@ -182,8 +221,18 @@ function onRowDblClick(row: FileItem) {
   }
 }
 
-function onSearch(query: string) {
-  emit('search', query)
+function onSearch(value: string | number) {
+  emit('search', String(value))
+}
+
+async function confirmDelete(row: FileItem) {
+  const confirmed = await Md3Confirm.show({
+    title: '确认删除',
+    message: `确认删除 "${row.name}"?`,
+  })
+  if (confirmed) {
+    emit('delete', row)
+  }
 }
 
 function formatSize(bytes: number): string {
@@ -223,6 +272,21 @@ function formatSize(bytes: number): string {
   flex: 1;
 }
 
+.breadcrumb-list {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-xs);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md3-space-xs);
+}
+
 .breadcrumb-link {
   color: var(--md3-primary);
   cursor: pointer;
@@ -234,15 +298,86 @@ function formatSize(bytes: number): string {
   text-decoration: underline;
 }
 
+.breadcrumb-current {
+  color: var(--md3-on-surface);
+  font-weight: 500;
+}
+
+.breadcrumb-separator {
+  color: var(--md3-on-surface-variant);
+  opacity: 0.5;
+}
+
 .browser-actions {
   display: flex;
   align-items: center;
   gap: var(--md3-space-sm);
 }
 
+.dropdown-wrapper {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + var(--md3-space-xs));
+  left: 0;
+  min-width: 160px;
+  padding: var(--md3-space-xs) 0;
+  background: var(--md3-surface-container);
+  border: 1px solid var(--md3-outline-variant);
+  border-radius: var(--md3-shape-sm);
+  box-shadow: var(--md3-elevation-level2);
+  z-index: 1000;
+  animation: dropdown-enter 0.15s var(--md3-motion-easing-standard);
+}
+
+@keyframes dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: var(--md3-space-sm) var(--md3-space-md);
+  border: none;
+  background: transparent;
+  color: var(--md3-on-surface);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+}
+
+.dropdown-item:hover {
+  background: var(--md3-on-surface-variant-transparent);
+}
+
+.dropdown-item:active {
+  background: var(--md3-state-layer-active);
+}
+
+.icon-inline {
+  width: 16px;
+  height: 16px;
+  color: var(--md3-on-surface-variant);
+}
+
 .search-input {
   width: 200px;
   margin-left: auto;
+}
+
+.file-table-wrapper {
+  overflow-x: auto;
 }
 
 .file-name {
@@ -252,11 +387,23 @@ function formatSize(bytes: number): string {
 }
 
 .folder-icon {
+  width: 18px;
+  height: 18px;
   color: var(--md3-warning);
+  flex-shrink: 0;
 }
 
 .file-icon {
+  width: 18px;
+  height: 18px;
   color: var(--md3-on-surface-variant);
+  flex-shrink: 0;
+}
+
+.action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md3-space-xs);
 }
 
 .browser-status {

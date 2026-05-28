@@ -14,14 +14,12 @@
           <span class="session-user">@{{ session.username }}</span>
         </div>
         <div class="session-meta">
-          <el-tag
-            :type="session.status === 'online' ? 'success' : session.status === 'connecting' ? 'warning' : 'info'"
-            size="small"
-            round
-          >
+          <Md3Tag :variant="stateTagVariant(session.status)">
             {{ session.status === 'online' ? '在线' : session.status === 'connecting' ? '连接中' : '离线' }}
-          </el-tag>
-          <Md3Button :icon="Close" size="sm" variant="danger" @click.stop="$emit('disconnect', session.id)">断开</Md3Button>
+          </Md3Tag>
+          <Md3Button size="sm" variant="danger" @click.stop="$emit('disconnect', session.id)">
+            <Md3Icon name="close" size="14" />断开
+          </Md3Button>
         </div>
       </div>
     </div>
@@ -40,25 +38,31 @@
         </div>
         <div class="session-meta">
           <span class="time-label">{{ formatTime(record.disconnected_at) }}</span>
-          <el-tag type="info" size="small" round>历史</el-tag>
-          <Md3Button :icon="Delete" size="sm" variant="danger" @click.stop="$emit('deleteHistory', record.session_id)">删除</Md3Button>
+          <Md3Tag variant="info">历史</Md3Tag>
+          <Md3Button size="sm" variant="danger" @click.stop="$emit('deleteHistory', record.session_id)">
+            <Md3Icon name="delete" size="14" />删除
+          </Md3Button>
         </div>
       </div>
     </div>
 
     <div v-if="sessions.length === 0 && historyRecords.length === 0" class="session-empty">
-      <el-empty description="暂无会话" :image-size="60" />
+      <Md3Empty description="暂无会话" />
     </div>
 
     <div class="session-actions">
-      <Md3Button size="sm" variant="primary" :icon="Plus" @click="$emit('newSession')">新建会话</Md3Button>
+      <Md3Button size="sm" variant="primary" @click="$emit('newSession')">
+        <Md3Icon name="plus" size="14" />新建会话
+      </Md3Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import Md3Button from '@/components/Md3Button.vue'
-import { Close, Plus, Delete } from '@element-plus/icons-vue'
+import Md3Tag from '@/components/md3/Md3Tag.vue'
+import Md3Empty from '@/components/md3/Md3Empty.vue'
+import { Md3Icon } from '@/components/md3'
 import type { WebSshSession, HistoryRecord } from '@/stores/websshStore'
 
 defineProps<{
@@ -74,6 +78,15 @@ defineEmits<{
   reconnect: [record: HistoryRecord]
   deleteHistory: [sessionId: string]
 }>()
+
+function stateTagVariant(status: string) {
+  const map: Record<string, 'success' | 'warning' | 'info'> = {
+    online: 'success',
+    connecting: 'warning',
+    offline: 'info',
+  }
+  return map[status] || 'info'
+}
 
 function formatTime(isoStr: string): string {
   if (!isoStr) return ''

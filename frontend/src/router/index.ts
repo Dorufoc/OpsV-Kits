@@ -56,6 +56,18 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/Settings.vue'),
     meta: { title: '设置' },
   },
+  {
+    path: '/monitor',
+    name: 'MonitorDashboard',
+    component: () => import('@/views/MonitorDashboard.vue'),
+    meta: { title: '资源监控' },
+  },
+  {
+    path: '/monitor/large-screen',
+    name: 'MonitorLargeScreen',
+    component: () => import('@/views/MonitorLargeScreen.vue'),
+    meta: { title: '监控大屏' },
+  },
 ]
 
 const router = createRouter({
