@@ -26,7 +26,7 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  async function createProject(data: { alias: string; local_path?: string; remote_path?: string; ssh_alias?: string }) {
+  async function createProject(data: { alias: string; local_path?: string; remote_path?: string; ssh_alias?: string; jdk_version?: string }) {
     const res = await request.post<ProjectItem>('/projects', data)
     projects.value.push(res)
     return res

@@ -11,6 +11,7 @@ class ProjectConfig(BaseModel):
     local_path: str = Field(default="", description="本地项目路径")
     remote_path: str = Field(default="", description="远程项目路径")
     ssh_alias: str = Field(default="", description="SSH 账户别名")
+    jdk_version: Optional[str] = Field(default="21", description="JDK 版本号，如 8/11/17/21")
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
@@ -20,9 +21,11 @@ class ProjectConfigCreate(BaseModel):
     local_path: str = Field(default="", description="本地项目路径")
     remote_path: str = Field(default="", description="远程项目路径")
     ssh_alias: str = Field(default="", description="SSH 账户别名")
+    jdk_version: Optional[str] = Field(default="21", description="JDK 版本号，如 8/11/17/21")
 
 
 class ProjectConfigUpdate(BaseModel):
     local_path: Optional[str] = Field(default=None, description="本地项目路径")
     remote_path: Optional[str] = Field(default=None, description="远程项目路径")
     ssh_alias: Optional[str] = Field(default=None, description="SSH 账户别名")
+    jdk_version: Optional[str] = Field(default=None, description="JDK 版本号，如 8/11/17/21")

@@ -214,6 +214,7 @@ async function handleEditProject() {
       local_path: editProjectForm.value.local_path,
       remote_path: editProjectForm.value.remote_path,
       ssh_alias: editProjectForm.value.ssh_alias,
+      jdk_version: editProjectForm.value.jdk_version || '21',
     })
     if (selectedProject.value?.alias === editProjectForm.value.alias) {
       selectedProject.value = updated

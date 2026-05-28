@@ -657,9 +657,16 @@ class BuildService:
                 installed = match.group(2)
                 if jdk_version:
                     try:
-                        if int(installed.split(".")[0]) >= int(jdk_version):
-                            task.append_log(f"\x1b[32mJava {installed} 已就绪\x1b[0m\n")
+                        installed_major = int(installed.split(".")[0])
+                        required_major = int(jdk_version.split(".")[0])
+                        if installed_major >= required_major:
+                            task.append_log(f"\x1b[32mJava {installed} 已就绪（满足 >= {jdk_version}）\x1b[0m\n")
                             return True
+                        else:
+                            task.append_log(
+                                f"\x1b[33m当前 Java 版本为 {installed}，需要 JDK {jdk_version}，"
+                                f"尝试安装...\x1b[0m\n"
+                            )
                     except (ValueError, IndexError):
                         pass
                 else:
@@ -689,13 +696,47 @@ class BuildService:
             install_cmd = f"sudo yum install -y {package_name} 2>&1"
             exit_code = executor.exec_command_stream(install_cmd, output_callback=_log, timeout=300.0)
 
-        # 验证安装
+        if exit_code != 0:
+            task.append_log(f"\x1b[31mOpenJDK {target_ver} 安装失败（退出码: {exit_code}），尝试 alternatives 切换...\x1b[0m\n")
+
+        # 验证安装：检查是否已有目标版本可用（即使安装命令退出码非0，可能已部分安装）
         verify = executor.exec_command("java -version 2>&1", timeout=10.0)
         if verify.success:
-            task.append_log(f"\x1b[32mOpenJDK {target_ver} 安装成功\x1b[0m\n")
-            return True
+            match = _JAVA_VERSION_PATTERN.search(verify.stdout)
+            if match:
+                installed = match.group(2)
+                try:
+                    installed_major = int(installed.split(".")[0])
+                    required_major = int(target_ver.split(".")[0])
+                    if installed_major >= required_major:
+                        task.append_log(f"\x1b[32mOpenJDK {installed} 已可用\x1b[0m\n")
+                        return True
+                    task.append_log(f"\x1b[33m已安装 Java {installed}，但需要 JDK {target_ver}\x1b[0m\n")
+                except (ValueError, IndexError):
+                    pass
+                # 版本不满足条件，尝试 alternatives 切换
+                task.append_log("\x1b[33m正在通过 alternatives 切换 Java 版本...\x1b[0m\n")
+                alt_result = executor.exec_command(
+                    "sudo alternatives --config java 2>&1 || true", timeout=15.0
+                )
+                if alt_result.success:
+                    task.append_log(alt_result.stdout[-200:] + "\n")
+                # 重新验证
+                recheck = executor.exec_command("java -version 2>&1", timeout=10.0)
+                if recheck.success:
+                    match = _JAVA_VERSION_PATTERN.search(recheck.stdout)
+                    if match:
+                        installed = match.group(2)
+                        try:
+                            if int(installed.split(".")[0]) >= required_major:
+                                task.append_log(f"\x1b[32mJava 版本已切换至 {installed}\x1b[0m\n")
+                                return True
+                        except (ValueError, IndexError):
+                            pass
+                task.append_log(f"\x1b[31m无法切换到 JDK {target_ver}，当前 Java: {installed}\x1b[0m\n")
+                return False
 
-        task.append_log(f"\x1b[31mJDK 安装失败，退出码: {exit_code}\x1b[0m\n")
+        task.append_log(f"\x1b[31mJDK 安装失败，Java 不可用\x1b[0m\n")
         return False
 
     def _ensure_maven(self, executor: RemoteExecutor, task: BuildTask) -> bool:
@@ -790,71 +831,53 @@ class BuildService:
         if not jdk_version:
             jdk_version = "21"
 
-        if jdk_version:
-            # 处理 JDK 8 的特殊目录命名 (java-1.8.0-openjdk)
-            if jdk_version == "8":
-                jdk_dir_patterns = [
-                    "/usr/lib/jvm/java-1.8.0-openjdk",
-                    "/usr/lib/jvm/java-1.8.0-openjdk-*",
-                    "/usr/lib/jvm/java-8-openjdk",
-                    "/usr/lib/jvm/jre-1.8.0-openjdk",
-                    "/usr/lib/jvm/jre-1.8.0-openjdk-*",
-                ]
-            else:
-                jdk_dir_patterns = [
-                    f"/usr/lib/jvm/java-{jdk_version}-openjdk",
-                    f"/usr/lib/jvm/java-{jdk_version}-openjdk-*",
-                    f"/usr/lib/jvm/java-{jdk_version}",
-                    f"/usr/lib/jvm/jre-{jdk_version}-openjdk",
-                    f"/usr/lib/jvm/jre-{jdk_version}-openjdk-*",
-                ]
+        # 设置 JAVA_HOME 并验证实际生效的 Java 版本
+        java_home_setup = self._build_java_home_setup(jdk_version)
+        java_version_check = f"echo \"当前 Java 版本: $(java -version 2>&1 | head -1)\""
+        cmd_parts.append(f"{java_home_setup} && {java_version_check}")
 
-            # 构建查找 JDK 目录的命令
-            dir_checks = ""
-            for pattern in jdk_dir_patterns:
-                if "*" in pattern:
-                    # 使用通配符查找
-                    dir_checks += f"for d in {pattern}; do [ -d \"$d\" ] && {{ JAVA_HOME=\"$d\"; break; }}; done; "
+        # 获取实际生效的 Java 主版本号，用于决定是否添加编译器版本参数
+        java_ver_check_cmd = (
+            f"JAVA_HOME=\"\"; "
+            f"{self._build_java_home_setup(jdk_version).replace('JAVA_HOME=\"\"; ', '')} "
+            f"java -version 2>&1"
+        )
+        java_ver_result = executor.exec_command(java_ver_check_cmd, timeout=10.0)
+        actual_java_major = 0
+        if java_ver_result.success:
+            match = _JAVA_VERSION_PATTERN.search(java_ver_result.stdout)
+            if match:
+                try:
+                    actual_java_major = int(match.group(2).split(".")[0])
+                except (ValueError, IndexError):
+                    pass
+
+        if actual_java_major > 0:
+            task.append_log(f"实际 Java 主版本: {actual_java_major}，目标: {jdk_version}\n")
+        else:
+            task.append_log("\x1b[33m无法检测实际 Java 版本，将继续使用配置的编译参数\x1b[0m\n")
+
+        # 覆盖 Maven 编译器配置，使用指定的 JDK 版本
+        # 只有确认 Java 版本足够时才添加编译器版本参数
+        target_ver = int(jdk_version.split(".")[0]) if jdk_version and jdk_version.split(".")[0].isdigit() else 0
+        if "mvn " in command:
+            base_cmd = command
+            if base_cmd.strip().endswith(" 2>&1"):
+                base_cmd = base_cmd[:-6].strip()
+
+            if "-Dmaven.compiler.source" not in base_cmd and "-Dmaven.compiler.target" not in base_cmd:
+                if actual_java_major > 0 and actual_java_major < target_ver:
+                    task.append_log(
+                        f"\x1b[33m警告: 实际 Java 版本 ({actual_java_major}) 低于目标 ({jdk_version})，"
+                        f"跳过添加编译器版本参数，使用 pom.xml 中的配置\x1b[0m\n"
+                    )
                 else:
-                    dir_checks += f"[ -z \"$JAVA_HOME\" ] && [ -d '{pattern}' ] && JAVA_HOME='{pattern}'; "
-
-            # 检测并设置 JAVA_HOME，并验证 Java 版本
-            java_home_cmd = (
-                f"JAVA_HOME=\"\"; "
-                f"{dir_checks}"
-                f"if [ -n \"$JAVA_HOME\" ]; then "
-                f"export JAVA_HOME && "
-                f"export PATH=\"$JAVA_HOME/bin:$PATH\" && "
-                f"echo \"已设置 JAVA_HOME: $JAVA_HOME\"; "
-                f"else "
-                f"echo \"警告: 未找到 JDK {jdk_version} 的安装目录\"; "
-                f"fi && "
-                f"echo \"当前 Java 版本: $(java -version 2>&1 | head -1)\""
-            )
-            cmd_parts.append(java_home_cmd)
-
-            # 覆盖 Maven 编译器配置，使用指定的 JDK 版本
-            # 这会覆盖 pom.xml 中的 maven.compiler.source 和 maven.compiler.target
-            if "mvn " in command:
-                # 先移除可能存在的 2>&1
-                base_cmd = command
-                if base_cmd.strip().endswith(" 2>&1"):
-                    base_cmd = base_cmd[:-6].strip()
-
-                # 检查是否已有版本参数，如果没有则添加
-                if "-Dmaven.compiler.source" not in base_cmd and "-Dmaven.compiler.target" not in base_cmd:
-                    # 对于 JDK 8，Maven 编译器版本应该是 1.8 而不是 8
                     compiler_version = "1.8" if jdk_version == "8" else jdk_version
                     base_cmd = f"{base_cmd} -Dmaven.compiler.source={compiler_version} -Dmaven.compiler.target={compiler_version}"
+                    task.append_log(f"添加 Maven 编译器版本参数: source/target={compiler_version}\n")
 
-                # 重新添加 2>&1
-                command = f"{base_cmd} 2>&1"
-            else:
-                # 非 Maven 命令，确保有 2>&1
-                if not command.strip().endswith(" 2>&1"):
-                    command = f"{command} 2>&1"
+            command = f"{base_cmd} 2>&1"
         else:
-            # 没有指定 JDK 版本，确保有 2>&1
             if not command.strip().endswith(" 2>&1"):
                 command = f"{command} 2>&1"
 
@@ -977,9 +1000,16 @@ class BuildService:
             else:
                 dir_checks += f"[ -z \"$JAVA_HOME\" ] && [ -d '{pattern}' ] && JAVA_HOME='{pattern}'; "
 
+        # 添加 alternatives / readlink 方法作为最终回退
+        readlink_fallback = (
+            f"[ -z \"$JAVA_HOME\" ] && JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java 2>/dev/null) 2>/dev/null) 2>/dev/null) 2>/dev/null) 2>/dev/null; "
+            f"[ -n \"$JAVA_HOME\" ] && [ ! -d \"$JAVA_HOME/bin\" ] && JAVA_HOME=\"\"; "
+        )
+
         return (
             f"JAVA_HOME=\"\"; "
             f"{dir_checks}"
+            f"{readlink_fallback}"
             f"if [ -n \"$JAVA_HOME\" ]; then "
             f"export JAVA_HOME && "
             f"export PATH=\"$JAVA_HOME/bin:$PATH\" && "
