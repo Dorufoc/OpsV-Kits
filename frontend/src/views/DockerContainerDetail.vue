@@ -54,45 +54,10 @@
 
     <Md3Tabs v-model="activeTab" :tabs="tabItems" class="detail-tabs" />
     <div class="tab-content">
-      <div v-show="activeTab === 'overview'">
-        <div class="overview-grid">
-          <Md3Card :shadow="false" class="stat-card">
-            <template #header><span>资源监控</span></template>
-            <div class="stat-list">
-              <div class="stat-item">
-                <span class="stat-label">CPU</span>
-                <Md3Progress :percentage="45" type="line" :stroke-width="16" />
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">内存</span>
-                <Md3Progress :percentage="32" type="line" :stroke-width="16" color="var(--md3-warning)" />
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">磁盘</span>
-                <Md3Progress :percentage="56" type="line" :stroke-width="16" color="var(--md3-error)" />
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">网络</span>
-                <span class="stat-value">12 MB/s</span>
-              </div>
-            </div>
-          </Md3Card>
-          <Md3Card :shadow="false" class="info-card">
-            <template #header><span>健康检查</span></template>
-            <div class="health-info">
-              <div class="health-status">
-                <Md3Icon name="check-circle" :size="32" class="health-icon" />
-                <span class="health-text">健康状态正常</span>
-              </div>
-              <div class="health-detail">
-                <div>检查间隔: 30s</div>
-                <div>超时时间: 10s</div>
-                <div>重试次数: 3</div>
-              </div>
-            </div>
-          </Md3Card>
-        </div>
-      </div>
+    <div v-show="activeTab === 'overview'">
+      <ContainerStatsPanel v-if="containerDetail && containerDetail.state === 'running'" :container-id="containerId" />
+      <Md3Empty v-else description="容器未运行，无法查看资源统计" />
+    </div>
 
       <div v-show="activeTab === 'logs'">
         <div class="log-controls">
@@ -120,6 +85,24 @@
 
       <div v-show="activeTab === 'terminal'">
         <Terminal ref="containerTerminalRef" session-name="容器终端" :show-toolbar="true" />
+      </div>
+
+      <div v-show="activeTab === 'mysql'">
+        <DbToolkitPanel
+          db-type="mysql"
+          :container-id="containerId"
+          :account-alias="dockerStore.currentAlias"
+          :container-state="containerDetail?.state ?? ''"
+        />
+      </div>
+
+      <div v-show="activeTab === 'redis'">
+        <DbToolkitPanel
+          db-type="redis"
+          :container-id="containerId"
+          :account-alias="dockerStore.currentAlias"
+          :container-state="containerDetail?.state ?? ''"
+        />
       </div>
 
       <div v-show="activeTab === 'config'">
@@ -150,14 +133,7 @@ ports: 0.0.0.0:8080->8080/tcp</pre>
       </div>
     </div>
 
-    <div class="detail-actions">
-      <Md3Button @click="restartContainer"><Md3Icon name="refresh" size="sm" />重启</Md3Button>
-      <Md3Button @click="stopContainer"><Md3Icon name="pause" size="sm" />停止</Md3Button>
-      <Md3Button variant="danger" @click="killContainer"><Md3Icon name="remove" size="sm" />强制停止</Md3Button>
-      <Md3Button variant="danger" @click="deleteContainer"><Md3Icon name="delete" size="sm" />删除</Md3Button>
-      <Md3Button @click="openStats"><Md3Icon name="chart-bar" size="sm" />资源监控</Md3Button>
-      <Md3Button @click="activeTab = 'terminal'"><Md3Icon name="monitor" size="sm" />进入终端</Md3Button>
-    </div>
+
   </div>
 </template>
 
@@ -167,6 +143,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useDockerStore, type DockerContainer } from '@/stores/dockerStore'
 import Md3Button from '@/components/Md3Button.vue'
 import Terminal from '@/components/Terminal.vue'
+import ContainerStatsPanel from '@/components/ContainerStatsPanel.vue'
+import DbToolkitPanel from '@/components/DbToolkitPanel.vue'
 import {
   Md3PageHeader,
   Md3Divider,
@@ -176,6 +154,7 @@ import {
   Md3Tabs,
   Md3Input,
   Md3Icon,
+  Md3Empty,
 } from '@/components/md3'
 
 const route = useRoute()
@@ -186,6 +165,8 @@ const tabItems = [
   { label: '概览', value: 'overview' },
   { label: '日志', value: 'logs' },
   { label: '终端', value: 'terminal' },
+  { label: 'MySQL', value: 'mysql' },
+  { label: 'Redis', value: 'redis' },
   { label: '配置', value: 'config' },
 ]
 
@@ -494,10 +475,5 @@ onMounted(() => {
   gap: var(--md3-space-sm);
 }
 
-.detail-actions {
-  display: flex;
-  gap: var(--md3-space-sm);
-  margin-top: var(--md3-space-lg);
-  flex-wrap: wrap;
-}
+
 </style>

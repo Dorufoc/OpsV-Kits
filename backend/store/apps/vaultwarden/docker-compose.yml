@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'vaultwarden/server:latest'
+    container_name: panel-vaultwarden
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${VAULTWARDEN_PORT}:80'
+    volumes:
+      - /www/server/apps/vaultwarden/data:/data

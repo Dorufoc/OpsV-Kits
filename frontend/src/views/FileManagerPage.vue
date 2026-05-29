@@ -37,10 +37,19 @@
       </div>
 
       <div class="file-main">
+        <div v-if="selectedPaths.length > 0" class="batch-toolbar">
+          <span class="batch-info">已选 {{ selectedPaths.length }} 项</span>
+          <div class="batch-actions">
+            <Md3Button size="sm" @click="showChmodDialog = true"><Md3Icon name="lock" size="sm" />批量修改权限</Md3Button>
+            <Md3Button size="sm" variant="danger" @click="handleBatchDelete"><Md3Icon name="delete" size="sm" />批量删除</Md3Button>
+            <Md3Button size="sm" @click="selectedPaths = []"><Md3Icon name="close" size="sm" />取消选择</Md3Button>
+          </div>
+        </div>
         <FileBrowser
           ref="fileBrowserRef"
           :current-path="currentPath"
           :items="fileItems"
+          :selected-paths="selectedPaths"
           show-create
           show-upload
           @navigate="navigateTo"
@@ -51,6 +60,8 @@
           @rename="handleRename"
           @copy="handleCopy"
           @delete="handleDelete"
+          @chmod="openSingleChmod"
+          @update:selected-paths="selectedPaths = $event"
         />
       </div>
     </div>
@@ -94,11 +105,23 @@
         <Md3Button variant="primary" @click="createFile">确定</Md3Button>
       </template>
     </Md3Dialog>
+
+    <Md3Dialog v-model:visible="showChmodDialog" :title="chmodDialogTitle" width="420px">
+      <PermissionEditor
+        v-model="chmodMode"
+        :show-recursive="chmodRecursiveItems.length > 0"
+        v-model:recursive="chmodRecursive"
+      />
+      <template #footer>
+        <Md3Button @click="showChmodDialog = false">取消</Md3Button>
+        <Md3Button variant="primary" @click="applyChmod">应用</Md3Button>
+      </template>
+    </Md3Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { 
   Md3PageHeader, 
   Md3Divider, 
@@ -106,11 +129,12 @@ import {
   Md3Input,
 } from '@/components/md3'
 import Md3Button from '@/components/Md3Button.vue'
-import { Md3Icon } from '@/components/md3'
+import { Md3Icon, Md3Confirm } from '@/components/md3'
 import { useRouter } from 'vue-router'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { request } from '@/api'
 import FileBrowser, { type FileItem } from '@/components/FileBrowser.vue'
+import PermissionEditor from '@/components/PermissionEditor.vue'
 
 const router = useRouter()
 const sshStore = useSshAccountStore()
@@ -118,6 +142,7 @@ const sshStore = useSshAccountStore()
 const selectedAccount = ref('')
 const currentPath = ref('/')
 const fileItems = ref<FileItem[]>([])
+const selectedPaths = ref<string[]>([])
 const quickCommand = ref('')
 const commandHistory = ref<Array<{ command: string; output: string }>>([])
 const commandOutputRef = ref<HTMLElement>()
@@ -125,8 +150,14 @@ const fileBrowserRef = ref()
 
 const showMkdirDialog = ref(false)
 const showCreateFileDialog = ref(false)
+const showChmodDialog = ref(false)
 const newDirName = ref('')
 const newFileName = ref('')
+
+const chmodMode = ref(0o644)
+const chmodRecursive = ref(false)
+const chmodPaths = ref<string[]>([])
+const chmodSingleItem = ref<FileItem | null>(null)
 
 const sshAccounts = ref(sshStore.accounts)
 
@@ -136,6 +167,84 @@ const bookmarks = [
   { label: '/tmp', path: '/tmp' },
   { label: '/home', path: '/home' },
 ]
+
+const chmodDialogTitle = computed(() => {
+  if (chmodSingleItem.value) {
+    return `修改权限: ${chmodSingleItem.value.name}`
+  }
+  return `批量修改权限 (${selectedPaths.value.length} 项)`
+})
+
+const chmodRecursiveItems = computed(() => {
+  const paths = chmodPaths.value.length > 0 ? chmodPaths.value : selectedPaths.value
+  return fileItems.value.filter((item) => paths.includes(item.path) && item.is_dir)
+})
+
+function openSingleChmod(item: FileItem) {
+  chmodSingleItem.value = item
+  chmodPaths.value = [item.path]
+  const permStr = item.permission
+  if (permStr && permStr.length >= 10) {
+    let mode = 0
+    if (permStr[1] !== '-') mode |= 0o400
+    if (permStr[2] !== '-') mode |= 0o200
+    if (permStr[3] !== '-') mode |= 0o100
+    if (permStr[4] !== '-') mode |= 0o040
+    if (permStr[5] !== '-') mode |= 0o020
+    if (permStr[6] !== '-') mode |= 0o010
+    if (permStr[7] !== '-') mode |= 0o004
+    if (permStr[8] !== '-') mode |= 0o002
+    if (permStr[9] !== '-') mode |= 0o001
+    chmodMode.value = mode
+  }
+  chmodRecursive.value = false
+  showChmodDialog.value = true
+}
+
+async function applyChmod() {
+  const paths = chmodPaths.value.length > 0 ? chmodPaths.value : selectedPaths.value
+  const mode = '0' + chmodMode.value.toString(8).padStart(3, '0')
+  try {
+    if (chmodSingleItem.value && paths.length === 1) {
+      await request.post('/files/chmod', {
+        path: paths[0],
+        mode,
+        alias: selectedAccount.value,
+      })
+    } else {
+      await request.post('/files/batch/chmod', {
+        paths,
+        mode,
+        recursive: chmodRecursive.value,
+        alias: selectedAccount.value,
+      })
+    }
+    showChmodDialog.value = false
+    chmodSingleItem.value = null
+    chmodPaths.value = []
+    chmodRecursive.value = false
+    selectedPaths.value = []
+    loadDirectory(currentPath.value)
+  } catch {
+  }
+}
+
+async function handleBatchDelete() {
+  const confirmed = await Md3Confirm.show({
+    title: '确认批量删除',
+    message: `确认删除选中的 ${selectedPaths.value.length} 项?`,
+  })
+  if (!confirmed) return
+  try {
+    await request.post('/files/batch/delete', {
+      paths: selectedPaths.value,
+      alias: selectedAccount.value,
+    })
+    selectedPaths.value = []
+    loadDirectory(currentPath.value)
+  } catch {
+  }
+}
 
 function switchAccount(acc: any) {
   selectedAccount.value = acc.alias
@@ -425,6 +534,41 @@ onMounted(() => {
 .file-main {
   flex: 1;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-sm);
+}
+
+.batch-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--md3-space-sm) var(--md3-space-md);
+  background: var(--md3-primary-container);
+  border-radius: var(--md3-shape-md);
+  border: 1px solid var(--md3-outline-variant);
+  animation: toolbar-enter 0.2s var(--md3-motion-easing-standard);
+}
+
+@keyframes toolbar-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.batch-info {
+  font: var(--md3-type-title-small);
+  color: var(--md3-on-primary-container);
+}
+
+.batch-actions {
+  display: flex;
+  gap: var(--md3-space-sm);
 }
 
 .quick-command-area {

@@ -44,6 +44,7 @@ import {
   mdiChartLine,
   mdiAccountBox,
   mdiWrench,
+  mdiStore,
 } from '@mdi/js'
 
 // 部分@mdi/js中不存在的图标，使用替代方案
@@ -96,6 +97,7 @@ export type IconName =
   | 'chart-line'
   | 'account-box'
   | 'wrench'
+  | 'store'
 
 export const iconMap: Record<string, string> = {
   'refresh': mdiRefresh,
@@ -143,6 +145,7 @@ export const iconMap: Record<string, string> = {
   'chart-line': mdiChartLine,
   'account-box': mdiAccountBox,
   'wrench': mdiWrench,
+  'store': mdiStore,
 }
 
 export const elementPlusToMdiMap: Record<string, IconName> = {

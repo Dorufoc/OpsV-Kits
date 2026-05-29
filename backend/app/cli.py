@@ -181,6 +181,72 @@ def _cmd_run(args: argparse.Namespace) -> None:
     _print_success("完整流程执行完毕")
 
 
+def _cmd_deploy_vite(args: argparse.Namespace) -> None:
+    vite_deploy_service = _lazy("app.services.vite_deploy_service").vite_deploy_service
+    alias = args.alias or _get_account_alias(args)
+    project_path = args.path or "."
+    port = args.port or 8080
+    force = args.force or False
+    project_alias = Path(project_path).name or "vite-project"
+
+    _print_info(f"开始 Vite 部署: {project_path} (账户: {alias}, 端口: {port})")
+
+    config = {
+        "nginx_port": port,
+        "force": force,
+    }
+
+    task = vite_deploy_service.full_deploy(
+        account_alias=alias,
+        project_alias=project_alias,
+        project_path=project_path,
+        config=config,
+    )
+
+    printed_len = 0
+
+    def _on_update(t) -> None:
+        nonlocal printed_len
+        if t.log and len(t.log) > printed_len:
+            new_text = t.log[printed_len:]
+            print(new_text, end="")
+            printed_len = len(t.log)
+
+    task.add_callback(_on_update)
+
+    try:
+        while True:
+            import time
+            time.sleep(0.5)
+            current = vite_deploy_service.get_task(task.task_id)
+            if current is None:
+                break
+            if current.status in ("completed", "failed", "stopped"):
+                _on_update(current)
+                break
+            _on_update(current)
+    except KeyboardInterrupt:
+        task.request_stop()
+        _print_warning("部署已请求停止")
+        sys.exit(1)
+
+    final = vite_deploy_service.get_task(task.task_id)
+    if final is None:
+        _print_error("部署任务异常丢失")
+        sys.exit(1)
+
+    if final.status == "completed":
+        _print_success("Vite 部署成功")
+        if final.url:
+            _print_info(f"Nginx 访问地址: {Color.highlight(final.url)}")
+    elif final.status == "stopped":
+        _print_warning("部署已停止")
+        sys.exit(1)
+    else:
+        _print_error(f"部署失败: {final.error or final.message}")
+        sys.exit(1)
+
+
 def _cmd_sync(args: argparse.Namespace) -> None:
     import asyncio
     sync_service = _lazy("app.services.sync_service")
@@ -1072,6 +1138,14 @@ def _build_parser() -> argparse.ArgumentParser:
     p_start = subparsers.add_parser("start", help="仅运行项目")
     _add_common_args(p_start)
     p_start.set_defaults(func=_cmd_start)
+    p_deploy = subparsers.add_parser("deploy", help="部署管理")
+    p_deploy_sub = p_deploy.add_subparsers(dest="subcmd", help="部署命令")
+    p_deploy_vite = p_deploy_sub.add_parser("vite", help="Vite 项目一键部署")
+    p_deploy_vite.add_argument("--alias", default=None, help="SSH 账户别名")
+    p_deploy_vite.add_argument("-p", "--path", default=".", help="项目路径 (默认当前目录)")
+    p_deploy_vite.add_argument("-P", "--port", type=int, default=8080, help="Nginx 端口 (默认 8080)")
+    p_deploy_vite.add_argument("--force", action="store_true", help="强制重新安装依赖")
+    p_deploy_vite.set_defaults(func=_cmd_deploy_vite)
     p_account = subparsers.add_parser("account", help="SSH 账户管理")
     p_account_sub = p_account.add_subparsers(dest="subcmd", help="账户管理命令")
     p_acct_add = p_account_sub.add_parser("add", help="添加 SSH 账户")

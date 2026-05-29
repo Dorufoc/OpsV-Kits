@@ -43,6 +43,7 @@ const props = defineProps<{
   sessionName?: string
   showToolbar?: boolean
   fontSize?: number
+  fontFamily?: string
   theme?: 'dark' | 'light'
 }>()
 
@@ -65,7 +66,7 @@ function initTerminal() {
     cursorBlink: true,
     cursorStyle: 'block',
     fontSize: props.fontSize || 14,
-    fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace",
+    fontFamily: props.fontFamily || "'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace",
     theme: props.theme === 'light' ? {
       background: '#ffffff',
       foreground: '#333333',
@@ -234,6 +235,27 @@ watch(() => props.fontSize, (newSize) => {
   if (newSize && terminalRef.value) {
     terminalRef.value.options.fontSize = newSize
     resize()
+  }
+})
+
+watch(() => props.fontFamily, (newFont) => {
+  if (newFont && terminalRef.value) {
+    terminalRef.value.options.fontFamily = newFont
+    resize()
+  }
+})
+
+watch(() => props.theme, (newTheme) => {
+  if (newTheme && terminalRef.value) {
+    terminalRef.value.options.theme = newTheme === 'light' ? {
+      background: '#ffffff',
+      foreground: '#333333',
+      cursor: '#333333',
+    } : {
+      background: '#1e1e1e',
+      foreground: '#d4d4d4',
+      cursor: '#d4d4d4',
+    }
   }
 })
 </script>

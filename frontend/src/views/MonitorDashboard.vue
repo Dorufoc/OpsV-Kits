@@ -263,12 +263,14 @@ import MonitorLineChart from '@/components/MonitorLineChart.vue'
 import MonitorGaugeChart from '@/components/MonitorGaugeChart.vue'
 import MonitorPieChart from '@/components/MonitorPieChart.vue'
 import MonitorHeatmap from '@/components/MonitorHeatmap.vue'
+import { useThemeStore } from '@/stores/themeStore'
 
 const POLL_INTERVAL = 5000
 
 const router = useRouter()
 const store = useMonitorStore()
 const sshStore = useSshAccountStore()
+const themeStore = useThemeStore()
 
 const selectedAlias = ref('')
 const activeTab = ref('overview')
@@ -315,8 +317,27 @@ const connPieData = computed(() => {
   return Object.entries(snapshot.value.connections).map(([k, v]) => ({ name: k, value: v }))
 })
 
-const cpuColor = computed(() => (snapshot.value?.cpu?.usage_percent ?? 0) > 90 ? '#ef4444' : (snapshot.value?.cpu?.usage_percent ?? 0) > 75 ? '#f59e0b' : '#22c55e')
-const memColor = computed(() => (snapshot.value?.memory?.usage_percent ?? 0) > 90 ? '#ef4444' : (snapshot.value?.memory?.usage_percent ?? 0) > 75 ? '#f59e0b' : '#22c55e')
+function getThemeColors() {
+  const styles = getComputedStyle(document.documentElement)
+  return {
+    danger: styles.getPropertyValue('--md3-chart-danger').trim() || '#ef4444',
+    warning: styles.getPropertyValue('--md3-chart-warning').trim() || '#f59e0b',
+    success: styles.getPropertyValue('--md3-chart-success').trim() || '#22c55e',
+  }
+}
+
+const cpuColor = computed(() => {
+  const _mode = themeStore.mode
+  const c = getThemeColors()
+  const pct = snapshot.value?.cpu?.usage_percent ?? 0
+  return pct > 90 ? c.danger : pct > 75 ? c.warning : c.success
+})
+const memColor = computed(() => {
+  const _mode = themeStore.mode
+  const c = getThemeColors()
+  const pct = snapshot.value?.memory?.usage_percent ?? 0
+  return pct > 90 ? c.danger : pct > 75 ? c.warning : c.success
+})
 
 const middlewareHealth = computed(() => {
   const h = (snapshot.value as any)?.middleware_health
@@ -377,7 +398,8 @@ function formatUptime(seconds: number) {
 }
 
 function diskColor(pct: number) {
-  return pct > 90 ? '#ef4444' : pct > 75 ? '#f59e0b' : '#22c55e'
+  const c = getThemeColors()
+  return pct > 90 ? c.danger : pct > 75 ? c.warning : c.success
 }
 
 function onAccountChange(value: string | number | (string | number)[]) {

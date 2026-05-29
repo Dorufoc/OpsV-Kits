@@ -259,7 +259,8 @@ onUnmounted(() => {
   min-height: 48px;
   user-select: none;
   transition: border-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard),
-              background-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+              background-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard),
+              box-shadow var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 /* ===== Outlined ===== */
@@ -270,8 +271,8 @@ onUnmounted(() => {
 }
 
 .md3-select--outlined.md3-select--focused.md3-select-trigger {
-  border-width: 2px;
   border-color: var(--md3-primary);
+  box-shadow: inset 0 0 0 1px var(--md3-primary);
 }
 
 /* ===== Filled ===== */
@@ -285,7 +286,7 @@ onUnmounted(() => {
 
 .md3-select--filled.md3-select--focused.md3-select-trigger {
   border-bottom-color: var(--md3-primary);
-  border-bottom-width: 2px;
+  box-shadow: inset 0 -1px 0 0 var(--md3-primary);
 }
 
 /* ===== Error ===== */

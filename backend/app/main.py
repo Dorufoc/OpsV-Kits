@@ -8,16 +8,23 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
 from app.api.routes import build
+from app.api.routes import db_toolkit
 from app.api.routes import docker
+from app.api.routes import docker_store
 from app.api.routes import file_manager
 from app.api.routes import health
 from app.api.routes import monitor
+from app.api.routes import port
+from app.api.routes import process as process_route
 from app.api.routes import project
 from app.api.routes import remote_drive
 from app.api.routes import settings as settings_route
 from app.api.routes import ssh_account
 from app.api.routes import sync as sync_route
+from app.api.routes import cron_backup
+from app.api.routes import security
 from app.api.routes import system
+from app.api.routes import vite_deploy
 from app.api.routes import webssh
 from app.services.sync_service import sync_service
 
@@ -57,11 +64,19 @@ app.include_router(sync_route.router, prefix="/api", tags=["sync"])
 app.include_router(file_manager.router, prefix="/api", tags=["file-manager"])
 app.include_router(settings_route.router, prefix="/api", tags=["settings"])
 app.include_router(docker.router, prefix="/api", tags=["docker"])
+app.include_router(docker_store.router, prefix="/api", tags=["docker-store"])
+app.include_router(db_toolkit.router, prefix="/api", tags=["db-toolkit"])
+app.include_router(cron_backup.router, prefix="/api", tags=["cron-backup"])
+app.include_router(security.router, prefix="/api", tags=["security"])
 app.include_router(system.router, prefix="/api", tags=["system"])
 app.include_router(project.router, prefix="/api", tags=["projects"])
 app.include_router(webssh.router, prefix="/api", tags=["webssh"])
 app.include_router(remote_drive.router, prefix="/api", tags=["remote-drive"])
 app.include_router(monitor.router, prefix="/api", tags=["monitor"])
+app.include_router(process_route.router, prefix="/api", tags=["process"])
+app.include_router(port.router, prefix="/api", tags=["port"])
+app.include_router(vite_deploy.router, prefix="/api", tags=["vite-deploy"])
+app.include_router(vite_deploy.deploy_router, prefix="/api", tags=["vite-deploy"])
 
 
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
@@ -93,10 +108,7 @@ async def startup_event():
 
     from app.services.remote_drive_service import remote_drive_service
     from app.services.settings_service import settings_service
-    enabled = settings_service.get("remote_drive_enabled", True)
-    if enabled:
-        port = settings_service.get("remote_drive_port", 8081)
-        remote_drive_service.start(port=port)
+    settings_service.update({"remote_drive_enabled": False})
 
 
 @app.on_event("shutdown")

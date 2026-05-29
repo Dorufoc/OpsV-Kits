@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'mihomo:latest'
+    container_name: panel-mihomo
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${MIHOMO_PORT}:7890'
+    volumes:
+      - /www/server/apps/mihomo/data:/root/.config/mihomo

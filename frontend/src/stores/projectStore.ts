@@ -7,7 +7,12 @@ export interface ProjectItem {
   local_path: string
   remote_path: string
   ssh_alias: string
+  project_type?: string
   jdk_version?: string
+  node_version?: string
+  nginx_port?: number
+  build_command?: string
+  run_mode?: string
   created_at?: string
   updated_at?: string
 }

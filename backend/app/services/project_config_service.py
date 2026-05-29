@@ -63,6 +63,11 @@ class ProjectConfigService:
                 local_path=data.local_path,
                 remote_path=data.remote_path,
                 ssh_alias=data.ssh_alias,
+                project_type=data.project_type,
+                jdk_version=data.jdk_version,
+                node_version=data.node_version,
+                nginx_port=data.nginx_port,
+                build_command=data.build_command,
             )
             self._projects[data.alias] = project
             self._save_to_disk()

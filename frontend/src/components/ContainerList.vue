@@ -18,7 +18,7 @@
         <tbody>
           <tr v-for="(row, idx) in containers" :key="idx" class="md3-table-row">
             <td class="md3-table-cell md3-table-body" style="text-align: center">
-              <input type="checkbox" :checked="isSelected(row)" @change="toggleRow(row)" />
+              <input type="checkbox" :checked="isSelected(row)" @change="() => toggleRow(row)" />
             </td>
             <td class="md3-table-cell md3-table-body">
               <div class="container-name">

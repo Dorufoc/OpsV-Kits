@@ -286,6 +286,8 @@ export const useDockerStore = defineStore('docker', () => {
     const a = alias || currentAlias.value
     if (!a) return
     return request.get(`/docker/containers/${id}/stats`, { params: { account_alias: a } })
+      .then(res => res)
+      .catch(() => null)
   }
 
   async function execInContainer(id: string, command: string, alias?: string) {

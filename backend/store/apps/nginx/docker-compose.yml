@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'nginx:alpine'
+    container_name: panel-nginx
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${NGINX_PORT}:80'
+    volumes:
+      - /www/server/apps/nginx/data:/usr/share/nginx/html

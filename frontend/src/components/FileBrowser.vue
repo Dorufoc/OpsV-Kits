@@ -43,7 +43,14 @@
       <table class="md3-table md3-table--stripe md3-table--hover">
         <thead>
           <tr>
-            <th class="md3-table-cell md3-table-header" style="min-width: 240px">名称</th>
+            <th class="md3-table-cell md3-table-header perm-select-cell">
+              <Md3Checkbox
+                :model-value="isAllSelected"
+                :indeterminate="isIndeterminate"
+                @update:model-value="toggleSelectAll"
+              />
+            </th>
+            <th class="md3-table-cell md3-table-header" style="min-width: 220px">名称</th>
             <th class="md3-table-cell md3-table-header" style="width: 100px; text-align: right">大小</th>
             <th class="md3-table-cell md3-table-header" style="width: 120px">权限</th>
             <th class="md3-table-cell md3-table-header" style="width: 120px">所有者</th>
@@ -56,10 +63,17 @@
             v-for="(row, idx) in filteredItems"
             :key="idx"
             class="md3-table-row"
-            :class="{ 'md3-table-row--selected': selectedItem === row }"
+            :class="{ 'md3-table-row--selected': isRowSelected(row) }"
             @click="onRowClick(row)"
             @dblclick="onRowDblClick(row)"
           >
+            <td class="md3-table-cell md3-table-body perm-select-cell" @click.stop>
+              <Md3Checkbox
+                :model-value="selectedPaths || []"
+                :value="row.path"
+                @update:model-value="emit('update:selectedPaths', $event as string[])"
+              />
+            </td>
             <td class="md3-table-cell md3-table-body">
               <div class="file-name">
                 <Md3Icon v-if="row.is_dir" name="folder-open" size="18" class="folder-icon" />
@@ -71,7 +85,9 @@
               <span v-if="row.is_dir">-</span>
               <span v-else>{{ formatSize(row.size) }}</span>
             </td>
-            <td class="md3-table-cell md3-table-body">{{ row.permission }}</td>
+            <td class="md3-table-cell md3-table-body">
+              <span class="perm-badge">{{ row.permission }}</span>
+            </td>
             <td class="md3-table-cell md3-table-body">{{ row.owner }}</td>
             <td class="md3-table-cell md3-table-body">{{ row.modified }}</td>
             <td class="md3-table-cell md3-table-body" style="text-align: right">
@@ -79,12 +95,13 @@
                 <Md3Button :icon="DownloadIcon" size="sm" @click.stop="$emit('download', row)">下载</Md3Button>
                 <Md3Button :icon="EditIcon" size="sm" @click.stop="$emit('rename', row)">重命名</Md3Button>
                 <Md3Button :icon="CopyIcon" size="sm" @click.stop="$emit('copy', row)">复制</Md3Button>
+                <Md3Button :icon="LockIcon" size="sm" @click.stop="$emit('chmod', row)">权限</Md3Button>
                 <Md3Button :icon="DeleteIcon" size="sm" variant="danger" @click.stop="confirmDelete(row)">删除</Md3Button>
               </div>
             </td>
           </tr>
           <tr v-if="filteredItems.length === 0">
-            <td colspan="6" class="md3-table-empty">暂无文件</td>
+            <td colspan="7" class="md3-table-empty">暂无文件</td>
           </tr>
         </tbody>
       </table>
@@ -92,8 +109,8 @@
 
     <div class="browser-status">
       <span>{{ filteredItems.length }} 项</span>
-      <span v-if="selectedItem" class="selected-info">
-        已选择: {{ selectedItem.name }}
+      <span v-if="(selectedPaths || []).length > 0" class="selected-info">
+        已选择 {{ (selectedPaths || []).length }} 项
       </span>
     </div>
   </div>
@@ -102,6 +119,7 @@
 <script setup lang="ts">
 import Md3Button from '@/components/Md3Button.vue'
 import Md3Input from '@/components/md3/Md3Input.vue'
+import Md3Checkbox from '@/components/md3/Md3Checkbox.vue'
 import { Md3Confirm, Md3Icon } from '@/components/md3'
 import { computed, ref, onMounted, onUnmounted, defineComponent, h } from 'vue'
 
@@ -113,6 +131,7 @@ const DownloadIcon = defineComponent(() => () => h(Md3Icon, { name: 'download' }
 const EditIcon = defineComponent(() => () => h(Md3Icon, { name: 'pencil' }))
 const CopyIcon = defineComponent(() => () => h(Md3Icon, { name: 'content-copy' }))
 const DeleteIcon = defineComponent(() => () => h(Md3Icon, { name: 'delete' }))
+const LockIcon = defineComponent(() => () => h(Md3Icon, { name: 'lock' }))
 
 export interface FileItem {
   name: string
@@ -130,6 +149,7 @@ const props = defineProps<{
   items: FileItem[]
   showCreate?: boolean
   showUpload?: boolean
+  selectedPaths?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -141,14 +161,47 @@ const emit = defineEmits<{
   rename: [item: FileItem]
   copy: [item: FileItem]
   delete: [item: FileItem]
+  chmod: [item: FileItem]
   search: [query: string]
   rowClick: [item: FileItem]
   rowDblClick: [item: FileItem]
+  'update:selectedPaths': [paths: string[]]
 }>()
 
 const searchQuery = ref('')
 const selectedItem = ref<FileItem | null>(null)
 const dropdownOpen = ref(false)
+
+const isAllSelected = computed(() => {
+  if (filteredItems.value.length === 0) return false
+  return filteredItems.value.every((item) => props.selectedPaths?.includes(item.path))
+})
+
+const isIndeterminate = computed(() => {
+  if (!props.selectedPaths?.length) return false
+  const selectedInView = filteredItems.value.filter((item) =>
+    props.selectedPaths?.includes(item.path)
+  ).length
+  return selectedInView > 0 && selectedInView < filteredItems.value.length
+})
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    const viewPaths = new Set(filteredItems.value.map((i) => i.path))
+    emit(
+      'update:selectedPaths',
+      (props.selectedPaths || []).filter((p) => !viewPaths.has(p))
+    )
+  } else {
+    const existing = new Set(props.selectedPaths || [])
+    filteredItems.value.forEach((i) => existing.add(i.path))
+    emit('update:selectedPaths', Array.from(existing))
+  }
+}
+
+function isRowSelected(row: FileItem): boolean {
+  return props.selectedPaths?.includes(row.path) || false
+}
 
 function toggleDropdown() {
   dropdownOpen.value = !dropdownOpen.value
@@ -406,15 +459,18 @@ function formatSize(bytes: number): string {
   gap: var(--md3-space-xs);
 }
 
-.browser-status {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--md3-on-surface-variant);
+.perm-select-cell {
+  width: 44px;
+  padding-left: var(--md3-space-sm) !important;
 }
 
-.selected-info {
+.perm-badge {
+  font-family: var(--md3-font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
   color: var(--md3-primary);
-  transition: color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+  background: var(--md3-primary-container);
+  padding: 2px 8px;
+  border-radius: var(--md3-shape-xs);
 }
 </style>

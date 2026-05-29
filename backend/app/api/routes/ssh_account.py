@@ -140,6 +140,33 @@ async def update_account(alias: str, data: SSHAccountUpdate):
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@router.delete("/clear-all", status_code=204)
+async def clear_all_accounts(confirm: str = Query(..., description="确认删除所有账户，传入 'yes' 确认")):
+    """清空所有SSH账户（用于异常情况下的清理）"""
+    if confirm != "yes":
+        raise HTTPException(status_code=400, detail="请传入 confirm=yes 确认删除所有账户")
+    try:
+        ssh_account_service.clear_all_accounts()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"清理账户失败: {e}")
+
+
+@router.get("/{alias}", response_model=SSHAccount)
+async def get_account(alias: str):
+    account = ssh_account_service.get_account(alias)
+    if account is None:
+        raise HTTPException(status_code=404, detail=f"账户 '{alias}' 不存在")
+    return account
+
+
+@router.put("/{alias}", response_model=SSHAccount)
+async def update_account(alias: str, data: SSHAccountUpdate):
+    try:
+        return ssh_account_service.update_account(alias, data)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @router.delete("/{alias}", status_code=204)
 async def delete_account(alias: str):
     try:
@@ -163,17 +190,6 @@ async def set_default_account(alias: str):
         return ssh_account_service.set_default(alias)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.delete("/clear-all", status_code=204)
-async def clear_all_accounts(confirm: str = Query(..., description="确认删除所有账户，传入 'yes' 确认")):
-    """清空所有SSH账户（用于异常情况下的清理）"""
-    if confirm != "yes":
-        raise HTTPException(status_code=400, detail="请传入 confirm=yes 确认删除所有账户")
-    try:
-        ssh_account_service.clear_all_accounts()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"清理账户失败: {e}")
 
 
 @router.get("/storage/info")

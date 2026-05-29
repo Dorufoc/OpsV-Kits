@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    image: 'portainer/portainer-ce:latest'
+    container_name: panel-portainer
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${PORTAINER_PORT}:9000'
+    volumes:
+      - /www/server/apps/portainer/data:/data
+      - /var/run/docker.sock:/var/run/docker.sock

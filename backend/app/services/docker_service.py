@@ -344,7 +344,7 @@ class DockerService:
     def get_container_stats(
         self, account_alias: str, container_id: Optional[str] = None
     ) -> list[dict[str, Any]]:
-        args = ["container", "stats", "--no-stream", "--format", "'{{json .}}'"]
+        args = ["container", "stats", "--no-stream", "--format", '"{{json .}}"']
         if container_id:
             args.append(container_id)
         return self._exec_docker_json(account_alias, args, timeout=30.0)

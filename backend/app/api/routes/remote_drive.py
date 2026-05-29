@@ -13,7 +13,7 @@ router = APIRouter(prefix="/remote-drive", tags=["remote-drive"])
 
 @router.get("/status")
 async def get_status():
-    enabled = settings_service.get("remote_drive_enabled", True)
+    enabled = settings_service.get("remote_drive_enabled", False)
     port = settings_service.get("remote_drive_port", 8081)
     username = settings_service.get("remote_drive_username", "opsv")
     password_set = bool(settings_service.get_decrypted_password())

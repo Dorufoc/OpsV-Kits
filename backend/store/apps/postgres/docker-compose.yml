@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  db:
+    image: 'postgres:alpine'
+    container_name: panel-postgres
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${POSTGRES_PORT}:5432'
+    environment:
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
+    volumes:
+      - /www/server/apps/postgres/data:/var/lib/postgresql/data

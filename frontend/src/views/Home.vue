@@ -31,18 +31,22 @@
 
       <div class="stats-row">
         <Md3Card shadow hoverable class="stat-card" @click="$router.push('/ssh-accounts')">
+          <Md3Icon name="account" class="stat-icon" />
           <div class="stat-value">{{ sshStore.accounts.length }}</div>
           <div class="stat-label">SSH 账户</div>
         </Md3Card>
         <Md3Card shadow hoverable class="stat-card" @click="$router.push('/docker')">
+          <Md3Icon name="box" class="stat-icon" />
           <div class="stat-value">{{ dockerStore.containers.length }}</div>
           <div class="stat-label">Docker 容器</div>
         </Md3Card>
         <Md3Card shadow hoverable class="stat-card" @click="$router.push('/project')">
+          <Md3Icon name="rocket" class="stat-icon" />
           <div class="stat-value">1</div>
           <div class="stat-label">一键部署</div>
         </Md3Card>
         <Md3Card shadow hoverable class="stat-card" @click="$router.push('/webssh')">
+          <Md3Icon name="terminal" class="stat-icon" />
           <div class="stat-value">{{ websshStore.sessions.length }}</div>
           <div class="stat-label">终端会话</div>
         </Md3Card>
@@ -195,6 +199,10 @@ const Refresh = createIcon('refresh')
 const Coin = createIcon('coin')
 const Folder = createIcon('folder')
 const FolderOpened = createIcon('folder-open')
+const Account = createIcon('account')
+const Container = createIcon('box')
+const Rocket = createIcon('rocket')
+const Terminal = createIcon('terminal')
 
 const sshStore = useSshAccountStore()
 const dockerStore = useDockerStore()
@@ -281,14 +289,20 @@ async function checkFirstLaunch() {
     dashboardAlias.value = defaultAcc?.alias || sshStore.accounts[0]?.alias || ''
     if (dashboardAlias.value) loadDashboard()
   } else {
-    try {
-      const res = await request.get<{ exists: boolean }>('/accounts/exists')
-      accountsExist.value = res.exists
-      if (!res.exists) dialogVisible.value = true
-    } catch {
-      accountsExist.value = false
-      dialogVisible.value = true
+    let exists = false
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await request.get<{ exists: boolean }>('/accounts/exists')
+        exists = res.exists
+        break
+      } catch {
+        if (attempt < 2) {
+          await new Promise(r => setTimeout(r, 1000))
+        }
+      }
     }
+    accountsExist.value = exists
+    if (!exists) dialogVisible.value = true
   }
   loading.value = false
 }
@@ -348,8 +362,9 @@ onMounted(() => { checkFirstLaunch() })
 .icon-loading { width: 20px; height: 20px; vertical-align: middle; animation: icon-spin 1s linear infinite; }
 @keyframes icon-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--md3-space-lg); margin-top: var(--md3-space-sm); }
-.stat-card { cursor: pointer; text-align: center; }
-.stat-card :deep(.md3-card-body) { padding: var(--md3-space-xl) var(--md3-space-lg); }
+.stat-card { cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--md3-space-sm); }
+.stat-card :deep(.md3-card-body) { padding: var(--md3-space-xl) var(--md3-space-lg); display: flex; flex-direction: column; align-items: center; width: 100%; }
+.stat-icon { width: 36px; height: 36px; color: var(--md3-primary); margin-bottom: var(--md3-space-sm); }
 .stat-value { font-size: 32px; font-weight: 700; color: var(--md3-primary); line-height: 1.2; }
 .stat-label { font-size: 14px; color: var(--md3-on-surface-variant); margin-top: var(--md3-space-xs); }
 .dashboard-card { margin-top: var(--md3-space-xl); }

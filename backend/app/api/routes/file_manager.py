@@ -85,6 +85,7 @@ class BatchChmodRequest(BaseModel):
     alias: str = Field(..., description="SSH 账户别名")
     paths: list[str] = Field(..., description="待修改权限路径列表")
     mode: str = Field(..., description="权限模式，如 755")
+    recursive: bool = Field(default=False, description="是否递归应用到子目录")
 
 
 # ---- 远程文件管理 API ----
@@ -527,5 +528,5 @@ async def batch_delete(data: BatchDeleteRequest):
 
 @router.post("/files/batch/chmod")
 async def batch_chmod(data: BatchChmodRequest):
-    results = file_manager_service.batch_chmod(data.alias, data.paths, data.mode)
+    results = file_manager_service.batch_chmod(data.alias, data.paths, data.mode, recursive=data.recursive)
     return {"results": results}

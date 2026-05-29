@@ -492,11 +492,14 @@ class FileManagerService:
                 results.append({"path": path, "success": False, "error": str(e)})
         return results
 
-    def batch_chmod(self, alias: str, paths: list[str], mode: str) -> list[dict]:
+    def batch_chmod(self, alias: str, paths: list[str], mode: str, recursive: bool = False) -> list[dict]:
         results: list[dict] = []
         for path in paths:
             try:
-                self.chmod(alias, path, mode)
+                if recursive:
+                    self.chmod(alias, path, f"-R {mode}")
+                else:
+                    self.chmod(alias, path, mode)
                 results.append({"path": path, "success": True, "error": None})
             except Exception as e:
                 results.append({"path": path, "success": False, "error": str(e)})

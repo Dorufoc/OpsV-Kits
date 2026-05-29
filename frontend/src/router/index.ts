@@ -33,6 +33,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Docker 管理' },
   },
   {
+    path: '/docker-store',
+    name: 'DockerStore',
+    component: () => import('@/views/DockerStorePage.vue'),
+    meta: { title: '应用商店' },
+  },
+  {
     path: '/docker/container/:id',
     name: 'DockerContainerDetail',
     component: () => import('@/views/DockerContainerDetail.vue'),
@@ -67,6 +73,24 @@ const routes: RouteRecordRaw[] = [
     name: 'MonitorLargeScreen',
     component: () => import('@/views/MonitorLargeScreen.vue'),
     meta: { title: '监控大屏' },
+  },
+  {
+    path: '/process',
+    name: 'ProcessManager',
+    component: () => import('@/views/ProcessManagerPage.vue'),
+    meta: { title: '进程管理' },
+  },
+  {
+    path: '/security-network',
+    name: 'SecurityNetwork',
+    component: () => import('@/views/SecurityNetworkPage.vue'),
+    meta: { title: '安全与网络' },
+  },
+  {
+    path: '/cron-backup',
+    name: 'CronBackup',
+    component: () => import('@/views/CronBackupPage.vue'),
+    meta: { title: '计划任务与备份' },
   },
 ]
 

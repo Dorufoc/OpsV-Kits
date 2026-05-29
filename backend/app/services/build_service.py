@@ -714,13 +714,36 @@ class BuildService:
                     task.append_log(f"\x1b[33m已安装 Java {installed}，但需要 JDK {target_ver}\x1b[0m\n")
                 except (ValueError, IndexError):
                     pass
-                # 版本不满足条件，尝试 alternatives 切换
+                # 版本不满足条件，尝试 alternatives 切换（使用非交互式命令）
                 task.append_log("\x1b[33m正在通过 alternatives 切换 Java 版本...\x1b[0m\n")
-                alt_result = executor.exec_command(
-                    "sudo alternatives --config java 2>&1 || true", timeout=15.0
-                )
-                if alt_result.success:
-                    task.append_log(alt_result.stdout[-200:] + "\n")
+                
+                # 查找目标 JDK 的 java 二进制路径
+                if target_ver == "8":
+                    target_patterns = [
+                        "/usr/lib/jvm/java-1.8.0-openjdk*/jre/bin/java",
+                        "/usr/lib/jvm/java-1.8.0-openjdk/bin/java",
+                    ]
+                else:
+                    target_patterns = [
+                        f"/usr/lib/jvm/java-{target_ver}-openjdk*/bin/java",
+                        f"/usr/lib/jvm/java-{target_ver}-openjdk/bin/java",
+                    ]
+                
+                # 查找已安装的目标 JDK 路径
+                find_cmd = "ls " + " ".join(target_patterns) + " 2>/dev/null | head -1"
+                find_result = executor.exec_command(find_cmd, timeout=5.0)
+                
+                if find_result.success and find_result.stdout.strip():
+                    target_java_path = find_result.stdout.strip()
+                    task.append_log(f"找到目标 Java 路径: {target_java_path}\n")
+                    
+                    # 使用非交互式的 alternatives --set 命令
+                    alt_set_cmd = f"sudo alternatives --set java {target_java_path} 2>&1 || true"
+                    alt_result = executor.exec_command(alt_set_cmd, timeout=10.0)
+                    if alt_result.stdout.strip():
+                        task.append_log(alt_result.stdout[-200:] + "\n")
+                else:
+                    task.append_log(f"\x1b[33m未找到 JDK {target_ver} 的安装路径，无法自动切换\x1b[0m\n")
                 # 重新验证
                 recheck = executor.exec_command("java -version 2>&1", timeout=10.0)
                 if recheck.success:

@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'louislam/uptime-kuma:1'
+    container_name: panel-uptime-kuma
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${KUMA_PORT}:3001'
+    volumes:
+      - /www/server/apps/uptime-kuma/data:/app/data

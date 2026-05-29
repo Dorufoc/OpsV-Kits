@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    image: 'gitea/gitea:latest'
+    container_name: panel-gitea
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${GITEA_PORT}:3000'
+      - '${GITEA_SSH_PORT}:22'
+    volumes:
+      - /www/server/apps/gitea/data:/data

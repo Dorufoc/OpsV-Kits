@@ -17,6 +17,12 @@ class MonitorService:
         )
         self._subscribers: dict[str, set] = defaultdict(set)
         self._tasks: dict[str, asyncio.Task] = {}
+        self._cache: dict[str, Any] = {}
+        self._cache_ttl: dict[str, float] = {}
+        self._cpu_prev: dict[str, dict[str, Any]] = {}
+        self._cpu_core_prev: dict[str, list[dict[str, Any]]] = {}
+        self._disk_io_prev: dict[str, list[dict[str, Any]]] = {}
+        self._network_prev: dict[str, list[dict[str, Any]]] = {}
 
     def _conn(self, alias: str):
         account = ssh_account_service.get_account(alias)
@@ -35,6 +41,16 @@ class MonitorService:
             return code, stdout.strip(), stderr.strip()
         finally:
             ssh_account_service.pool.release_connection(conn)
+
+    def _get_cached(self, alias: str, key: str, ttl: float, getter) -> Any:
+        cache_key = f"{alias}:{key}"
+        now = time.time()
+        if cache_key in self._cache and self._cache_ttl.get(cache_key, 0) > now:
+            return self._cache[cache_key]
+        value = getter(alias)
+        self._cache[cache_key] = value
+        self._cache_ttl[cache_key] = now + ttl
+        return value
 
     # ── CPU ──────────────────────────────────────────────────────
 
@@ -65,9 +81,14 @@ class MonitorService:
         }
 
     def get_cpu_percent(self, alias: str) -> dict[str, Any]:
-        s1 = self.get_cpu_stats(alias)
-        time.sleep(1)
+        s1 = self._cpu_prev.get(alias)
         s2 = self.get_cpu_stats(alias)
+        if s1 is None or "error" in s1 or "error" in s2:
+            self._cpu_prev[alias] = s2
+            time.sleep(1)
+            s1 = s2
+            s2 = self.get_cpu_stats(alias)
+            self._cpu_prev[alias] = s2
         if "error" in s1 or "error" in s2:
             return {"usage_percent": 0}
         delta_total = s2["total"] - s1["total"]
@@ -76,6 +97,35 @@ class MonitorService:
             return {"usage_percent": 0}
         usage = round((1 - delta_idle / delta_total) * 100, 1)
         _, cores_out, _ = self._exec(alias, "nproc 2>/dev/null || echo 1", 5)
+        cores = int(cores_out.strip() or 1)
+        return {
+            "usage_percent": usage,
+            "cores": cores,
+            "user_percent": round((s2["user"] - s1["user"]) / delta_total * 100, 1),
+            "system_percent": round((s2["system"] - s1["system"]) / delta_total * 100, 1),
+            "iowait_percent": round((s2["iowait"] - s1["iowait"]) / delta_total * 100, 1),
+        }
+
+    async def async_get_cpu_percent(self, alias: str) -> dict[str, Any]:
+        loop = asyncio.get_event_loop()
+        s1 = self._cpu_prev.get(alias)
+        s2 = await loop.run_in_executor(None, self.get_cpu_stats, alias)
+        if s1 is None or "error" in s1 or "error" in s2:
+            self._cpu_prev[alias] = s2
+            await asyncio.sleep(1)
+            s1 = s2
+            s2 = await loop.run_in_executor(None, self.get_cpu_stats, alias)
+            self._cpu_prev[alias] = s2
+        if "error" in s1 or "error" in s2:
+            return {"usage_percent": 0}
+        delta_total = s2["total"] - s1["total"]
+        delta_idle = s2["idle"] - s1["idle"]
+        if delta_total == 0:
+            return {"usage_percent": 0}
+        usage = round((1 - delta_idle / delta_total) * 100, 1)
+        _, cores_out, _ = await loop.run_in_executor(
+            None, self._exec, alias, "nproc 2>/dev/null || echo 1", 5
+        )
         cores = int(cores_out.strip() or 1)
         return {
             "usage_percent": usage,
@@ -96,17 +146,74 @@ class MonitorService:
             total = sum(int(v) for v in parts[1:])
             idle = int(parts[4])
             core_stats.append({"core": int(core_id), "total": total, "idle": idle})
-        time.sleep(0.5)
-        code2, out2, _ = self._exec(alias, "grep '^cpu[0-9]' /proc/stat", 5)
-        core_stats2 = []
-        for line in out2.split("\n") if out2 else []:
+        prev = self._cpu_core_prev.get(alias)
+        if prev is None:
+            self._cpu_core_prev[alias] = core_stats
+            time.sleep(0.5)
+            code2, out2, _ = self._exec(alias, "grep '^cpu[0-9]' /proc/stat", 5)
+            core_stats2 = []
+            for line in out2.split("\n") if out2 else []:
+                parts = line.split()
+                if len(parts) < 5:
+                    continue
+                core_id = parts[0].replace("cpu", "")
+                total = sum(int(v) for v in parts[1:])
+                idle = int(parts[4])
+                core_stats2.append({"core": int(core_id), "total": total, "idle": idle})
+            self._cpu_core_prev[alias] = core_stats2
+            prev = core_stats
+            core_stats = core_stats2
+        else:
+            self._cpu_core_prev[alias] = core_stats
+            core_stats2 = core_stats
+            core_stats = prev
+        if not core_stats or not core_stats2:
+            return []
+        result = []
+        for c1, c2 in zip(core_stats, core_stats2):
+            dt = c2["total"] - c1["total"]
+            di = c2["idle"] - c1["idle"]
+            usage = round((1 - di / dt) * 100, 1) if dt > 0 else 0
+            result.append({"core": c1["core"], "usage_percent": usage})
+        return result
+
+    async def async_get_cpu_per_core(self, alias: str) -> list[dict[str, Any]]:
+        loop = asyncio.get_event_loop()
+        code, out, _ = await loop.run_in_executor(
+            None, self._exec, alias, "grep '^cpu[0-9]' /proc/stat", 5
+        )
+        core_stats = []
+        for line in out.split("\n") if out else []:
             parts = line.split()
             if len(parts) < 5:
                 continue
             core_id = parts[0].replace("cpu", "")
             total = sum(int(v) for v in parts[1:])
             idle = int(parts[4])
-            core_stats2.append({"core": int(core_id), "total": total, "idle": idle})
+            core_stats.append({"core": int(core_id), "total": total, "idle": idle})
+        prev = self._cpu_core_prev.get(alias)
+        if prev is None:
+            self._cpu_core_prev[alias] = core_stats
+            await asyncio.sleep(0.5)
+            code2, out2, _ = await loop.run_in_executor(
+                None, self._exec, alias, "grep '^cpu[0-9]' /proc/stat", 5
+            )
+            core_stats2 = []
+            for line in out2.split("\n") if out2 else []:
+                parts = line.split()
+                if len(parts) < 5:
+                    continue
+                core_id = parts[0].replace("cpu", "")
+                total = sum(int(v) for v in parts[1:])
+                idle = int(parts[4])
+                core_stats2.append({"core": int(core_id), "total": total, "idle": idle})
+            self._cpu_core_prev[alias] = core_stats2
+            prev = core_stats
+            core_stats = core_stats2
+        else:
+            self._cpu_core_prev[alias] = core_stats
+            core_stats2 = core_stats
+            core_stats = prev
         if not core_stats or not core_stats2:
             return []
         result = []
@@ -159,6 +266,9 @@ class MonitorService:
     # ── Disk ─────────────────────────────────────────────────────
 
     def get_disk_stats(self, alias: str) -> list[dict[str, Any]]:
+        return self._get_cached(alias, "disk_stats", 10, self._get_disk_stats_raw)
+
+    def _get_disk_stats_raw(self, alias: str) -> list[dict[str, Any]]:
         code, stdout, _ = self._exec(
             alias,
             "df -B1 2>/dev/null | tail -n +2",
@@ -207,9 +317,37 @@ class MonitorService:
         return devices
 
     def get_disk_io_rate(self, alias: str) -> list[dict[str, Any]]:
-        a = self.get_disk_io(alias)
-        time.sleep(1)
+        a = self._disk_io_prev.get(alias)
         b = self.get_disk_io(alias)
+        if a is None:
+            self._disk_io_prev[alias] = b
+            time.sleep(1)
+            a = b
+            b = self.get_disk_io(alias)
+            self._disk_io_prev[alias] = b
+        result = []
+        for da, db in zip(a, b):
+            if da["device"] != db["device"]:
+                continue
+            result.append({
+                "device": da["device"],
+                "read_bytes_per_sec": (db["sectors_read"] - da["sectors_read"]) * 512,
+                "write_bytes_per_sec": (db["sectors_written"] - da["sectors_written"]) * 512,
+                "read_ops_per_sec": db["reads_completed"] - da["reads_completed"],
+                "write_ops_per_sec": db["writes_completed"] - da["writes_completed"],
+            })
+        return result
+
+    async def async_get_disk_io_rate(self, alias: str) -> list[dict[str, Any]]:
+        loop = asyncio.get_event_loop()
+        a = self._disk_io_prev.get(alias)
+        b = await loop.run_in_executor(None, self.get_disk_io, alias)
+        if a is None:
+            self._disk_io_prev[alias] = b
+            await asyncio.sleep(1)
+            a = b
+            b = await loop.run_in_executor(None, self.get_disk_io, alias)
+            self._disk_io_prev[alias] = b
         result = []
         for da, db in zip(a, b):
             if da["device"] != db["device"]:
@@ -245,11 +383,43 @@ class MonitorService:
         return [i for i in interfaces if i["interface"] != "lo"]
 
     def get_network_rate(self, alias: str) -> list[dict[str, Any]]:
-        a = self.get_network_stats(alias)
+        a = self._network_prev.get(alias)
+        b = self.get_network_stats(alias)
+        if a is None:
+            self._network_prev[alias] = b
+            time.sleep(1)
+            a = b
+            b = self.get_network_stats(alias)
+            self._network_prev[alias] = b
         if not a:
             return []
-        time.sleep(1)
-        b = self.get_network_stats(alias)
+        result = []
+        for da, db in zip(a, b):
+            if da["interface"] != db["interface"]:
+                continue
+            result.append({
+                "interface": da["interface"],
+                "rx_bytes_per_sec": db["rx_bytes"] - da["rx_bytes"],
+                "tx_bytes_per_sec": db["tx_bytes"] - da["tx_bytes"],
+                "rx_packets_per_sec": db["rx_packets"] - da["rx_packets"],
+                "tx_packets_per_sec": db["tx_packets"] - da["tx_packets"],
+                "rx_errors_per_sec": db["rx_errors"] - da["rx_errors"],
+                "tx_errors_per_sec": db["tx_errors"] - da["tx_errors"],
+            })
+        return result
+
+    async def async_get_network_rate(self, alias: str) -> list[dict[str, Any]]:
+        loop = asyncio.get_event_loop()
+        a = self._network_prev.get(alias)
+        b = await loop.run_in_executor(None, self.get_network_stats, alias)
+        if a is None:
+            self._network_prev[alias] = b
+            await asyncio.sleep(1)
+            a = b
+            b = await loop.run_in_executor(None, self.get_network_stats, alias)
+            self._network_prev[alias] = b
+        if not a:
+            return []
         result = []
         for da, db in zip(a, b):
             if da["interface"] != db["interface"]:
@@ -321,6 +491,9 @@ class MonitorService:
             return 0
 
     def get_temperatures(self, alias: str) -> list[dict[str, Any]]:
+        return self._get_cached(alias, "temperatures", 10, self._get_temperatures_raw)
+
+    def _get_temperatures_raw(self, alias: str) -> list[dict[str, Any]]:
         code, stdout, _ = self._exec(alias, "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null", 5)
         temps = []
         for i, line in enumerate(stdout.split("\n") if stdout else []):
@@ -338,6 +511,9 @@ class MonitorService:
     # ── Docker Container Metrics ─────────────────────────────────
 
     def get_docker_container_metrics(self, alias: str) -> list[dict[str, Any]]:
+        return self._get_cached(alias, "docker_container_metrics", 10, self._get_docker_container_metrics_raw)
+
+    def _get_docker_container_metrics_raw(self, alias: str) -> list[dict[str, Any]]:
         code, out, _ = self._exec(alias,
             "docker stats --no-stream --format '{{json .}}' 2>/dev/null", 15)
         containers = []
@@ -354,18 +530,26 @@ class MonitorService:
                 block_str = data.get("BlockIO", "0B / 0B")
                 def _parse_bytes(s: str) -> float:
                     s = s.strip()
-                    if "B" in s:
-                        s = s.replace("i", "")
-                        if "TiB" in s or "TB" in s:
-                            return float(s.replace("TiB", "").replace("TB", "").strip()) * 1024**4
-                        if "GiB" in s or "GB" in s:
-                            return float(s.replace("GiB", "").replace("GB", "").strip()) * 1024**3
-                        if "MiB" in s or "MB" in s:
-                            return float(s.replace("MiB", "").replace("MB", "").strip()) * 1024**2
-                        if "KiB" in s or "KB" in s:
-                            return float(s.replace("KiB", "").replace("KB", "").strip()) * 1024
-                        return float(s.replace("B", "").strip())
-                    return 0
+                    if not s:
+                        return 0.0
+                    multipliers = {
+                        "TiB": 1024**4, "TB": 1024**4,
+                        "GiB": 1024**3, "GB": 1024**3,
+                        "MiB": 1024**2, "MB": 1024**2,
+                        "KiB": 1024, "KB": 1024,
+                        "B": 1,
+                    }
+                    for unit, mult in multipliers.items():
+                        if unit in s:
+                            num_str = s.replace(unit, "").strip()
+                            try:
+                                return float(num_str) * mult
+                            except ValueError:
+                                return 0
+                    try:
+                        return float(s)
+                    except ValueError:
+                        return 0
                 mem_parts = mem_usage_str.split("/")
                 mem_used = _parse_bytes(mem_parts[0]) if len(mem_parts) > 0 else 0
                 mem_total = _parse_bytes(mem_parts[1]) if len(mem_parts) > 1 else 0
@@ -486,6 +670,43 @@ class MonitorService:
             "docker_containers": docker,
         }
 
+    async def async_get_snapshot(self, alias: str) -> dict[str, Any]:
+        loop = asyncio.get_event_loop()
+        hostname_future = loop.run_in_executor(
+            None, self._exec, alias, "hostname", 5
+        )
+        cpu_future = self.async_get_cpu_percent(alias)
+        cores_future = self.async_get_cpu_per_core(alias)
+        mem_future = loop.run_in_executor(None, self.get_memory_stats, alias)
+        disks_future = loop.run_in_executor(None, self.get_disk_stats, alias)
+        net_rate_future = self.async_get_network_rate(alias)
+        load_future = loop.run_in_executor(None, self.get_load_average, alias)
+        top_future = loop.run_in_executor(None, self.get_top_processes, alias)
+        conns_future = loop.run_in_executor(None, self.get_network_connections, alias)
+        uptime_future = loop.run_in_executor(None, self.get_uptime, alias)
+        docker_future = loop.run_in_executor(None, self.get_docker_container_metrics, alias)
+        (
+            cpu, cores, mem, disks, net_rate, load, top, conns, uptime, docker, hostname_result
+        ) = await asyncio.gather(
+            cpu_future, cores_future, mem_future, disks_future, net_rate_future,
+            load_future, top_future, conns_future, uptime_future, docker_future, hostname_future
+        )
+        return {
+            "timestamp": time.time(),
+            "alias": alias,
+            "hostname": hostname_result[1],
+            "cpu": cpu,
+            "cores": cores,
+            "memory": mem,
+            "disks": disks,
+            "network": net_rate,
+            "load": load,
+            "connections": conns,
+            "top_processes": top,
+            "uptime": uptime,
+            "docker_containers": docker,
+        }
+
     def store_snapshot(self, alias: str, data: dict[str, Any]) -> None:
         self._history[alias].append(data)
 
@@ -504,10 +725,9 @@ class MonitorService:
             return
         async def _stream():
             while True:
+                start_time = time.time()
                 try:
-                    snapshot = await asyncio.get_event_loop().run_in_executor(
-                        None, self.get_snapshot, alias
-                    )
+                    snapshot = await self.async_get_snapshot(alias)
                     self.store_snapshot(alias, snapshot)
                     dead_ws = set()
                     for ws in self._subscribers.get(alias, set()):
@@ -518,7 +738,9 @@ class MonitorService:
                     self._subscribers[alias] -= dead_ws
                 except Exception:
                     pass
-                await asyncio.sleep(interval)
+                elapsed = time.time() - start_time
+                sleep_time = max(0, interval - elapsed)
+                await asyncio.sleep(sleep_time)
         self._tasks[alias] = asyncio.create_task(_stream())
 
     async def stop_streaming(self, alias: str) -> None:

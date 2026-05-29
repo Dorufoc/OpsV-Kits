@@ -30,7 +30,7 @@ async def update_settings(data: SettingsUpdate):
 
     if "remote_drive_enabled" in data_dict:
         from app.services.remote_drive_service import remote_drive_service
-        enabled = settings_service.get("remote_drive_enabled", True)
+        enabled = settings_service.get("remote_drive_enabled", False)
         port = settings_service.get("remote_drive_port", 8081)
         if enabled and not remote_drive_service.is_running:
             remote_drive_service.start(port=port)

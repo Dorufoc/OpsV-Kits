@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  db:
+    image: 'mongo:latest'
+    container_name: panel-mongo
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${MONGO_PORT}:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: '${MONGO_ROOT_PASSWORD}'
+    volumes:
+      - /www/server/apps/mongo/data:/data/db

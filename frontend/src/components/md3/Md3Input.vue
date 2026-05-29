@@ -8,12 +8,18 @@
         'md3-input--readonly': readonly,
         'md3-input--error': error,
         'md3-input--focused': isFocused,
+        'md3-input--has-value': !!modelValue,
+        'md3-input--no-label': !label,
       }
     ]"
   >
     <div class="md3-input-container">
-      <label v-if="label" class="md3-input-label" :class="{ 'md3-input-label--floating': isFocused || modelValue }">
-        {{ label }}
+      <label
+        v-if="label"
+        class="md3-input-label"
+        :class="{ 'md3-input-label--floating': isFocused || modelValue }"
+      >
+        <span class="md3-input-label-text">{{ label }}</span>
       </label>
       <span v-if="$slots.prefix" class="md3-input-prefix">
         <slot name="prefix" />
@@ -21,7 +27,7 @@
       <input
         :type="computedType"
         :value="modelValue"
-        :placeholder="placeholder"
+        :placeholder="computedPlaceholder"
         :disabled="disabled"
         :readonly="readonly"
         :maxlength="maxlength"
@@ -79,6 +85,13 @@ const isFocused = ref(false)
 
 const computedType = computed(() => props.type)
 
+const computedPlaceholder = computed(() => {
+  if (props.label && (isFocused.value || props.modelValue)) {
+    return props.placeholder || ''
+  }
+  return props.placeholder || ''
+})
+
 function onInput(event: Event) {
   const target = event.target as HTMLInputElement
   let value: string | number = target.value
@@ -125,12 +138,13 @@ function onInput(event: Event) {
   border: 1px solid var(--md3-outline);
   border-radius: var(--md3-shape-xs);
   background: transparent;
-  transition: border-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard),
+              box-shadow var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 .md3-input--outlined.md3-input--focused .md3-input-container {
   border-color: var(--md3-primary);
-  border-width: 2px;
+  box-shadow: inset 0 0 0 1px var(--md3-primary);
 }
 
 .md3-input--outlined.md3-input--error .md3-input-container {
@@ -139,6 +153,7 @@ function onInput(event: Event) {
 
 .md3-input--outlined.md3-input--focused.md3-input--error .md3-input-container {
   border-color: var(--md3-error);
+  box-shadow: inset 0 0 0 1px var(--md3-error);
 }
 
 /* ===== Filled Variant ===== */
@@ -148,12 +163,13 @@ function onInput(event: Event) {
   border-radius: var(--md3-shape-xs) var(--md3-shape-xs) 0 0;
   background: var(--md3-surface-container-highest);
   transition: background-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard),
-              border-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+              border-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard),
+              box-shadow var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 .md3-input--filled.md3-input--focused .md3-input-container {
   border-bottom-color: var(--md3-primary);
-  border-bottom-width: 2px;
+  box-shadow: inset 0 -1px 0 0 var(--md3-primary);
 }
 
 .md3-input--filled.md3-input--error .md3-input-container {
@@ -171,6 +187,13 @@ function onInput(event: Event) {
   pointer-events: none;
   transition: all var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
   z-index: 1;
+  padding: 0 4px;
+  margin-left: -4px;
+}
+
+.md3-input-label-text {
+  position: relative;
+  z-index: 2;
 }
 
 .md3-input-label--floating {
@@ -182,6 +205,19 @@ function onInput(event: Event) {
 
 .md3-input--error .md3-input-label--floating {
   color: var(--md3-error);
+}
+
+/* Outlined variant label gap effect */
+.md3-input--outlined .md3-input-label--floating::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  background: var(--md3-surface);
+  z-index: -1;
 }
 
 /* ===== Prefix/Suffix ===== */
@@ -232,5 +268,9 @@ function onInput(event: Event) {
 
 [data-theme="dark"] .md3-input--readonly .md3-input-container {
   background: var(--md3-surface-container-high);
+}
+
+[data-theme="dark"] .md3-input--outlined .md3-input-label--floating::before {
+  background: var(--md3-surface);
 }
 </style>

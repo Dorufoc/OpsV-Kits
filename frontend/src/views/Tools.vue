@@ -11,6 +11,7 @@
       <template #header>
         <span><Md3Icon name="folder-open" class="header-icon" /> 远程硬盘（NAS）</span>
         <div class="card-header-right">
+          <Md3Tag type="warning" size="sm">实验性功能</Md3Tag>
           <Md3Switch
             v-model="remoteDriveEnabled"
             on-text="已启用"
@@ -177,53 +178,6 @@
         </div>
       </Md3Card>
 
-      <Md3Card :shadow="false" class="section-card">
-        <template #header>
-          <span><Md3Icon name="connection" class="header-icon" /> 防火墙配置 (firewalld)</span>
-          <div class="card-header-right">
-            <Md3Tag :type="firewallActive ? 'success' : 'danger'" size="sm">
-              {{ firewallActive ? '运行中' : '已停止' }}
-            </Md3Tag>
-            <Md3Button size="sm" :variant="firewallActive ? 'danger' : 'success'" @click="toggleFirewall">
-              {{ firewallActive ? '关闭防火墙' : '开启防火墙' }}
-            </Md3Button>
-          </div>
-        </template>
-
-        <div class="firewall-actions">
-          <div class="port-form">
-            <div class="port-field">
-              <span class="port-label">端口</span>
-              <Md3Input
-                v-model.number="newPort"
-                placeholder="如 8080"
-                type="number"
-                class="port-input"
-              />
-            </div>
-            <div class="protocol-field">
-              <span class="protocol-label">协议</span>
-              <Md3Select
-                v-model="newProtocol"
-                :options="protocolOptions"
-                class="protocol-select"
-              />
-            </div>
-            <Md3Button variant="primary" @click="addPortRule" :loading="loadingPort">添加端口规则</Md3Button>
-          </div>
-
-          <Md3Table
-            :columns="firewallColumns"
-            :data="firewallRules"
-            stripe
-            max-height="240"
-          >
-            <template #action="{ row }">
-              <Md3Button icon="delete" size="sm" variant="danger" @click="removeRule(row)">删除</Md3Button>
-            </template>
-          </Md3Table>
-        </div>
-      </Md3Card>
     </template>
 
     <Md3Empty v-else description="请先选择一个 SSH 服务器" :image-size="80" />
@@ -258,13 +212,7 @@ const loadingAction = ref('')
 const loadingSelinux = ref(false)
 const selinuxStatus = ref('')
 
-const firewallActive = ref(false)
-const firewallRules = ref<any[]>([])
-const newPort = ref(8080)
-const newProtocol = ref('tcp')
-const loadingPort = ref(false)
-
-const remoteDriveEnabled = ref(true)
+const remoteDriveEnabled = ref(false)
 const remoteDriveRunning = ref(false)
 const webdavUrl = ref('http://localhost:8081/')
 const windowsUrl = ref('\\\\localhost@8081\\DavWWWRoot\\')
@@ -279,13 +227,6 @@ const mountColumns = [
   { prop: 'port', label: '端口', width: '70px' },
   { prop: 'url', label: '独立访问地址' },
   { prop: 'windows_url', label: 'Windows 映射地址' },
-]
-
-const firewallColumns = [
-  { prop: 'type', label: '类型', width: '80px' },
-  { prop: 'value', label: '规则内容' },
-  { prop: 'zone', label: '区域', width: '100px' },
-  { prop: 'action', label: '操作', width: '100px' },
 ]
 
 const selectOptions = computed(() =>
@@ -304,7 +245,6 @@ function onAccountChange(value: string | number | (string | number)[]) {
   const alias = String(value)
   selectedAlias.value = alias
   loadSelinux()
-  loadFirewallStatus()
 }
 
 async function loadSelinux() {
@@ -349,70 +289,10 @@ async function executeAction(action: string) {
   finally { loadingAction.value = '' }
 }
 
-async function loadFirewallStatus() {
-  if (!selectedAlias.value) return
-  try {
-    const res = await request.get<any>('/system/firewall/status', { params: { alias: selectedAlias.value } })
-    firewallActive.value = res.active || false
-    if (res.installed) {
-      const rulesRes = await request.get<any>('/system/firewall/rules', { params: { alias: selectedAlias.value } })
-      firewallRules.value = rulesRes.rules || []
-    }
-  } catch {}
-}
-
-async function toggleFirewall() {
-  try {
-    const res = await request.post<any>('/system/firewall/set', null, {
-      params: { alias: selectedAlias.value, enable: !firewallActive.value }
-    })
-    Md3Message.success(res.message)
-    await loadFirewallStatus()
-  } catch { Md3Message.error('操作失败') }
-}
-
-async function addPortRule() {
-  if (!newPort.value || newPort.value < 1 || newPort.value > 65535) {
-    Md3Message.warning('请输入有效端口 (1-65535)')
-    return
-  }
-  loadingPort.value = true
-  try {
-    const res = await request.post<any>('/system/firewall/port', null, {
-      params: { alias: selectedAlias.value, port: newPort.value, protocol: newProtocol.value }
-    })
-    Md3Message.success(res.message)
-    await loadFirewallStatus()
-  } catch { Md3Message.error('添加失败') }
-  finally { loadingPort.value = false }
-}
-
-async function removeRule(row: any) {
-  try {
-    if (row.type === 'port') {
-      const parts = row.value.split('/')
-      const port = parseInt(parts[0])
-      const proto = parts[1] || 'tcp'
-      await request.delete('/system/firewall/port', {
-        params: { alias: selectedAlias.value, port, protocol: proto }
-      })
-    } else if (row.type === 'service') {
-      await request.delete('/system/firewall/service', {
-        params: { alias: selectedAlias.value, service: row.value }
-      })
-    }
-    Md3Message.success('规则已删除')
-    await loadFirewallStatus()
-  } catch { Md3Message.error('删除失败') }
-}
-
 async function loadDriveStatus() {
   try {
-    const res: any = await request.get('/settings')
-    remoteDriveEnabled.value = res.remote_drive_enabled !== false
-  } catch {}
-  try {
     const status: any = await request.get('/remote-drive/status')
+    remoteDriveEnabled.value = status.enabled === true
     remoteDriveRunning.value = status.running
     webdavUrl.value = status.webdav_url
     windowsUrl.value = status.windows_url || webdavUrl.value
@@ -424,6 +304,20 @@ async function loadDriveStatus() {
 }
 
 async function onRemoteDriveToggle(val: boolean) {
+  if (val) {
+    try {
+      await Md3Confirm.show({
+        title: '实验性功能警告',
+        message: '远程硬盘（NAS）为实验性功能，开启后会严重影响系统性能，可能造成卡顿或资源占用过高。确定要开启吗？',
+        confirmText: '确定开启',
+        cancelText: '取消',
+        type: 'danger',
+      })
+    } catch {
+      remoteDriveEnabled.value = false
+      return
+    }
+  }
   try {
     await request.put('/settings', { remote_drive_enabled: val })
     Md3Message.success(val ? '远程硬盘功能已开启' : '远程硬盘功能已关闭')
@@ -458,7 +352,6 @@ onMounted(async () => {
   if (sshAccounts.value.length > 0) {
     selectedAlias.value = sshAccounts.value[0].alias
     loadSelinux()
-    loadFirewallStatus()
   }
   loadDriveStatus()
 })
@@ -483,8 +376,6 @@ onMounted(async () => {
   display: flex; align-items: center; gap: var(--md3-space-sm); font-size: 13px;
 }
 .selinux-row .label { color: var(--md3-on-surface-variant); }
-.firewall-actions { display: flex; flex-direction: column; gap: var(--md3-space-md); }
-
 .remote-drive-body { display: flex; flex-direction: column; gap: var(--md3-space-xs); }
 .rd-section { display: flex; align-items: center; flex-wrap: wrap; gap: var(--md3-space-sm); }
 .rd-field { display: flex; align-items: center; gap: var(--md3-space-sm); }
@@ -525,9 +416,5 @@ onMounted(async () => {
 }
 .tutorial-content strong { color: var(--md3-on-surface); }
 
-.port-form { display: flex; align-items: flex-end; gap: var(--md3-space-sm); flex-wrap: wrap; }
-.port-field, .protocol-field { display: flex; flex-direction: column; gap: var(--md3-space-xs); }
-.port-label, .protocol-label { font-size: 12px; color: var(--md3-on-surface-variant); }
-.port-input { width: 100px; }
-.protocol-select { width: 80px; }
+
 </style>

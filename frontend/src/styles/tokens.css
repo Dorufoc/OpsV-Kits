@@ -64,6 +64,23 @@
   --md3-gradient-surface: linear-gradient(135deg, #FEFBFF 0%, #F3EDF7 100%);
   --md3-gradient-card: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(247,242,250,0.6) 100%);
   --md3-gradient-dark-card: linear-gradient(135deg, rgba(49, 48, 51, 0.8) 0%, rgba(28, 27, 30, 0.6) 100%);
+
+  /* ===== Chart Colors ===== */
+  --md3-chart-primary: #1a73e8;
+  --md3-chart-success: #22c55e;
+  --md3-chart-warning: #f59e0b;
+  --md3-chart-danger: #ef4444;
+  --md3-chart-info: #8b5cf6;
+
+  --md3-chart-grid-line: rgba(0, 0, 0, 0.06);
+  --md3-chart-axis-label: #94a3b8;
+  --md3-chart-axis-line: #cbd5e1;
+  --md3-chart-text: #64748b;
+  --md3-chart-bg: #f8fafc;
+  --md3-chart-gauge-bg: #1e293b;
+  --md3-chart-gauge-text: #e2e8f0;
+  --md3-chart-gauge-subtitle: #94a3b8;
+  --md3-chart-pie-border: #0f172a;
 }
 
 [data-theme="dark"] {
@@ -131,6 +148,23 @@
   --md3-gradient-surface: linear-gradient(135deg, #1C1B1E 0%, #141316 100%);
   --md3-gradient-card: linear-gradient(135deg, rgba(42, 41, 44, 0.9) 0%, rgba(28, 27, 30, 0.6) 100%);
   --md3-gradient-dark-card: linear-gradient(135deg, rgba(14, 13, 16, 0.8) 0%, rgba(28, 27, 30, 0.6) 100%);
+
+  /* ===== Chart Colors ===== */
+  --md3-chart-primary: #5B8DEF;
+  --md3-chart-success: #4CAF50;
+  --md3-chart-warning: #FFB74D;
+  --md3-chart-danger: #EF5350;
+  --md3-chart-info: #A78BFA;
+
+  --md3-chart-grid-line: rgba(255, 255, 255, 0.08);
+  --md3-chart-axis-label: #9CA3AF;
+  --md3-chart-axis-line: #4B5563;
+  --md3-chart-text: #9CA3AF;
+  --md3-chart-bg: #111827;
+  --md3-chart-gauge-bg: #334155;
+  --md3-chart-gauge-text: #E2E8F0;
+  --md3-chart-gauge-subtitle: #94A3B8;
+  --md3-chart-pie-border: #0F172A;
 }
 
 /* ===== MD3 Typography ===== */

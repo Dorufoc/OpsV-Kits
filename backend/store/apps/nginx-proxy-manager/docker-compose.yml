@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  app:
+    image: 'jc21/nginx-proxy-manager:latest'
+    container_name: panel-nginx-proxy-manager
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '80:80'
+      - '443:443'
+      - '${PANEL_WEB_PORT}:81'
+    volumes:
+      - /www/server/apps/nginx-proxy-manager/data:/data
+      - /www/server/apps/nginx-proxy-manager/letsencrypt:/etc/letsencrypt

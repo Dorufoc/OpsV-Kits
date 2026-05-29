@@ -12,7 +12,7 @@ _SETTINGS_PATH = _PERSIST_DIR / "settings.json"
 
 _DEFAULT_SETTINGS: dict[str, Any] = {
     "session_ttl_hours": 72,
-    "remote_drive_enabled": True,
+    "remote_drive_enabled": False,
     "remote_drive_port": 8081,
     "remote_drive_username": "opsv",
     "remote_drive_password": "",

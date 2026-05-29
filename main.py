@@ -21,6 +21,8 @@ import sys
 import textwrap
 import threading
 import time
+import urllib.request
+import urllib.error
 import webbrowser
 from pathlib import Path
 
@@ -303,9 +305,33 @@ def build_frontend():
     print()
 
 
-def delayed_open_browser(url: str, delay: float = 2.0) -> None:
+def wait_for_backend_ready(base_url: str, timeout: float = 15.0, interval: float = 0.5) -> bool:
+    """轮询后端健康检查接口，等待后端完全就绪"""
+    health_url = f"{base_url}/api/health"
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            req = urllib.request.Request(health_url, method='GET')
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
+                if resp.status == 200:
+                    return True
+        except (urllib.error.URLError, OSError, Exception):
+            pass
+        time.sleep(interval)
+    return False
+
+
+def delayed_open_browser(url: str, backend_url: str | None = None, delay: float = 2.0) -> None:
     def _open():
-        time.sleep(delay)
+        if backend_url:
+            time.sleep(delay)
+            print(f"  ⏳ 等待后端服务就绪...")
+            if wait_for_backend_ready(backend_url):
+                print(f"  ✅ 后端服务已就绪")
+            else:
+                print(f"  ⚠️ 后端服务启动超时，仍尝试打开浏览器...")
+        else:
+            time.sleep(delay)
         print(f"  正在打开浏览器: {url}")
         try:
             webbrowser.open(url)
@@ -421,9 +447,9 @@ def main():
 
     if not args.no_browser:
         if frontend_url:
-            delayed_open_browser(frontend_url, delay=args.browser_delay)
+            delayed_open_browser(frontend_url, backend_url=backend_url, delay=args.browser_delay)
         elif backend_url:
-            delayed_open_browser(backend_url, delay=args.browser_delay)
+            delayed_open_browser(backend_url, backend_url=backend_url, delay=args.browser_delay)
 
     if processes:
         wait_for_shutdown(processes)

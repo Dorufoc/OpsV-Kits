@@ -98,24 +98,20 @@ function toggle() {
 /* ===== Thumb ===== */
 .md3-switch-thumb {
   position: absolute;
-  left: 7px;
+  left: 8px;
   top: 50%;
   transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: var(--md3-shape-full);
   background: var(--md3-outline);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   transition: left var(--md3-motion-duration-medium) var(--md3-motion-easing-emphasized),
-              width var(--md3-motion-duration-medium) var(--md3-motion-easing-emphasized),
-              height var(--md3-motion-duration-medium) var(--md3-motion-easing-emphasized),
               background-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
 }
 
 .md3-switch--checked .md3-switch-thumb {
-  left: 29px;
-  width: 24px;
-  height: 24px;
+  left: 26px;
   background: var(--md3-on-primary);
 }
 

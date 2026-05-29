@@ -26,7 +26,7 @@
           :key="item.path"
           :to="item.path"
           class="nav-link"
-          :class="{ active: route.path === item.path || (item.path !== '/' && route.path.startsWith(item.path)) }"
+          :class="{ active: isActiveRoute(route.path, item.path) }"
         >
           <Md3Icon :name="item.icon" class="nav-icon" />
           <span class="nav-label">{{ item.label }}</span>
@@ -48,7 +48,7 @@
             :key="item.path"
             :to="item.path"
             class="sidebar-link"
-            :class="{ active: route.path === item.path || (item.path !== '/' && route.path.startsWith(item.path)) }"
+            :class="{ active: isActiveRoute(route.path, item.path) }"
             @click="drawerOpen = false"
           >
             <Md3Icon :name="item.icon" class="sidebar-icon" />
@@ -83,6 +83,12 @@ function toggleDrawer() {
   drawerOpen.value = !drawerOpen.value
 }
 
+const isActiveRoute = (currentPath: string, targetPath: string): boolean => {
+  if (targetPath === '/') return currentPath === '/'
+  if (targetPath === '/docker') return currentPath === '/docker' || currentPath.startsWith('/docker/')
+  return currentPath === targetPath || currentPath.startsWith(targetPath + '/')
+}
+
 interface NavItem {
   path: string
   label: string
@@ -95,8 +101,12 @@ const navItems: NavItem[] = [
   { path: '/file-manager', label: '文件', icon: 'folder-open' },
   { path: '/ssh-accounts', label: 'SSH', icon: 'account-box' },
   { path: '/docker', label: 'Docker', icon: 'coin' },
+  { path: '/docker-store', label: '商店', icon: 'store' },
   { path: '/webssh', label: '终端', icon: 'monitor' },
   { path: '/monitor', label: '监控', icon: 'chart-bar' },
+  { path: '/process', label: '进程', icon: 'monitor' },
+  { path: '/security-network', label: '安全', icon: 'shield' },
+  { path: '/cron-backup', label: '计划', icon: 'schedule' },
 ]
 
 const sidebarItems: NavItem[] = [
@@ -105,8 +115,12 @@ const sidebarItems: NavItem[] = [
   { path: '/file-manager', label: '远程文件管理', icon: 'folder-open' },
   { path: '/ssh-accounts', label: 'SSH 账户管理', icon: 'account-box' },
   { path: '/docker', label: 'Docker 管理', icon: 'coin' },
+  { path: '/docker-store', label: '应用商店', icon: 'store' },
   { path: '/webssh', label: 'WebSSH 终端', icon: 'monitor' },
   { path: '/monitor', label: '资源监控', icon: 'chart-bar' },
+  { path: '/process', label: '进程管理', icon: 'monitor' },
+  { path: '/security-network', label: '安全与网络', icon: 'shield' },
+  { path: '/cron-backup', label: '计划任务与备份', icon: 'schedule' },
   { path: '/tools', label: '工具箱', icon: 'wrench' },
   { path: '/settings', label: '系统设置', icon: 'cog' },
 ]

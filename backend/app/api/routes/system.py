@@ -136,7 +136,7 @@ async def set_selinux(
         raise HTTPException(500, f"设置SELinux失败: {e}")
 
 
-@router.get("/firewall/status")
+@router.get("/firewall/status", deprecated=True)
 async def firewall_status(
     alias: str = Query(..., description="SSH 账户别名"),
 ):
@@ -148,7 +148,7 @@ async def firewall_status(
         raise HTTPException(500, f"获取防火墙状态失败: {e}")
 
 
-@router.post("/firewall/set")
+@router.post("/firewall/set", deprecated=True)
 async def set_firewall(
     alias: str = Query(..., description="SSH 账户别名"),
     enable: bool = Query(..., description="true 开启, false 关闭"),
@@ -162,7 +162,7 @@ async def set_firewall(
         raise HTTPException(500, f"设置防火墙失败: {e}")
 
 
-@router.get("/firewall/rules")
+@router.get("/firewall/rules", deprecated=True)
 async def firewall_rules(
     alias: str = Query(..., description="SSH 账户别名"),
 ):
@@ -175,7 +175,7 @@ async def firewall_rules(
         raise HTTPException(500, f"获取防火墙规则失败: {e}")
 
 
-@router.get("/firewall/zones")
+@router.get("/firewall/zones", deprecated=True)
 async def firewall_zones(
     alias: str = Query(..., description="SSH 账户别名"),
 ):
@@ -188,7 +188,7 @@ async def firewall_zones(
         raise HTTPException(500, f"获取防火墙区域失败: {e}")
 
 
-@router.post("/firewall/port")
+@router.post("/firewall/port", deprecated=True)
 async def add_port_rule(
     alias: str = Query(..., description="SSH 账户别名"),
     port: int = Query(..., description="端口号"),
@@ -204,7 +204,7 @@ async def add_port_rule(
         raise HTTPException(500, f"添加端口规则失败: {e}")
 
 
-@router.delete("/firewall/port")
+@router.delete("/firewall/port", deprecated=True)
 async def remove_port_rule(
     alias: str = Query(..., description="SSH 账户别名"),
     port: int = Query(..., description="端口号"),
@@ -220,7 +220,7 @@ async def remove_port_rule(
         raise HTTPException(500, f"删除端口规则失败: {e}")
 
 
-@router.post("/firewall/service")
+@router.post("/firewall/service", deprecated=True)
 async def add_service_rule(
     alias: str = Query(..., description="SSH 账户别名"),
     service: str = Query(..., description="服务名称"),
@@ -235,7 +235,7 @@ async def add_service_rule(
         raise HTTPException(500, f"添加服务规则失败: {e}")
 
 
-@router.delete("/firewall/service")
+@router.delete("/firewall/service", deprecated=True)
 async def remove_service_rule(
     alias: str = Query(..., description="SSH 账户别名"),
     service: str = Query(..., description="服务名称"),

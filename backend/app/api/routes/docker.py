@@ -316,7 +316,7 @@ async def get_container_logs(
         logs = docker_service.get_container_logs(
             account_alias, container_id, tail=tail, timestamps=timestamps
         )
-        return {"logs": logs}
+        return {"logs": logs.splitlines() if logs else []}
     except DockerCommandError as e:
         if "No such object" in str(e):
             raise HTTPException(status_code=404, detail=f"容器 '{container_id}' 未找到")

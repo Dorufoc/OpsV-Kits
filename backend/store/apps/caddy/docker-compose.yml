@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    image: 'caddy:latest'
+    container_name: panel-caddy
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${CADDY_PORT}:80'
+    volumes:
+      - /www/server/apps/caddy/data:/data
+      - /www/server/apps/caddy/config:/config
