@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'registry:2'
+    container_name: panel-reg
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${REGISTRY_PORT}:5000'
+    volumes:
+      - /www/server/apps/reg/data:/var/lib/registry

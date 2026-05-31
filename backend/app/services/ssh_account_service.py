@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import re
+import stat
 import threading
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -10,7 +14,7 @@ from typing import Any, Optional
 from app.core.encryption import decrypt, encrypt
 from app.core.ssh_client import SSHClientManager
 from app.core.ssh_pool import SSHConnectionPool
-from app.models.audit_log import AuditLog
+from app.models.audit_log import ActionType, AuditLog, AuditModule
 from app.models.ssh_account import (
     AccountGroup,
     SSHAccount,
@@ -21,6 +25,7 @@ from app.models.ssh_account import (
 
 _PERSIST_DIR = Path.home() / ".opsv-kits"
 _PERSIST_PATH = _PERSIST_DIR / "accounts.json"
+_AUDIT_LOGS_PATH = _PERSIST_DIR / "audit_logs.json"
 
 # 最大账户数量限制，防止异常情况下创建过多账户
 _MAX_ACCOUNTS_LIMIT = 100
@@ -35,6 +40,7 @@ class SSHAccountService:
         self._pool = SSHConnectionPool()
         self._default_alias: Optional[str] = None
         self._load_from_disk()
+        self._load_audit_logs()
 
     # ── 持久化 ──────────────────────────────────────────────────────
 
@@ -322,7 +328,10 @@ class SSHAccountService:
         with self._lock:
             logs = self._audit_logs
             if account_alias:
-                logs = [log for log in logs if log.account_alias == account_alias]
+                logs = [
+                    log for log in logs
+                    if isinstance(log.detail, dict) and log.detail.get("account_alias") == account_alias
+                ]
             return logs[-limit:]
 
     # ── 分组同步辅助 ──────────────────────────────────────────────────
@@ -382,19 +391,167 @@ class SSHAccountService:
                 decrypted.totp_secret = None
         return decrypted
 
+    def _sanitize_log_detail(self, detail: str) -> str:
+        if not detail:
+            return detail
+        patterns = [
+            r"(?i)(password|passwd|pwd|secret|key|token)\s*[=:]\s*\S+",
+            r"(?i)(?:-p|--password)\s+\S+",
+            r"(?i)-----BEGIN\s+(?:RSA|DSA|EC|OPENSSH)\s+PRIVATE\s+KEY-----[\s\S]*?-----END\s+(?:RSA|DSA|EC|OPENSSH)\s+PRIVATE\s+KEY-----",
+        ]
+        sanitized = detail
+        for pattern in patterns:
+            sanitized = re.sub(pattern, lambda m: self._mask_match(m.group(0)), sanitized)
+        return sanitized
+
+    @staticmethod
+    def _mask_match(match_str: str) -> str:
+        if "=" in match_str:
+            key, _ = match_str.split("=", 1)
+            return f"{key}=***"
+        if ":" in match_str:
+            key, _ = match_str.split(":", 1)
+            return f"{key}: ***"
+        parts = match_str.split(None, 1)
+        if len(parts) == 2:
+            return f"{parts[0]} ***"
+        return "***"
+
     def _add_audit_log(
         self, account_alias: str, action: str, status: str, detail: str
     ) -> None:
+        sanitized_detail = self._sanitize_log_detail(detail)
+        action_map = {
+            "create": ActionType.CREATE,
+            "update": ActionType.UPDATE,
+            "delete": ActionType.DELETE,
+            "test": ActionType.EXECUTE,
+            "set_default": ActionType.CONFIG,
+            "clear_all": ActionType.DELETE,
+            "delete_group": ActionType.DELETE,
+            "update_group": ActionType.UPDATE,
+        }
         log = AuditLog(
+            id=uuid.uuid4().hex,
             timestamp=datetime.now(),
-            account_alias=account_alias,
-            action=action,
+            action_type=action_map.get(action, ActionType.EXECUTE),
+            module=AuditModule.SSH,
             status=status,
-            detail=detail,
+            detail={"account_alias": account_alias, "message": sanitized_detail},
         )
         self._audit_logs.append(log)
         if len(self._audit_logs) > 10000:
             self._audit_logs = self._audit_logs[-5000:]
+        self._save_audit_logs()
+
+    def _load_audit_logs(self) -> None:
+        path = _AUDIT_LOGS_PATH
+        if not path.is_file():
+            return
+        try:
+            raw = path.read_text(encoding="utf-8")
+            data = json.loads(raw)
+            logs_data: list[dict[str, Any]] = data.get("logs", [])
+            loaded: list[AuditLog] = []
+            for item in logs_data[-10000:]:
+                try:
+                    timestamp_str = item.get("timestamp", "")
+                    timestamp = datetime.fromisoformat(timestamp_str) if timestamp_str else datetime.now()
+                    detail = item.get("detail")
+                    if isinstance(detail, str):
+                        detail = {"message": detail}
+                    if isinstance(detail, dict) and "account_alias" not in detail and item.get("account_alias"):
+                        detail["account_alias"] = item["account_alias"]
+                    log = AuditLog(
+                        id=item.get("id", uuid.uuid4().hex),
+                        timestamp=timestamp,
+                        action_type=item.get("action_type", ActionType.EXECUTE),
+                        module=item.get("module", AuditModule.SSH),
+                        status=item.get("status", "success"),
+                        detail=detail,
+                    )
+                    loaded.append(log)
+                except Exception:
+                    continue
+            self._audit_logs = loaded
+        except Exception:
+            self._audit_logs = []
+
+    def _save_audit_logs(self) -> None:
+        path = _AUDIT_LOGS_PATH
+        try:
+            _PERSIST_DIR.mkdir(parents=True, exist_ok=True)
+            logs_to_save = self._audit_logs[-10000:]
+            data = {
+                "logs": [
+                    {
+                        "id": log.id,
+                        "timestamp": log.timestamp.isoformat(),
+                        "action_type": log.action_type.value if isinstance(log.action_type, ActionType) else log.action_type,
+                        "module": log.module.value if isinstance(log.module, AuditModule) else log.module,
+                        "status": log.status,
+                        "detail": log.detail,
+                    }
+                    for log in logs_to_save
+                ]
+            }
+            path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            self._set_restricted_permissions(path)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _set_restricted_permissions(path: Path) -> None:
+        try:
+            if os.name == "nt":
+                import ctypes
+                from ctypes import wintypes
+
+                FILE_ALL_ACCESS = 0x1F01FF
+                FILE_GENERIC_READ = 0x80000000 | 0x00000001 | 0x00000020 | 0x00020000
+                FILE_GENERIC_WRITE = 0x40000000 | 0x00000002 | 0x00000100 | 0x00020000
+                DACL_SECURITY_INFORMATION = 0x00000004
+                SE_FILE_OBJECT = 1
+                ACL_REVISION = 2
+
+                advapi32 = ctypes.windll.advapi32
+                kernel32 = ctypes.windll.kernel32
+
+                class EXPLICIT_ACCESS(ctypes.Structure):
+                    _fields_ = [
+                        ("grfAccessPermissions", wintypes.DWORD),
+                        ("grfAccessMode", wintypes.DWORD),
+                        ("grfInheritance", wintypes.DWORD),
+                        ("Trustee", wintypes.TRUSTEE),
+                    ]
+
+                trustee = wintypes.TRUSTEE()
+                trustee.TrusteeForm = 1
+                trustee.TrusteeType = 1
+                trustee.ptstrName = kernel32.GetCurrentProcess()
+
+                ea = EXPLICIT_ACCESS()
+                ea.grfAccessPermissions = FILE_GENERIC_READ | FILE_GENERIC_WRITE
+                ea.grfAccessMode = 0
+                ea.grfInheritance = 3
+                ea.Trustee = trustee
+
+                pacl = ctypes.c_void_p()
+                advapi32.SetEntriesInAclW(1, ctypes.byref(ea), None, ctypes.byref(pacl))
+
+                advapi32.SetNamedSecurityInfoW(
+                    str(path),
+                    SE_FILE_OBJECT,
+                    DACL_SECURITY_INFORMATION,
+                    None,
+                    None,
+                    pacl,
+                    None,
+                )
+            else:
+                os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+        except Exception:
+            pass
 
     @property
     def pool(self) -> SSHConnectionPool:

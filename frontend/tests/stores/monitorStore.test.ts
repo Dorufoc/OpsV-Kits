@@ -5,7 +5,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useMonitorStore } from '@/stores/monitorStore'
-import * as api from '@/api'
+import { request } from '@/api'
+
+function mockRequestResolved(value: any) {
+  vi.mocked(request.get).mockResolvedValue(value)
+  vi.mocked(request.post).mockResolvedValue(value)
+  vi.mocked(request.put).mockResolvedValue(value)
+  vi.mocked(request.delete).mockResolvedValue(value)
+}
+
+function mockRequestRejected(error: Error) {
+  vi.mocked(request.get).mockRejectedValue(error)
+  vi.mocked(request.post).mockRejectedValue(error)
+  vi.mocked(request.put).mockRejectedValue(error)
+  vi.mocked(request.delete).mockRejectedValue(error)
+}
 
 describe('Monitor Store', () => {
   beforeEach(() => {
@@ -130,7 +144,7 @@ describe('Monitor Store', () => {
         docker_containers: [],
         cores: [],
       }
-      vi.spyOn(api, 'request').mockResolvedValue(mockSnapshot as any)
+      mockRequestResolved(mockSnapshot as any)
 
       const store = useMonitorStore()
       store.currentAlias = 'test-server'
@@ -142,7 +156,7 @@ describe('Monitor Store', () => {
 
     it('获取快照后应该添加到历史记录', async () => {
       const mockSnapshot = { timestamp: Date.now(), hostname: 'server1' } as any
-      vi.spyOn(api, 'request').mockResolvedValue(mockSnapshot)
+      mockRequestResolved(mockSnapshot)
 
       const store = useMonitorStore()
       store.currentAlias = 'test-server'
@@ -158,7 +172,7 @@ describe('Monitor Store', () => {
       // 模拟 maxHistory 限制
       const originalMaxHistory = (store as any).maxHistory || 300
       // 由于 mock 限制，我们只验证 push 行为
-      vi.spyOn(api, 'request').mockResolvedValue({ timestamp: Date.now() } as any)
+      mockRequestResolved({ timestamp: Date.now() } as any)
 
       // 先填充历史到限制
       for (let i = 0; i < 301; i++) {
@@ -172,11 +186,15 @@ describe('Monitor Store', () => {
     })
 
     it('请求期间 loading 应该为 true', async () => {
-      vi.spyOn(api, 'request').mockImplementation(async () => {
+      const mockImpl = async () => {
         const store = useMonitorStore()
         expect(store.loading).toBe(true)
         return {}
-      })
+      }
+      vi.mocked(request.get).mockImplementation(mockImpl)
+      vi.mocked(request.post).mockImplementation(mockImpl)
+      vi.mocked(request.put).mockImplementation(mockImpl)
+      vi.mocked(request.delete).mockImplementation(mockImpl)
 
       const store = useMonitorStore()
       store.currentAlias = 'test-server'
@@ -185,7 +203,7 @@ describe('Monitor Store', () => {
     })
 
     it('请求失败时 loading 应该恢复为 false', async () => {
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Network error'))
+      mockRequestRejected(new Error('Network error'))
 
       const store = useMonitorStore()
       store.currentAlias = 'test-server'
@@ -207,7 +225,7 @@ describe('Monitor Store', () => {
         { timestamp: Date.now() - 240000, hostname: 'server1' },
         { timestamp: Date.now() - 180000, hostname: 'server1' },
       ]
-      vi.spyOn(api, 'request').mockResolvedValue({ history: mockHistory } as any)
+      mockRequestResolved({ history: mockHistory } as any)
 
       const store = useMonitorStore()
       store.currentAlias = 'test-server'
@@ -218,13 +236,13 @@ describe('Monitor Store', () => {
     })
 
     it('应该支持自定义时间范围参数', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ history: [] } as any)
+      mockRequestResolved({ history: [] } as any)
 
       const store = useMonitorStore()
       store.currentAlias = 'test-server'
       await store.fetchHistory(undefined, 600)
 
-      expect(api.request.get).toHaveBeenCalledWith('/monitor/history', {
+      expect(request.get).toHaveBeenCalledWith('/monitor/history', {
         params: { alias: 'test-server', seconds: 600 },
       })
     })
@@ -284,7 +302,7 @@ describe('Monitor Store', () => {
         onerror: null,
         close: vi.fn(),
         send: vi.fn(),
-        readyState: WebSocket.OPEN,
+        readyState: 1,
       }
       vi.stubGlobal('WebSocket', vi.fn(() => mockWebSocket))
     })

@@ -106,7 +106,8 @@ const presets: PresetItem[] = [
 }
 
 .preset-btn.active .preset-swatch {
-  box-shadow: 0 0 0 2px var(--md3-surface), 0 0 0 4px var(--swatch-color);
+  outline: 2px solid var(--swatch-color);
+  outline-offset: 2px;
 }
 
 .preset-name {

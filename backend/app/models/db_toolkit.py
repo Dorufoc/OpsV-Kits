@@ -88,27 +88,27 @@ class DangerousCheckResult(BaseModel):
 
 class MysqlQueryRequest(BaseModel):
     account_alias: str = Field(description="SSH 账户别名")
-    container_id: str = Field(description="容器 ID")
+    container_id: Optional[str] = Field(default=None, description="容器 ID，为空表示主机模式")
     connection: MySqlConnectionParams = Field(description="MySQL 连接参数")
     sql: str = Field(max_length=4096, description="SQL 语句")
 
 
 class MysqlTablesRequest(BaseModel):
     account_alias: str = Field(description="SSH 账户别名")
-    container_id: str = Field(description="容器 ID")
+    container_id: Optional[str] = Field(default=None, description="容器 ID，为空表示主机模式")
     connection: MySqlConnectionParams = Field(description="MySQL 连接参数")
 
 
 class MysqlTableStructureRequest(BaseModel):
     account_alias: str = Field(description="SSH 账户别名")
-    container_id: str = Field(description="容器 ID")
+    container_id: Optional[str] = Field(default=None, description="容器 ID，为空表示主机模式")
     connection: MySqlConnectionParams = Field(description="MySQL 连接参数")
     table_name: str = Field(description="表名")
 
 
 class RedisScanRequest(BaseModel):
     account_alias: str = Field(description="SSH 账户别名")
-    container_id: str = Field(description="容器 ID")
+    container_id: Optional[str] = Field(default=None, description="容器 ID，为空表示主机模式")
     connection: RedisConnectionParams = Field(description="Redis 连接参数")
     pattern: str = Field(default="*", description="Key 匹配模式")
     count: int = Field(default=100, ge=1, le=500, description="每次 SCAN 数量")
@@ -117,14 +117,14 @@ class RedisScanRequest(BaseModel):
 
 class RedisKeyInfoRequest(BaseModel):
     account_alias: str = Field(description="SSH 账户别名")
-    container_id: str = Field(description="容器 ID")
+    container_id: Optional[str] = Field(default=None, description="容器 ID，为空表示主机模式")
     connection: RedisConnectionParams = Field(description="Redis 连接参数")
     key: str = Field(description="Key 名称")
 
 
 class RedisDeleteKeyRequest(BaseModel):
     account_alias: str = Field(description="SSH 账户别名")
-    container_id: str = Field(description="容器 ID")
+    container_id: Optional[str] = Field(default=None, description="容器 ID，为空表示主机模式")
     connection: RedisConnectionParams = Field(description="Redis 连接参数")
     key: str = Field(description="Key 名称")
 

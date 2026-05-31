@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: dbgate/dbgate:latest
+    container_name: panel-dbgate
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${DBGATE_PORT}:3000'
+    volumes:
+      - /www/server/apps/dbgate/data:/root/.dbgate

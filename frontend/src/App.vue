@@ -107,6 +107,7 @@ const navItems: NavItem[] = [
   { path: '/process', label: '进程', icon: 'monitor' },
   { path: '/security-network', label: '安全', icon: 'shield' },
   { path: '/cron-backup', label: '计划', icon: 'schedule' },
+  { path: '/automation', label: '自动化', icon: 'account-cog' },
 ]
 
 const sidebarItems: NavItem[] = [
@@ -121,6 +122,7 @@ const sidebarItems: NavItem[] = [
   { path: '/process', label: '进程管理', icon: 'monitor' },
   { path: '/security-network', label: '安全与网络', icon: 'shield' },
   { path: '/cron-backup', label: '计划任务与备份', icon: 'schedule' },
+  { path: '/automation', label: '任务调度与自动化', icon: 'account-cog' },
   { path: '/tools', label: '工具箱', icon: 'wrench' },
   { path: '/settings', label: '系统设置', icon: 'cog' },
 ]

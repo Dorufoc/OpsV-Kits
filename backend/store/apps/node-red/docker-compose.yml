@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'nodered/node-red:latest'
+    container_name: panel-node-red
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${NODERED_PORT}:1880'
+    volumes:
+      - /www/server/apps/node-red/data:/data

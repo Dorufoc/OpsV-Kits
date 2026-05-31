@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    image: 'jellyfin/jellyfin:latest'
+    container_name: panel-jellyfin
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${JELLYFIN_PORT}:8096'
+    volumes:
+      - /www/server/apps/jellyfin/data:/config
+      - /www/server/apps/jellyfin/media:/media

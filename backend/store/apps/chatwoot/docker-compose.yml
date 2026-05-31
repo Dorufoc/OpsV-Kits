@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'chatwoot/chatwoot:latest'
+    container_name: panel-chatwoot
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${CHATWOOT_PORT}:3000'
+    volumes:
+      - /www/server/apps/chatwoot/data:/app/storage

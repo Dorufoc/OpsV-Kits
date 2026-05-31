@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    image: supabase/postgres:latest
+    container_name: panel-supabase
+    restart: unless-stopped
+    ports:
+      - "${SUPABASE_PORT}:5432"
+    volumes:
+      - /www/server/apps/supabase/data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=${SUPABASE_POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_USER=${SUPABASE_POSTGRES_USER:-postgres}
+      - POSTGRES_DB=${SUPABASE_POSTGRES_DB:-postgres}
+    labels:
+      managed-by: "opsv-kits-store"

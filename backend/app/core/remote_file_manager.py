@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import stat as stat_module
 import time
 from dataclasses import dataclass, field
@@ -301,7 +302,7 @@ class RemoteFileManager:
 
     def list_directory(self, path: str) -> list[FileEntry]:
         path = path.rstrip("/") or "/"
-        cmd = f"ls -la '{path}'"
+        cmd = f"ls -la {shlex.quote(path)}"
         code, stdout, stderr = self._exec(cmd)
         if code != 0:
             if not stderr:
@@ -317,10 +318,10 @@ class RemoteFileManager:
         return entries
 
     def get_file_info(self, path: str) -> FileDetail:
-        cmd = f"stat '{path}' 2>/dev/null || stat -x '{path}' 2>/dev/null"
+        cmd = f"stat {shlex.quote(path)} 2>/dev/null || stat -x {shlex.quote(path)} 2>/dev/null"
         code, stdout, stderr = self._exec(cmd)
         if code != 0:
-            ls_code, ls_stdout, ls_stderr = self._exec(f"ls -la '{path}'")
+            ls_code, ls_stdout, ls_stderr = self._exec(f"ls -la {shlex.quote(path)}")
             if ls_code == 0:
                 for line in ls_stdout.split("\n"):
                     line = line.strip()
@@ -358,50 +359,46 @@ class RemoteFileManager:
         return _parse_stat_output(stdout, path)
 
     def read_file(self, path: str, encoding: str = "utf-8") -> str:
-        code, stdout, stderr = self._exec(f"cat '{path}'")
+        code, stdout, stderr = self._exec(f"cat {shlex.quote(path)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法读取文件: {path}")
         return stdout
 
     def write_file(self, path: str, content: str) -> None:
-        escaped = content.replace("'", "'\\''")
-        cmd = f"cat > '{path}' << 'EOF'\n{content}\nEOF"
-        code, stdout, stderr = self._exec(f"cat > '{path}' << 'ENDOFFILE'\n{content}\nENDOFFILE")
-        if code != 0:
-            sftp = self._sftp()
-            try:
-                with sftp.open(path, "w") as f:
-                    f.write(content.encode("utf-8") if isinstance(content, str) else content)
-            except Exception as e:
-                raise RuntimeError(f"无法写入文件: {e}")
+        sftp = self._sftp()
+        try:
+            with sftp.open(path, "w") as f:
+                f.write(content.encode("utf-8") if isinstance(content, str) else content)
+        except Exception as e:
+            raise RuntimeError(f"无法写入文件: {e}")
 
     def create_file(self, path: str) -> None:
-        code, stdout, stderr = self._exec(f"touch '{path}'")
+        code, stdout, stderr = self._exec(f"touch {shlex.quote(path)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法创建文件: {path}")
 
     def create_directory(self, path: str) -> None:
-        code, stdout, stderr = self._exec(f"mkdir -p '{path}'")
+        code, stdout, stderr = self._exec(f"mkdir -p {shlex.quote(path)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法创建目录: {path}")
 
     def delete(self, path: str) -> None:
-        code, stdout, stderr = self._exec(f"rm -rf '{path}'")
+        code, stdout, stderr = self._exec(f"rm -rf {shlex.quote(path)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法删除: {path}")
 
     def rename(self, src: str, dst: str) -> None:
-        code, stdout, stderr = self._exec(f"mv '{src}' '{dst}'")
+        code, stdout, stderr = self._exec(f"mv {shlex.quote(src)} {shlex.quote(dst)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法重命名: {src} -> {dst}")
 
     def copy(self, src: str, dst: str) -> None:
-        code, stdout, stderr = self._exec(f"cp -r '{src}' '{dst}'")
+        code, stdout, stderr = self._exec(f"cp -r {shlex.quote(src)} {shlex.quote(dst)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法复制: {src} -> {dst}")
 
     def chmod(self, path: str, mode: str) -> None:
-        code, stdout, stderr = self._exec(f"chmod {mode} '{path}'")
+        code, stdout, stderr = self._exec(f"chmod {mode} {shlex.quote(path)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法修改权限: {path}")
 
@@ -409,7 +406,7 @@ class RemoteFileManager:
         owner = f"{user or ''}:{group or ''}" if group else (user or "")
         if not owner:
             raise ValueError("必须指定 user 或 group")
-        code, stdout, stderr = self._exec(f"sudo chown {owner} '{path}'")
+        code, stdout, stderr = self._exec(f"sudo chown {owner} {shlex.quote(path)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法修改所有者: {path}")
 
@@ -484,16 +481,16 @@ class RemoteFileManager:
             type_arg = "-type d"
 
         cmd = (
-            f"find '{path}' {depth_arg} {type_arg} "
-            f"-name '{pattern}' "
+            f"find {shlex.quote(path)} {depth_arg} {type_arg} "
+            f"-name {shlex.quote(pattern)} "
             f"-printf '%y\\t%s\\t%M\\t%TY-%Tm-%Td %TH:%TM\\t%p\\n' "
             f"2>/dev/null"
         )
         code, stdout, stderr = self._exec(cmd)
         if code != 0 and not stdout.strip():
             fallback_cmd = (
-                f"find '{path}' {depth_arg} {type_arg} "
-                f"-name '{pattern}' -ls 2>/dev/null"
+                f"find {shlex.quote(path)} {depth_arg} {type_arg} "
+                f"-name {shlex.quote(pattern)} -ls 2>/dev/null"
             )
             code, stdout, stderr = self._exec(fallback_cmd)
             if code != 0:

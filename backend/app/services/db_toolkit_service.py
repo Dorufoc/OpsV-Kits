@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, Optional
 
 from app.models.db_toolkit import (
     DangerousCheckResult,
@@ -45,6 +45,31 @@ class DbToolkitService:
         finally:
             ssh_account_service.pool.release_connection(conn)
 
+    def _exec_on_host(
+        self, account_alias: str, command: str, timeout: float = 30.0
+    ) -> tuple[int, str, str]:
+        conn = self._get_connection(account_alias)
+        try:
+            exit_code, stdout, stderr = conn.manager.exec_command(command, timeout=timeout)
+            if isinstance(stdout, bytes):
+                stdout = stdout.decode("utf-8", errors="replace")
+            if isinstance(stderr, bytes):
+                stderr = stderr.decode("utf-8", errors="replace")
+            return exit_code, stdout, stderr
+        finally:
+            ssh_account_service.pool.release_connection(conn)
+
+    def _exec(
+        self,
+        account_alias: str,
+        container_id: Optional[str],
+        command: str,
+        timeout: float = 30.0,
+    ) -> tuple[int, str, str]:
+        if container_id:
+            return self._exec_in_container(account_alias, container_id, command, timeout=timeout)
+        return self._exec_on_host(account_alias, command, timeout=timeout)
+
     def _check_container_running(self, account_alias: str, container_id: str) -> None:
         exit_code, stdout, _ = self._exec_in_container(
             account_alias, container_id, "echo check", timeout=5.0
@@ -56,76 +81,93 @@ class DbToolkitService:
                 f"容器 '{container_id}' 未运行或不可访问",
             )
 
+    def _check_host_accessible(self, account_alias: str) -> None:
+        exit_code, _, _ = self._exec_on_host(
+            account_alias, "echo check", timeout=5.0
+        )
+        if exit_code != 0:
+            from app.models.db_toolkit import DbToolkitError
+            raise DbToolkitError(
+                "DB_TOOLKIT_5032",
+                "主机不可访问",
+            )
+
+    def _check_accessible(self, account_alias: str, container_id: Optional[str]) -> None:
+        if container_id:
+            self._check_container_running(account_alias, container_id)
+        else:
+            self._check_host_accessible(account_alias)
+
     def detect_mysql_client(
-        self, account_alias: str, container_id: str
+        self, account_alias: str, container_id: Optional[str]
     ) -> DetectResult:
-        # 尝试多种方式检测 MySQL 客户端
-        # 1. 使用 which 命令
-        exit_code, stdout, _ = self._exec_in_container(
+        self._check_accessible(account_alias, container_id)
+        exit_code, stdout, _ = self._exec(
             account_alias, container_id, "which mysql", timeout=5.0
         )
         if exit_code == 0:
             path = stdout.strip()
-            _, ver_out, _ = self._exec_in_container(
+            _, ver_out, _ = self._exec(
                 account_alias, container_id, "mysql --version", timeout=5.0
             )
             return DetectResult(installed=True, path=path, client_version=ver_out.strip())
-        
-        # 2. 尝试常见路径
+
         common_paths = ["/usr/bin/mysql", "/usr/local/bin/mysql", "/bin/mysql"]
         for mysql_path in common_paths:
-            exit_code, _, _ = self._exec_in_container(
+            exit_code, _, _ = self._exec(
                 account_alias, container_id, f"test -x {mysql_path}", timeout=5.0
             )
             if exit_code == 0:
-                _, ver_out, _ = self._exec_in_container(
+                _, ver_out, _ = self._exec(
                     account_alias, container_id, f"{mysql_path} --version", timeout=5.0
                 )
                 return DetectResult(
-                    installed=True, 
-                    path=mysql_path, 
+                    installed=True,
+                    path=mysql_path,
                     client_version=ver_out.strip()
                 )
-        
-        # 3. 检测容器包管理器类型，提供更精确的安装建议
-        exit_code_apt, _, _ = self._exec_in_container(
+
+        exit_code_apt, _, _ = self._exec(
             account_alias, container_id, "which apt-get", timeout=5.0
         )
-        exit_code_yum, _, _ = self._exec_in_container(
+        exit_code_yum, _, _ = self._exec(
             account_alias, container_id, "which yum", timeout=5.0
         )
-        exit_code_apk, _, _ = self._exec_in_container(
+        exit_code_apk, _, _ = self._exec(
             account_alias, container_id, "which apk", timeout=5.0
         )
-        
+
+        target = "容器内" if container_id else "主机上"
         install_hint = ""
         if exit_code_apt == 0:
-            install_hint = "请在容器内执行: apt-get update && apt-get install -y default-mysql-client"
+            install_hint = f"请在{target}执行: apt-get update && apt-get install -y default-mysql-client"
         elif exit_code_yum == 0:
-            install_hint = "请在容器内执行: yum install -y mysql"
+            install_hint = f"请在{target}执行: yum install -y mysql"
         elif exit_code_apk == 0:
-            install_hint = "请在容器内执行: apk add mysql-client"
+            install_hint = f"请在{target}执行: apk add mysql-client"
         else:
-            install_hint = "请使用包含 mysql 客户端的镜像，或在容器内手动安装 mysql 客户端"
-        
+            install_hint = f"请使用包含 mysql 客户端的镜像，或在{target}手动安装 mysql 客户端"
+
         return DetectResult(
             installed=False,
-            error=f"容器内未安装 MySQL 客户端。{install_hint}",
+            error=f"{target}未安装 MySQL 客户端。{install_hint}",
         )
 
     def detect_redis_client(
-        self, account_alias: str, container_id: str
+        self, account_alias: str, container_id: Optional[str]
     ) -> DetectResult:
-        exit_code, stdout, _ = self._exec_in_container(
+        self._check_accessible(account_alias, container_id)
+        exit_code, stdout, _ = self._exec(
             account_alias, container_id, "which redis-cli", timeout=5.0
         )
         if exit_code != 0:
+            target = "容器内" if container_id else "主机上"
             return DetectResult(
                 installed=False,
-                error="容器内未安装 Redis 客户端",
+                error=f"{target}未安装 Redis 客户端",
             )
         path = stdout.strip()
-        _, ver_out, _ = self._exec_in_container(
+        _, ver_out, _ = self._exec(
             account_alias, container_id, "redis-cli --version", timeout=5.0
         )
         return DetectResult(installed=True, path=path, client_version=ver_out.strip())
@@ -199,7 +241,7 @@ class DbToolkitService:
         return DangerousCheckResult(is_dangerous=False)
 
     def _build_mysql_command(
-        self, container_id: str, connection: Any, sql: str, *, batch: bool = True
+        self, container_id: Optional[str], connection: Any, sql: str, *, batch: bool = True
     ) -> str:
         parts = [f"mysql -h{connection.host} -P{connection.port} -u{connection.user}"]
         if connection.password:
@@ -211,7 +253,7 @@ class DbToolkitService:
         return " ".join(parts)
 
     def _build_redis_cli_command(
-        self, container_id: str, connection: Any, *redis_args: str
+        self, container_id: Optional[str], connection: Any, *redis_args: str
     ) -> str:
         parts = [f"redis-cli -h {connection.host} -p {connection.port}"]
         if connection.password:
@@ -238,19 +280,19 @@ class DbToolkitService:
     def execute_mysql_query(
         self,
         account_alias: str,
-        container_id: str,
+        container_id: Optional[str],
         connection: Any,
         sql: str,
         timeout: float = 30.0,
     ) -> MysqlQueryResult:
-        self._check_container_running(account_alias, container_id)
+        self._check_accessible(account_alias, container_id)
         cmd = self._build_mysql_command(container_id, connection, sql)
         safe_cmd = cmd.replace(connection.password, "***") if connection.password else cmd
         logger.info(
             "执行 MySQL 查询 [account=%s, container=%s, cmd=%s]",
-            account_alias, container_id, safe_cmd,
+            account_alias, container_id or "(host)", safe_cmd,
         )
-        exit_code, stdout, stderr = self._exec_in_container(
+        exit_code, stdout, stderr = self._exec(
             account_alias, container_id, cmd, timeout=timeout
         )
         if exit_code != 0:
@@ -268,13 +310,13 @@ class DbToolkitService:
         )
 
     def get_mysql_tables(
-        self, account_alias: str, container_id: str, connection: Any
+        self, account_alias: str, container_id: Optional[str], connection: Any
     ) -> list[str]:
-        self._check_container_running(account_alias, container_id)
+        self._check_accessible(account_alias, container_id)
         cmd = self._build_mysql_command(
             container_id, connection, "SHOW TABLES"
         )
-        exit_code, stdout, stderr = self._exec_in_container(
+        exit_code, stdout, stderr = self._exec(
             account_alias, container_id, cmd, timeout=15.0
         )
         if exit_code != 0:
@@ -286,15 +328,15 @@ class DbToolkitService:
     def get_mysql_table_structure(
         self,
         account_alias: str,
-        container_id: str,
+        container_id: Optional[str],
         connection: Any,
         table_name: str,
     ) -> MysqlTableStructure:
-        self._check_container_running(account_alias, container_id)
+        self._check_accessible(account_alias, container_id)
 
         def _exec_sql(sql: str) -> tuple[int, str, str]:
             cmd = self._build_mysql_command(container_id, connection, sql)
-            return self._exec_in_container(account_alias, container_id, cmd, timeout=15.0)
+            return self._exec(account_alias, container_id, cmd, timeout=15.0)
 
         _, desc_out, _ = _exec_sql(f"DESCRIBE `{table_name}`")
         columns = []
@@ -357,13 +399,13 @@ class DbToolkitService:
     def scan_redis_keys(
         self,
         account_alias: str,
-        container_id: str,
+        container_id: Optional[str],
         connection: Any,
         pattern: str = "*",
         count: int = 100,
         cursor: int = 0,
     ) -> RedisScanResult:
-        self._check_container_running(account_alias, container_id)
+        self._check_accessible(account_alias, container_id)
         cmd = self._build_redis_cli_command(
             container_id, connection,
             "SCAN", str(cursor), "MATCH", pattern, "COUNT", str(count),
@@ -371,9 +413,9 @@ class DbToolkitService:
         safe_cmd = cmd.replace(connection.password, "***") if connection.password else cmd
         logger.info(
             "Redis SCAN [account=%s, container=%s, cmd=%s]",
-            account_alias, container_id, safe_cmd,
+            account_alias, container_id or "(host)", safe_cmd,
         )
-        exit_code, stdout, stderr = self._exec_in_container(
+        exit_code, stdout, stderr = self._exec(
             account_alias, container_id, cmd, timeout=15.0
         )
         if exit_code != 0:
@@ -420,15 +462,15 @@ class DbToolkitService:
     def get_redis_key_info(
         self,
         account_alias: str,
-        container_id: str,
+        container_id: Optional[str],
         connection: Any,
         key: str,
     ) -> RedisKeyInfo:
-        self._check_container_running(account_alias, container_id)
+        self._check_accessible(account_alias, container_id)
 
         def _exec_redis(*args: str) -> str:
             cmd = self._build_redis_cli_command(container_id, connection, *args)
-            ec, out, err = self._exec_in_container(
+            ec, out, err = self._exec(
                 account_alias, container_id, cmd, timeout=10.0
             )
             result = out.strip()
@@ -503,14 +545,14 @@ class DbToolkitService:
     def get_redis_db_stats(
         self,
         account_alias: str,
-        container_id: str,
+        container_id: Optional[str],
         connection: Any,
     ) -> RedisDbStats:
-        self._check_container_running(account_alias, container_id)
+        self._check_accessible(account_alias, container_id)
 
         def _exec_redis(*args: str) -> str:
             cmd = self._build_redis_cli_command(container_id, connection, *args)
-            _, out, _ = self._exec_in_container(
+            _, out, _ = self._exec(
                 account_alias, container_id, cmd, timeout=10.0
             )
             lines = out.strip().split('\n')
@@ -545,18 +587,18 @@ class DbToolkitService:
     def delete_redis_key(
         self,
         account_alias: str,
-        container_id: str,
+        container_id: Optional[str],
         connection: Any,
         key: str,
     ) -> bool:
-        self._check_container_running(account_alias, container_id)
+        self._check_accessible(account_alias, container_id)
         cmd = self._build_redis_cli_command(container_id, connection, "DEL", key)
         safe_cmd = cmd.replace(connection.password, "***") if connection.password else cmd
         logger.info(
             "Redis DEL [account=%s, container=%s, key=%s, cmd=%s]",
-            account_alias, container_id, key, safe_cmd,
+            account_alias, container_id or "(host)", key, safe_cmd,
         )
-        exit_code, stdout, stderr = self._exec_in_container(
+        exit_code, stdout, stderr = self._exec(
             account_alias, container_id, cmd, timeout=10.0
         )
         return exit_code == 0

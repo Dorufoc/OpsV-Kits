@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  app:
+    image: frappe/erpnext:latest
+    container_name: panel-erpnext
+    restart: unless-stopped
+    ports:
+      - "${ERPNEXT_PORT}:8000"
+    volumes:
+      - /www/server/apps/erpnext/data:/home/frappe/frappe-bench/sites
+    labels:
+      - managed-by=opsv-kits-store

@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'zanarr/player:latest'
+    container_name: panel-zanarr-player
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${ZANARR_PORT}:3000'
+    volumes:
+      - /www/server/apps/zanarr-player/data:/data/music

@@ -8,10 +8,12 @@ from collections import defaultdict, deque
 from typing import Any, Optional
 
 from app.services.ssh_account_service import ssh_account_service
+from app.services.performance_collector import performance_collector
 
 
 class MonitorService:
-    def __init__(self):
+    def __init__(self, collector: Optional[Any] = None):
+        self._collector = collector
         self._history: dict[str, deque[dict[str, Any]]] = defaultdict(
             lambda: deque(maxlen=3600)
         )
@@ -23,6 +25,7 @@ class MonitorService:
         self._cpu_core_prev: dict[str, list[dict[str, Any]]] = {}
         self._disk_io_prev: dict[str, list[dict[str, Any]]] = {}
         self._network_prev: dict[str, list[dict[str, Any]]] = {}
+        self._collector_callbacks: dict[str, Any] = {}
 
     def _conn(self, alias: str):
         account = ssh_account_service.get_account(alias)
@@ -51,6 +54,127 @@ class MonitorService:
         self._cache[cache_key] = value
         self._cache_ttl[cache_key] = now + ttl
         return value
+
+    def _adapt_collector_snapshot(self, collector_data: dict[str, Any]) -> dict[str, Any]:
+        """将 PerformanceCollector 的 snapshot 格式转换为 MonitorService 的 snapshot 格式。"""
+        alias = collector_data.get("alias", "")
+        timestamp = collector_data.get("timestamp", time.time())
+
+        # CPU
+        cpu_raw = collector_data.get("cpu", {})
+        cpu_percent = collector_data.get("cpu_percent")
+        cpu_adapted = {
+            "usage_percent": cpu_percent if cpu_percent is not None else 0,
+            "cores": cpu_raw.get("cores", 1),
+            "user_percent": 0,
+            "system_percent": 0,
+            "iowait_percent": 0,
+        }
+
+        # Cores
+        cores_adapted = []
+        cpu_per_core_percent = collector_data.get("cpu_per_core_percent", {})
+        for core_id, usage in cpu_per_core_percent.items():
+            core_num = int(core_id.replace("cpu", "")) if isinstance(core_id, str) else core_id
+            cores_adapted.append({"core": core_num, "usage_percent": usage})
+        cores_adapted.sort(key=lambda x: x["core"])
+
+        # Memory
+        mem_raw = collector_data.get("memory", {})
+        total = mem_raw.get("total", 0)
+        used = mem_raw.get("used", 0)
+        available = mem_raw.get("available", 0)
+        memory_adapted = {
+            "total": total,
+            "used": used,
+            "free": mem_raw.get("free", 0),
+            "available": available,
+            "usage_percent": mem_raw.get("percent", 0),
+            "available_percent": round(available / total * 100, 1) if total > 0 else 0,
+            "swap": None,
+        }
+
+        # Disks
+        disks_raw = collector_data.get("disk", [])
+        disks_adapted = []
+        for d in disks_raw:
+            disks_adapted.append({
+                "filesystem": d.get("filesystem", ""),
+                "total": d.get("size", 0),
+                "used": d.get("used", 0),
+                "available": d.get("available", 0),
+                "usage_percent": d.get("percent", 0),
+                "mount": d.get("mount", ""),
+            })
+
+        # Network
+        network_rate = collector_data.get("network_rate", {})
+        network_adapted = []
+        for iface, rate in network_rate.items():
+            network_adapted.append({
+                "interface": iface,
+                "rx_bytes_per_sec": rate.get("rx_bytes_sec", 0),
+                "tx_bytes_per_sec": rate.get("tx_bytes_sec", 0),
+                "rx_packets_per_sec": rate.get("rx_packets_sec", 0),
+                "tx_packets_per_sec": rate.get("tx_packets_sec", 0),
+                "rx_errors_per_sec": 0,
+                "tx_errors_per_sec": 0,
+            })
+
+        # Load
+        loadavg = collector_data.get("loadavg", {})
+        load_adapted = {
+            "load_1m": loadavg.get("1min", 0),
+            "load_5m": loadavg.get("5min", 0),
+            "load_15m": loadavg.get("15min", 0),
+            "running": 0,
+            "total_processes": 0,
+        }
+
+        # Connections
+        connections_adapted = collector_data.get("connections", {})
+
+        # Top processes
+        processes_raw = collector_data.get("processes", [])
+        top_processes = []
+        for p in processes_raw[:10]:
+            top_processes.append({
+                "pid": p.get("pid", 0),
+                "user": "",
+                "cpu_percent": p.get("cpu", 0),
+                "mem_percent": p.get("mem", 0),
+                "command": p.get("comm", ""),
+            })
+
+        # Uptime
+        uptime_raw = collector_data.get("uptime", {})
+        uptime_adapted = uptime_raw.get("uptime_seconds", 0)
+
+        # Docker containers - collector stores docker ps output, which is incompatible
+        # with docker stats format; return empty list as best-effort
+        docker_adapted = []
+
+        # Hostname - collector doesn't store it; try to get via SSH or use alias
+        try:
+            _, hostname, _ = self._exec(alias, "hostname", 5)
+        except Exception:
+            hostname = alias
+
+        return {
+            "timestamp": timestamp,
+            "alias": alias,
+            "hostname": hostname,
+            "cpu": cpu_adapted,
+            "cores": cores_adapted,
+            "memory": memory_adapted,
+            "disks": disks_adapted,
+            "network": network_adapted,
+            "load": load_adapted,
+            "connections": connections_adapted,
+            "top_processes": top_processes,
+            "uptime": uptime_adapted,
+            "docker_containers": docker_adapted,
+        }
 
     # ── CPU ──────────────────────────────────────────────────────
 
@@ -644,6 +768,11 @@ class MonitorService:
     # ── All-in-One Snapshot ──────────────────────────────────────
 
     def get_snapshot(self, alias: str) -> dict[str, Any]:
+        if self._collector is not None:
+            collector_data = self._collector.get_latest_snapshot(alias)
+            if collector_data is not None:
+                return self._adapt_collector_snapshot(collector_data)
+
         cpu = self.get_cpu_percent(alias)
         cores = self.get_cpu_per_core(alias)
         mem = self.get_memory_stats(alias)
@@ -671,6 +800,11 @@ class MonitorService:
         }
 
     async def async_get_snapshot(self, alias: str) -> dict[str, Any]:
+        if self._collector is not None:
+            collector_data = self._collector.get_latest_snapshot(alias)
+            if collector_data is not None:
+                return self._adapt_collector_snapshot(collector_data)
+
         loop = asyncio.get_event_loop()
         hostname_future = loop.run_in_executor(
             None, self._exec, alias, "hostname", 5
@@ -711,6 +845,11 @@ class MonitorService:
         self._history[alias].append(data)
 
     def get_history(self, alias: str, seconds: int = 300) -> list[dict[str, Any]]:
+        if self._collector is not None:
+            collector_history = self._collector.get_history(alias, seconds)
+            if collector_history:
+                return [self._adapt_collector_snapshot(entry) for entry in collector_history]
+
         now = time.time()
         return [d for d in self._history.get(alias, []) if now - d.get("timestamp", 0) <= seconds]
 
@@ -723,6 +862,35 @@ class MonitorService:
     async def start_streaming(self, alias: str, interval: float = 2.0) -> None:
         if alias in self._tasks and not self._tasks[alias].done():
             return
+
+        # 如果 collector 可用且有该 alias 的数据，优先订阅 collector
+        if self._collector is not None:
+            latest = self._collector.get_latest_snapshot(alias)
+            if latest is not None:
+                def _on_collector_snapshot(snapshot: dict) -> None:
+                    adapted = self._adapt_collector_snapshot(snapshot)
+                    self.store_snapshot(alias, adapted)
+                    dead_ws = set()
+                    for ws in self._subscribers.get(alias, set()):
+                        try:
+                            # 同步调用 send_json 的同步包装
+                            asyncio.create_task(ws.send_json(adapted))
+                        except Exception:
+                            dead_ws.add(ws)
+                    if dead_ws:
+                        self._subscribers[alias] -= dead_ws
+
+                self._collector.subscribe(alias, _on_collector_snapshot)
+                self._collector_callbacks[alias] = _on_collector_snapshot
+
+                # 启动一个守护任务，防止 _tasks[alias] 被重复创建
+                async def _collector_guard():
+                    while True:
+                        await asyncio.sleep(3600)
+                self._tasks[alias] = asyncio.create_task(_collector_guard())
+                return
+
+        # Fallback: 使用原有的实时采集逻辑
         async def _stream():
             while True:
                 start_time = time.time()
@@ -744,8 +912,17 @@ class MonitorService:
         self._tasks[alias] = asyncio.create_task(_stream())
 
     async def stop_streaming(self, alias: str) -> None:
+        # 如果通过 collector 订阅，先取消订阅
+        if self._collector is not None and alias in self._collector_callbacks:
+            callback = self._collector_callbacks.pop(alias)
+            self._collector.unsubscribe(alias, callback)
+
         if alias in self._tasks:
             self._tasks[alias].cancel()
+            try:
+                await self._tasks[alias]
+            except asyncio.CancelledError:
+                pass
             del self._tasks[alias]
 
     # ── Accumulated CPU delta (for dashboard line charts) ────────

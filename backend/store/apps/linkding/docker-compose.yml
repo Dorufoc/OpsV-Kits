@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'sissbruecker/linkding:latest'
+    container_name: panel-linkding
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${LINKDING_PORT}:9090'
+    volumes:
+      - /www/server/apps/linkding/data:/etc/linkding/data

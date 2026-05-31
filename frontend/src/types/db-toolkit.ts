@@ -78,3 +78,29 @@ export interface DangerousCheckResult {
   reason: string
   level: 'critical' | 'warning'
 }
+
+export type DeployMode = 'host' | 'docker'
+export type DbType = 'mysql' | 'redis'
+
+export interface SavedConnection {
+  id: string
+  name: string
+  deployMode: DeployMode
+  dbType: DbType
+  accountAlias: string
+  containerId: string
+  connection: MySqlConnectionParams | RedisConnectionParams
+  favorite: boolean
+  createdAt: number
+  updatedAt: number
+}
+
+export interface DatabaseTreeNode {
+  key: string
+  label: string
+  type: 'database' | 'table' | 'redis-db'
+  children?: DatabaseTreeNode[]
+  loading?: boolean
+}
+
+export type DbViewMode = 'welcome' | 'query' | 'data' | 'structure' | 'redis-browse' | 'redis-stats' | 'cli'

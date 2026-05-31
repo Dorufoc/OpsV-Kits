@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import re
+import threading
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from app.services.ssh_account_service import ssh_account_service
 
@@ -32,6 +34,79 @@ class DockerService:
                 stdout = stdout.decode("utf-8", errors="replace")
             if isinstance(stderr, bytes):
                 stderr = stderr.decode("utf-8", errors="replace")
+            return exit_code, stdout, stderr
+        finally:
+            ssh_account_service.pool.release_connection(conn)
+
+    def _exec_docker_streaming(
+        self,
+        account_alias: str,
+        docker_args: list[str],
+        timeout: float = 600.0,
+        on_output: Optional[Callable[[str, str], None]] = None,
+    ) -> tuple[int, str, str]:
+        """执行 Docker 命令并实时流式输出。
+
+        Args:
+            account_alias: SSH 账户别名
+            docker_args: Docker 参数列表
+            timeout: 超时时间（秒）
+            on_output: 回调函数，参数为 (stdout_chunk, stderr_chunk)
+
+        Returns:
+            (exit_code, stdout, stderr)
+        """
+        conn = self._get_connection(account_alias)
+        try:
+            cmd = "docker " + " ".join(docker_args)
+            transport = conn.manager.transport
+            if transport is None:
+                raise RuntimeError("SSH 传输通道未建立")
+
+            chan = transport.open_session()
+            chan.settimeout(timeout)
+            chan.exec_command(cmd)
+
+            stdout_parts = []
+            stderr_parts = []
+            start_time = time.time()
+
+            while True:
+                if time.time() - start_time > timeout:
+                    chan.close()
+                    raise TimeoutError(f"命令执行超时 ({timeout}s)")
+
+                got_data = False
+
+                if chan.recv_ready():
+                    raw = chan.recv(4096)
+                    if raw:
+                        got_data = True
+                        text = raw.decode("utf-8", errors="replace")
+                        stdout_parts.append(text)
+                        if on_output:
+                            on_output(text, "")
+
+                if chan.recv_stderr_ready():
+                    raw = chan.recv_stderr(4096)
+                    if raw:
+                        got_data = True
+                        text = raw.decode("utf-8", errors="replace")
+                        stderr_parts.append(text)
+                        if on_output:
+                            on_output("", text)
+
+                if chan.exit_status_ready() and not got_data:
+                    break
+
+                if not got_data:
+                    time.sleep(0.05)
+
+            exit_code = chan.recv_exit_status()
+            chan.close()
+
+            stdout = "".join(stdout_parts)
+            stderr = "".join(stderr_parts)
             return exit_code, stdout, stderr
         finally:
             ssh_account_service.pool.release_connection(conn)
@@ -368,13 +443,13 @@ class DockerService:
 
     def remove_image(self, account_alias: str, image_id: str) -> str:
         stdout, _ = self._exec_docker_simple(
-            account_alias, ["image", "rm", image_id]
+            account_alias, ["image", "rm", "-f", image_id], timeout=120.0
         )
         return stdout or f"镜像 {image_id} 已删除"
 
     def prune_images(self, account_alias: str) -> dict[str, Any]:
         result = self._exec_docker_json(
-            account_alias, ["image", "prune", "-f", "--format", "'{{json .}}'"]
+            account_alias, ["image", "prune", "-f", "--format", "'{{json .}}'"], timeout=120.0
         )
         if not result:
             return {"SpaceReclaimed": 0, "ImagesDeleted": []}
@@ -519,6 +594,26 @@ class DockerService:
             account_alias, args, timeout=300.0
         )
         return stdout or stderr
+
+    def compose_up_streaming(
+        self,
+        account_alias: str,
+        project_path: str,
+        detach: bool = False,
+        on_output: Optional[Callable[[str, str], None]] = None,
+    ) -> tuple[int, str, str]:
+        """流式执行 compose up，支持实时输出回调。"""
+        args = ["compose"]
+        if project_path.endswith(".yml") or project_path.endswith(".yaml"):
+            args.extend(["-f", project_path])
+        else:
+            args.extend(["-f", f"{project_path}/docker-compose.yml"])
+        args.append("up")
+        if detach:
+            args.append("-d")
+        return self._exec_docker_streaming(
+            account_alias, args, timeout=600.0, on_output=on_output
+        )
 
     def compose_down(
         self, account_alias: str, project_path: str

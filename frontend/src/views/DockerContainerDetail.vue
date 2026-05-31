@@ -87,20 +87,11 @@
         <Terminal ref="containerTerminalRef" session-name="容器终端" :show-toolbar="true" />
       </div>
 
-      <div v-show="activeTab === 'mysql'">
-        <DbToolkitPanel
-          db-type="mysql"
-          :container-id="containerId"
+      <div v-show="activeTab === 'database'">
+        <DbManagerPanel
+          deploy-mode="docker"
           :account-alias="dockerStore.currentAlias"
-          :container-state="containerDetail?.state ?? ''"
-        />
-      </div>
-
-      <div v-show="activeTab === 'redis'">
-        <DbToolkitPanel
-          db-type="redis"
           :container-id="containerId"
-          :account-alias="dockerStore.currentAlias"
           :container-state="containerDetail?.state ?? ''"
         />
       </div>
@@ -144,7 +135,7 @@ import { useDockerStore, type DockerContainer } from '@/stores/dockerStore'
 import Md3Button from '@/components/Md3Button.vue'
 import Terminal from '@/components/Terminal.vue'
 import ContainerStatsPanel from '@/components/ContainerStatsPanel.vue'
-import DbToolkitPanel from '@/components/DbToolkitPanel.vue'
+import DbManagerPanel from '@/components/DbManagerPanel.vue'
 import {
   Md3PageHeader,
   Md3Divider,
@@ -165,8 +156,7 @@ const tabItems = [
   { label: '概览', value: 'overview' },
   { label: '日志', value: 'logs' },
   { label: '终端', value: 'terminal' },
-  { label: 'MySQL', value: 'mysql' },
-  { label: 'Redis', value: 'redis' },
+  { label: '数据库', value: 'database' },
   { label: '配置', value: 'config' },
 ]
 

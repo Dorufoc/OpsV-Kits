@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    image: 'linuxserver/calibre-web:latest'
+    container_name: panel-calibre-web
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${CALIBRE_PORT}:8083'
+    volumes:
+      - /www/server/apps/calibre-web/data:/config
+      - /www/server/apps/calibre-web/books:/books

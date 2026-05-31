@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: mockserver/mockserver:latest
+    container_name: panel-mockserver
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${MOCKSERVER_PORT}:1080'
+    environment:
+      - MOCKSERVER_INITIALIZATION_TIMEOUT=60000

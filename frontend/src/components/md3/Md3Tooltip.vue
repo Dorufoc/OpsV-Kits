@@ -93,36 +93,36 @@ defineSlots<{
 .md3-tooltip__content {
   position: absolute;
   z-index: 1000;
-  padding: 6px 12px;
+  padding: var(--md3-space-sm) var(--md3-space-md);
   background: var(--md3-inverse-surface);
   color: var(--md3-inverse-on-surface);
   font: var(--md3-type-label-small);
   border-radius: var(--md3-shape-xs);
   white-space: nowrap;
-  box-shadow: var(--md3-elevation-level2);
+  border: 1px solid var(--md3-outline-variant);
 }
 
 /* ===== Placement ===== */
 .md3-tooltip--top .md3-tooltip__content {
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + var(--md3-space-sm));
   left: 50%;
   transform: translateX(-50%);
 }
 
 .md3-tooltip--bottom .md3-tooltip__content {
-  top: calc(100% + 8px);
+  top: calc(100% + var(--md3-space-sm));
   left: 50%;
   transform: translateX(-50%);
 }
 
 .md3-tooltip--left .md3-tooltip__content {
-  right: calc(100% + 8px);
+  right: calc(100% + var(--md3-space-sm));
   top: 50%;
   transform: translateY(-50%);
 }
 
 .md3-tooltip--right .md3-tooltip__content {
-  left: calc(100% + 8px);
+  left: calc(100% + var(--md3-space-sm));
   top: 50%;
   transform: translateY(-50%);
 }

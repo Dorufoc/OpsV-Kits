@@ -196,13 +196,13 @@ defineExpose({
   border: 1px solid var(--md3-glass-border);
   border-radius: var(--md3-shape-md);
   padding: var(--md3-space-md);
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
   overflow-y: auto;
   max-height: 100%;
 }
 
 .status-sidebar:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .deploy-progress-card {
@@ -212,11 +212,11 @@ defineExpose({
   -webkit-backdrop-filter: var(--md3-glass-blur);
   border: 1px solid var(--md3-glass-border);
   border-radius: var(--md3-shape-md);
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
 }
 
 .deploy-progress-card:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .panel-header {
@@ -315,11 +315,11 @@ defineExpose({
   -webkit-backdrop-filter: var(--md3-glass-blur);
   border: 1px solid var(--md3-glass-border);
   border-radius: var(--md3-shape-md);
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
 }
 
 .nginx-url-card:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .nginx-url-link {

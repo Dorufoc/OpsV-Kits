@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'ghcr.io/plankanban/planka:latest'
+    container_name: panel-planka
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${PLANKA_PORT}:1337'
+    volumes:
+      - /www/server/apps/planka/data:/app/public/user-avatars

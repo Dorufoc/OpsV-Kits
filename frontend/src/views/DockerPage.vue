@@ -477,11 +477,11 @@ onMounted(async () => {
   background: var(--md3-surface-container-low);
   border-radius: var(--md3-shape-sm);
   border: 1px solid var(--md3-glass-border);
-  transition: box-shadow var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 .batch-actions:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .batch-label {

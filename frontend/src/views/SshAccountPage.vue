@@ -1,8 +1,5 @@
 <template>
   <div class="ssh-account-page">
-    <Md3PageHeader title="OpsV-Kits" subtitle="SSH 账户管理" />
-    <Md3Divider />
-
     <div class="account-layout">
       <div class="account-sidebar">
         <div class="sidebar-header">
@@ -438,11 +435,11 @@ onMounted(() => {
   -webkit-backdrop-filter: var(--md3-glass-blur);
   border: 1px solid var(--md3-glass-border);
   border-radius: var(--md3-shape-md);
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
 }
 
 .account-sidebar:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .sidebar-header {
@@ -555,8 +552,7 @@ onMounted(() => {
   padding: var(--md3-space-sm) var(--md3-space-md);
   cursor: pointer;
   border-radius: var(--md3-shape-sm);
-  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard),
-              box-shadow var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 .account-list-item:hover {

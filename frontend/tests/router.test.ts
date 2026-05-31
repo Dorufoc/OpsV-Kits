@@ -162,25 +162,29 @@ describe('Router', () => {
     it('首页路由应该使用懒加载', () => {
       const routes = router.getRoutes()
       const homeRoute = routes.find(r => r.name === 'Home')
-      expect(homeRoute!.component).toBeDefined()
+      expect(homeRoute!.components).toBeDefined()
+      expect(typeof homeRoute!.components.default).toBe('function')
     })
 
     it('项目管理路由应该使用懒加载', () => {
       const routes = router.getRoutes()
       const projectRoute = routes.find(r => r.name === 'Project')
-      expect(projectRoute!.component).toBeDefined()
+      expect(projectRoute!.components).toBeDefined()
+      expect(typeof projectRoute!.components.default).toBe('function')
     })
 
     it('容器详情路由应该使用懒加载', () => {
       const routes = router.getRoutes()
       const detailRoute = routes.find(r => r.name === 'DockerContainerDetail')
-      expect(detailRoute!.component).toBeDefined()
+      expect(detailRoute!.components).toBeDefined()
+      expect(typeof detailRoute!.components.default).toBe('function')
     })
 
     it('监控大屏路由应该使用懒加载', () => {
       const routes = router.getRoutes()
       const largeScreenRoute = routes.find(r => r.name === 'MonitorLargeScreen')
-      expect(largeScreenRoute!.component).toBeDefined()
+      expect(largeScreenRoute!.components).toBeDefined()
+      expect(typeof largeScreenRoute!.components.default).toBe('function')
     })
   })
 

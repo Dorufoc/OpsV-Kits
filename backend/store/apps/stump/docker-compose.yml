@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'ghcr.io/aaronleopold/stump:latest'
+    container_name: panel-stump
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${STUMP_PORT}:1337'
+    volumes:
+      - /www/server/apps/stump/data:/app/config

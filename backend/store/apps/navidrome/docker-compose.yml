@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'deluan/navidrome:latest'
+    container_name: panel-navidrome
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${NAVIDROME_PORT}:4533'
+    volumes:
+      - /www/server/apps/navidrome/data:/data

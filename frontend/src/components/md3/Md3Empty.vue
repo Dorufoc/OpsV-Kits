@@ -53,7 +53,7 @@ defineSlots<{
 }
 
 .md3-empty__title {
-  font: var(--md3-type-title-medium);
+  font: var(--md3-type-title-large);
   color: var(--md3-on-surface);
   margin-bottom: var(--md3-space-sm);
 }

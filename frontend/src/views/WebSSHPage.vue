@@ -1,17 +1,5 @@
 <template>
   <div class="webssh-page">
-    <Md3PageHeader title="OpsV-Kits">
-      <template #content>
-        <span>WebSSH 终端</span>
-      </template>
-      <template #extra>
-        <Md3Button size="sm" variant="primary" @click="showConnectDialog = true">
-  <template #icon><Md3Icon name="plus" /></template>新建
-</Md3Button>
-      </template>
-    </Md3PageHeader>
-    <Md3Divider />
-
     <div class="webssh-layout">
       <div class="webssh-sidebar">
         <SessionManager
@@ -584,11 +572,11 @@ onBeforeUnmount(() => {
   backdrop-filter: var(--md3-glass-blur);
   -webkit-backdrop-filter: var(--md3-glass-blur);
   overflow: hidden;
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
 }
 
 .webssh-sidebar:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .webssh-main {

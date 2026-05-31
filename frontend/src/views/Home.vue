@@ -17,18 +17,6 @@
     </template>
 
     <template v-else>
-      <Md3PageHeader title="OpsV-Kits">
-        <template #subtitle>
-          <span>控制台</span>
-        </template>
-        <template #actions>
-          <Md3Button size="sm" :icon="Refresh" @click="dashboardAlias = ''; loadDashboard()" :disabled="!dashboardAlias">
-            刷新
-          </Md3Button>
-        </template>
-      </Md3PageHeader>
-      <Md3Divider />
-
       <div class="stats-row">
         <Md3Card shadow hoverable class="stat-card" @click="$router.push('/ssh-accounts')">
           <Md3Icon name="account" class="stat-icon" />
@@ -371,8 +359,8 @@ onMounted(() => { checkFirstLaunch() })
 .dashboard-header { display: flex; align-items: center; justify-content: space-between; gap: var(--md3-space-md); }
 .select-hint, .loading-hint { text-align: center; color: var(--md3-on-surface-variant); padding: var(--md3-space-3xl) 0; font-size: 14px; }
 .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-.info-section { background: var(--md3-glass-bg); backdrop-filter: var(--md3-glass-blur); -webkit-backdrop-filter: var(--md3-glass-blur); border: 1px solid var(--md3-glass-border); border-radius: var(--md3-shape-sm); padding: var(--md3-space-md) var(--md3-space-lg); transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard); }
-.info-section:hover { box-shadow: var(--md3-elevation-level1); }
+.info-section { background: var(--md3-glass-bg); backdrop-filter: var(--md3-glass-blur); -webkit-backdrop-filter: var(--md3-glass-blur); border: 1px solid var(--md3-glass-border); border-radius: var(--md3-shape-sm); padding: var(--md3-space-md) var(--md3-space-lg); transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard); }
+.info-section:hover { border-color: var(--md3-card-border-hover); }
 .info-title { font-size: 13px; font-weight: 600; color: var(--md3-on-surface); margin-bottom: var(--md3-space-sm); display: flex; align-items: center; gap: var(--md3-space-xs); }
 .info-grid { display: flex; flex-direction: column; gap: 6px; }
 .info-item { display: flex; justify-content: space-between; font-size: 13px; }

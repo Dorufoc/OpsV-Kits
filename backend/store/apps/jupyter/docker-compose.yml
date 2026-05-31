@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  app:
+    image: jupyter/scipy-notebook:latest
+    container_name: panel-jupyter
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${JUPYTER_PORT}:8888'
+    volumes:
+      - /www/server/apps/jupyter/data:/home/jovyan
+    environment:
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN}

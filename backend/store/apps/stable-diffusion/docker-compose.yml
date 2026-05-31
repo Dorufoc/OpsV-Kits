@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'ghcr.io/automatic1111/stable-diffusion-webui:latest'
+    container_name: panel-stable-diffusion
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${SD_WEBUI_PORT}:7860'
+    volumes:
+      - /www/server/apps/stable-diffusion/data:/data

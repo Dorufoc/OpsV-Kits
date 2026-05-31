@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  app:
+    image: 'outlinewiki/outline:latest'
+    container_name: panel-outline
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${OUTLINE_PORT}:3000'
+    volumes:
+      - /www/server/apps/outline/data:/opt/outline/storage
+    environment:
+      SECRET_KEY: '${OUTLINE_SECRET_KEY}'

@@ -67,7 +67,8 @@
             </div>
             <div class="app-footer">
               <div class="app-info">
-                <Md3Tag size="sm" type="info">{{ app.require_memory }} MB</Md3Tag>
+                <Md3Tag v-if="getAppSize(app.id)" size="sm" type="info">{{ getAppSize(app.id) }}</Md3Tag>
+                <Md3Tag v-else size="sm" type="info">{{ app.require_memory }} MB</Md3Tag>
                 <StatusTag :status="getAppStatus(app.id)" />
               </div>
               <div class="app-actions" @click.stop>
@@ -78,9 +79,18 @@
                   </Md3Button>
                 </template>
                 <template v-else-if="getAppStatus(app.id) === 'installing'">
-                  <Md3Button size="sm" variant="default" disabled loading>
-                    安装中
-                  </Md3Button>
+                  <div class="install-progress-inline">
+                    <Md3Button size="sm" variant="default" disabled loading>
+                      安装中
+                    </Md3Button>
+                    <div class="progress-bar-mini">
+                      <div
+                        class="progress-bar-fill"
+                        :style="{ width: (store.installProgressPercent[app.id] || 0) + '%' }"
+                      />
+                    </div>
+                    <span class="progress-text-mini">{{ store.installProgressMessage[app.id] || '准备中...' }}</span>
+                  </div>
                 </template>
                 <template v-else>
                   <Md3Button size="sm" variant="default" @click="openUninstallDialog(app)">
@@ -109,7 +119,18 @@
           <img class="detail-icon" :src="selectedApp.icon" :alt="selectedApp.name" />
           <div class="detail-title-area">
             <div class="detail-name">{{ selectedApp.name }}</div>
-            <div class="detail-memory">内存需求：{{ selectedApp.require_memory }} MB</div>
+            <div class="detail-memory">
+              <template v-if="selectedAppSize">
+                <span class="size-total">{{ selectedAppSize.total_size_human }}</span>
+                <span class="size-detail">
+                  镜像 {{ selectedAppSize.image_size_human }} +
+                  容器 {{ selectedAppSize.container_size_human }} +
+                  卷 {{ selectedAppSize.volume_size_human }} +
+                  数据 {{ selectedAppSize.data_dir_size_human }}
+                </span>
+              </template>
+              <template v-else>内存需求：{{ selectedApp.require_memory }} MB</template>
+            </div>
           </div>
         </div>
         <Md3Divider />
@@ -129,14 +150,53 @@
             <li v-for="r in selectedApp.recommended_for" :key="r">{{ r }}</li>
           </ul>
         </div>
+        <div v-if="selectedAppSize && selectedAppSize.total_size > 0" class="detail-section">
+          <div class="detail-section-title">磁盘占用</div>
+          <div class="size-breakdown">
+            <div v-if="selectedAppSize.image_size > 0" class="size-item">
+              <Md3Icon name="box" size="1em" />
+              <span class="size-label">镜像</span>
+              <span class="size-value">{{ selectedAppSize.image_size_human }}</span>
+            </div>
+            <div v-if="selectedAppSize.container_size > 0" class="size-item">
+              <Md3Icon name="container" size="1em" />
+              <span class="size-label">容器层</span>
+              <span class="size-value">{{ selectedAppSize.container_size_human }}</span>
+            </div>
+            <div v-if="selectedAppSize.volume_size > 0" class="size-item">
+              <Md3Icon name="database" size="1em" />
+              <span class="size-label">数据卷</span>
+              <span class="size-value">{{ selectedAppSize.volume_size_human }}</span>
+            </div>
+            <div v-if="selectedAppSize.data_dir_size > 0" class="size-item">
+              <Md3Icon name="folder" size="1em" />
+              <span class="size-label">数据目录</span>
+              <span class="size-value">{{ selectedAppSize.data_dir_size_human }}</span>
+            </div>
+            <div class="size-item size-total-row">
+              <Md3Icon name="hard-drive" size="1em" />
+              <span class="size-label">总计</span>
+              <span class="size-value size-total-value">{{ selectedAppSize.total_size_human }}</span>
+            </div>
+          </div>
+        </div>
         <Md3Divider />
         <div class="version-select-area">
           <span class="version-label">选择版本：</span>
-          <Md3Select
-            v-model="selectedVersion"
-            :options="versionOptions"
-            style="width: 180px"
-          />
+          <div class="version-select-wrapper">
+            <Md3Select
+              v-model="selectedVersion"
+              :options="versionOptionsWithSize"
+              style="width: 220px"
+            />
+            <span v-if="selectedVersionSize" class="version-size-badge" :class="selectedVersionSize.status">
+              {{ selectedVersionSize.size_human }}
+            </span>
+            <Md3Spinner v-else-if="store.versionSizeLoading[selectedApp?.id || '']" size="sm" />
+          </div>
+          <div v-if="selectedVersionSize?.last_updated" class="version-meta">
+            更新于 {{ formatDate(selectedVersionSize.last_updated) }}
+          </div>
         </div>
       </div>
       <template #footer>
@@ -209,6 +269,39 @@
       </template>
     </Md3Dialog>
 
+    <!-- 安装进度弹窗 -->
+    <Md3Dialog v-model:visible="showProgressDialog" title="安装进度" width="480px" :closable="!store.installing">
+      <div v-if="progressApp" class="progress-dialog-content">
+        <div class="progress-app-info">
+          <img class="progress-app-icon" :src="progressApp.icon" :alt="progressApp.name" />
+          <div>
+            <div class="progress-app-name">{{ progressApp.name }}</div>
+            <div class="progress-app-version">版本：{{ selectedVersion || progressApp.versions?.[0] || 'latest' }}</div>
+          </div>
+        </div>
+        <Md3Divider />
+        <div class="progress-area">
+          <div class="progress-bar-large">
+            <div
+              class="progress-bar-fill-large"
+              :style="{ width: (store.installProgressPercent[progressApp.id] || 0) + '%' }"
+            />
+          </div>
+          <div class="progress-percent">{{ Math.round(store.installProgressPercent[progressApp.id] || 0) }}%</div>
+          <div class="progress-message">{{ store.installProgressMessage[progressApp.id] || '准备中...' }}</div>
+        </div>
+        <div v-if="store.installProgress[progressApp.id]?.type === 'error'" class="progress-error">
+          <Md3Icon name="alert-circle" size="1.2em" />
+          <span>{{ store.installProgressMessage[progressApp.id] }}</span>
+        </div>
+      </div>
+      <template #footer>
+        <Md3Button v-if="!store.installing" @click="showProgressDialog = false">
+          {{ store.installProgress[progressApp?.id || '']?.type === 'error' ? '关闭' : '完成' }}
+        </Md3Button>
+      </template>
+    </Md3Dialog>
+
     <Md3Dialog v-model:visible="showUninstallDialog" title="卸载应用" width="420px">
       <div v-if="selectedApp" class="dialog-form">
         <p class="uninstall-message">
@@ -269,7 +362,9 @@ const activeCategory = ref('all')
 const showDetailDialog = ref(false)
 const showInstallDialog = ref(false)
 const showUninstallDialog = ref(false)
+const showProgressDialog = ref(false)
 const selectedApp = ref<StoreApp | null>(null)
+const progressApp = ref<StoreApp | null>(null)
 const selectedVersion = ref('')
 const installForm = ref<Record<string, string | number>>({})
 const uninstallRemoveData = ref(false)
@@ -288,18 +383,34 @@ const categories = [
   { label: '全部', value: 'all' },
   { label: 'Web服务', value: 'web' },
   { label: '数据库', value: 'database' },
-  { label: '开发工具', value: 'devtools' },
+  { label: 'AI/ML', value: 'ai_ml' },
+  { label: '开发运维', value: 'dev_ops' },
+  { label: '开发工具', value: 'dev_tools' },
   { label: '网络与安全', value: 'network' },
-  { label: '工具与监控', value: 'tools' },
+  { label: '监控', value: 'monitor' },
+  { label: '媒体娱乐', value: 'media' },
+  { label: '自动化', value: 'automation' },
+  { label: '团队协作', value: 'collaboration' },
+  { label: '业务管理', value: 'business' },
+  { label: '邮件服务', value: 'email' },
+  { label: '实用工具', value: 'tools' },
 ]
 
 const categoryMap: Record<string, string> = {
   all: '',
   web: 'web_server',
   database: 'database',
-  devtools: 'dev_ops',
+  ai_ml: 'ai_ml',
+  dev_ops: 'dev_ops',
+  dev_tools: 'dev_tools',
   network: 'network',
-  tools: 'monitor',
+  monitor: 'monitor',
+  media: 'media',
+  automation: 'automation',
+  collaboration: 'collaboration',
+  business: 'business',
+  email: 'email',
+  tools: 'tools',
 }
 
 const filteredApps = computed(() => {
@@ -313,8 +424,36 @@ const versionOptions = computed(() => {
   return selectedApp.value.versions.map(v => ({ label: v, value: v }))
 })
 
+const versionOptionsWithSize = computed(() => {
+  if (!selectedApp.value?.versions) return []
+  const sizes = store.imageVersionSizes[selectedApp.value.id]
+  return selectedApp.value.versions.map(v => {
+    const sizeInfo = sizes?.versions?.find(sv => sv.version === v)
+    const sizeLabel = sizeInfo && sizeInfo.size > 0 ? ` (${sizeInfo.size_human})` : ''
+    return { label: `${v}${sizeLabel}`, value: v }
+  })
+})
+
+const selectedVersionSize = computed(() => {
+  if (!selectedApp.value || !selectedVersion.value) return null
+  const sizes = store.imageVersionSizes[selectedApp.value.id]
+  if (!sizes?.versions) return null
+  return sizes.versions.find(v => v.version === selectedVersion.value) || null
+})
+
+const selectedAppSize = computed(() => {
+  if (!selectedApp.value) return null
+  return store.appSizes[selectedApp.value.id] || null
+})
+
 function getAppStatus(appId: string) {
   return store.appStatuses[appId]?.state || 'not_installed'
+}
+
+function getAppSize(appId: string): string {
+  const sizeInfo = store.appSizes[appId]
+  if (!sizeInfo || sizeInfo.total_size === 0) return ''
+  return sizeInfo.total_size_human
 }
 
 function onAccountChange(value: string | number | (string | number)[]) {
@@ -345,10 +484,26 @@ function stopPolling() {
   }
 }
 
-function openDetailDialog(app: StoreApp) {
+async function openDetailDialog(app: StoreApp) {
   selectedApp.value = app
   selectedVersion.value = app.versions[0] || 'latest'
   showDetailDialog.value = true
+  // 已安装的应用才获取实际大小
+  if (getAppStatus(app.id) !== 'not_installed') {
+    await store.fetchAppSize(app.id)
+  }
+  // 获取各版本镜像大小（无需 SSH 账户）
+  await store.fetchImageVersionSizes(app.id)
+}
+
+function formatDate(dateStr: string): string {
+  if (!dateStr) return ''
+  try {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+  } catch {
+    return dateStr
+  }
 }
 
 function openInstallFromDetail(app: StoreApp) {
@@ -378,8 +533,25 @@ async function submitInstall() {
     const v = installForm.value[field.key]
     env[field.key] = v === '' || v === undefined ? (field.default ?? '') : v
   })
-  await store.installApp(selectedApp.value.id, env)
+
+  // 添加 VERSION 到环境变量
+  if (selectedVersion.value) {
+    env.VERSION = selectedVersion.value
+  }
+
   showInstallDialog.value = false
+  progressApp.value = selectedApp.value
+  showProgressDialog.value = true
+
+  try {
+    const result = await store.installAppWithProgress(selectedApp.value.id, env)
+    if (result.success) {
+      await store.fetchAppStatuses()
+    }
+  } catch (error: any) {
+    console.error('[DockerStore] 安装失败:', error)
+    // 错误状态已通过 WebSocket 更新到 store
+  }
 }
 
 function openUninstallDialog(app: StoreApp) {
@@ -624,6 +796,21 @@ export { StatusTag }
   font: var(--md3-type-body-small);
   color: var(--md3-on-surface-variant);
   margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.size-total {
+  font: var(--md3-type-label-large);
+  color: var(--md3-primary);
+  font-weight: 600;
+}
+
+.size-detail {
+  font: var(--md3-type-body-small);
+  color: var(--md3-on-surface-variant);
+  opacity: 0.8;
 }
 
 .detail-section {
@@ -661,14 +848,45 @@ export { StatusTag }
 
 .version-select-area {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--md3-space-sm);
 }
 
+.version-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-md);
+}
+
 .version-label {
-  font: var(--md3-type-body-medium);
+  font: var(--md3-type-label-large);
   color: var(--md3-on-surface);
   white-space: nowrap;
+}
+
+.version-size-badge {
+  font: var(--md3-type-label-medium);
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--md3-surface-variant);
+  color: var(--md3-on-surface-variant);
+  white-space: nowrap;
+}
+
+.version-size-badge.found {
+  background: var(--md3-primary-container);
+  color: var(--md3-on-primary-container);
+}
+
+.version-size-badge.not_found {
+  background: var(--md3-error-container);
+  color: var(--md3-on-error-container);
+}
+
+.version-meta {
+  font: var(--md3-type-body-small);
+  color: var(--md3-on-surface-variant);
+  opacity: 0.7;
 }
 
 .dialog-form {
@@ -744,5 +962,166 @@ export { StatusTag }
 
 .radio-label {
   line-height: 1.4;
+}
+
+.size-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-sm);
+}
+
+.size-item {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-sm);
+  padding: var(--md3-space-sm) var(--md3-space-md);
+  background: var(--md3-surface-variant);
+  border-radius: 8px;
+}
+
+.size-item .md3-icon {
+  color: var(--md3-on-surface-variant);
+  flex-shrink: 0;
+}
+
+.size-label {
+  flex: 1;
+  font: var(--md3-type-body-medium);
+  color: var(--md3-on-surface);
+}
+
+.size-value {
+  font: var(--md3-type-body-medium);
+  color: var(--md3-on-surface-variant);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.size-total-row {
+  background: var(--md3-primary-container);
+  margin-top: var(--md3-space-xs);
+}
+
+.size-total-row .md3-icon,
+.size-total-row .size-label {
+  color: var(--md3-on-primary-container);
+}
+
+.size-total-value {
+  color: var(--md3-primary);
+  font: var(--md3-type-label-large);
+  font-weight: 600;
+}
+
+/* 安装进度条 - 卡片内联 */
+.install-progress-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.progress-bar-mini {
+  width: 100px;
+  height: 4px;
+  background: var(--md3-surface-variant);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--md3-primary);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progress-text-mini {
+  font: var(--md3-type-body-small);
+  color: var(--md3-on-surface-variant);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 安装进度弹窗 */
+.progress-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-md);
+}
+
+.progress-app-info {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-md);
+}
+
+.progress-app-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: var(--md3-surface-variant);
+  padding: 4px;
+}
+
+.progress-app-name {
+  font: var(--md3-type-title-medium);
+  color: var(--md3-on-surface);
+}
+
+.progress-app-version {
+  font: var(--md3-type-body-small);
+  color: var(--md3-on-surface-variant);
+}
+
+.progress-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--md3-space-sm);
+  padding: var(--md3-space-md) 0;
+}
+
+.progress-bar-large {
+  width: 100%;
+  height: 8px;
+  background: var(--md3-surface-variant);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill-large {
+  height: 100%;
+  background: linear-gradient(90deg, var(--md3-primary), var(--md3-primary) 70%, var(--md3-tertiary));
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.progress-percent {
+  font: var(--md3-type-headline-small);
+  color: var(--md3-primary);
+  font-weight: 600;
+}
+
+.progress-message {
+  font: var(--md3-type-body-medium);
+  color: var(--md3-on-surface-variant);
+  text-align: center;
+}
+
+.progress-error {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-sm);
+  padding: var(--md3-space-sm) var(--md3-space-md);
+  background: var(--md3-error-container);
+  color: var(--md3-on-error-container);
+  border-radius: 8px;
+  font: var(--md3-type-body-medium);
 }
 </style>

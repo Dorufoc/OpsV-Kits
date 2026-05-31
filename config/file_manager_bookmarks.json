@@ -1,0 +1,14 @@
+[
+  {
+    "alias": "a1",
+    "path": "/home",
+    "label": "Home",
+    "created_at": "2026-05-31T17:04:31.356992"
+  },
+  {
+    "alias": "a2",
+    "path": "/var",
+    "label": "Var",
+    "created_at": "2026-05-31T17:04:31.358634"
+  }
+]

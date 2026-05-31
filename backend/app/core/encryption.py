@@ -3,6 +3,10 @@ from __future__ import annotations
 import base64
 import hashlib
 import os
+import stat
+import sys
+
+from pathlib import Path
 
 try:
     from cryptography.fernet import Fernet
@@ -18,6 +22,38 @@ _MASTER_KEY: str | None = None
 _SALT: bytes | None = None
 
 
+def _set_restrictive_permissions(path: Path) -> None:
+    if sys.platform == "win32":
+        try:
+            import win32security
+            import ntsecuritycon as con
+            import win32api
+
+            sd = win32security.GetFileSecurity(
+                str(path), win32security.DACL_SECURITY_INFORMATION
+            )
+            dacl = win32security.ACL()
+            user_sid = win32security.GetTokenInformation(
+                win32security.OpenProcessToken(
+                    win32api.GetCurrentProcess(), win32security.TOKEN_QUERY
+                ),
+                win32security.TokenUser,
+            )[0]
+            dacl.AddAccessAllowedAce(
+                win32security.ACL_REVISION,
+                con.FILE_GENERIC_READ | con.FILE_GENERIC_WRITE,
+                user_sid,
+            )
+            sd.SetSecurityDescriptorDacl(1, dacl, 0)
+            win32security.SetFileSecurity(
+                str(path), win32security.DACL_SECURITY_INFORMATION, sd
+            )
+        except ImportError:
+            os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    else:
+        os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+
+
 def _get_or_create_salt() -> bytes:
     global _SALT
     if _SALT is not None:
@@ -28,6 +64,7 @@ def _get_or_create_salt() -> bytes:
     else:
         _SALT = os.urandom(16)
         salt_path.write_bytes(_SALT)
+        _set_restrictive_permissions(salt_path)
     return _SALT
 
 
@@ -49,6 +86,7 @@ def _get_or_create_key() -> str:
     else:
         _MASTER_KEY = base64.urlsafe_b64encode(os.urandom(32)).decode()
         key_path.write_text(_MASTER_KEY)
+        _set_restrictive_permissions(key_path)
     return _MASTER_KEY
 
 

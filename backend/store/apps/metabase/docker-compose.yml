@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  app:
+    image: metabase/metabase:latest
+    container_name: panel-metabase
+    restart: unless-stopped
+    ports:
+      - "${METABASE_PORT}:3000"
+    volumes:
+      - /www/server/apps/metabase/data:/metabase-data
+    labels:
+      - managed-by=opsv-kits-store

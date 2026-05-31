@@ -46,7 +46,9 @@ vi.mock('axios', () => {
 describe('API 客户端', () => {
   let axiosInstance: any
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.doUnmock('@/api/index')
+    vi.doUnmock('@/api')
     vi.clearAllMocks()
     vi.resetModules()
     localStorage.clear()
@@ -76,18 +78,21 @@ describe('API 客户端', () => {
     })
 
     it('应该配置 baseURL 为 /api', async () => {
+      await import('@/api/index')
       const createMock = axios.create as ReturnType<typeof vi.fn>
       const callArgs = createMock.mock.calls[0][0]
       expect(callArgs.baseURL).toBe('/api')
     })
 
     it('应该配置 timeout 为 30000', async () => {
+      await import('@/api/index')
       const createMock = axios.create as ReturnType<typeof vi.fn>
       const callArgs = createMock.mock.calls[0][0]
       expect(callArgs.timeout).toBe(30000)
     })
 
     it('应该配置 Content-Type 为 application/json', async () => {
+      await import('@/api/index')
       const createMock = axios.create as ReturnType<typeof vi.fn>
       const callArgs = createMock.mock.calls[0][0]
       expect(callArgs.headers['Content-Type']).toBe('application/json')
@@ -184,9 +189,9 @@ describe('API 客户端', () => {
       const mockInstance = axios.create()
       const responseErrorHandler = mockInstance.interceptors.response.use.mock.calls[0][1]
 
-      const error = { message: 'Network Error' }
+      const error = { response: { status: 502 }, message: 'Bad Gateway' }
       await expect(responseErrorHandler!(error)).rejects.toBe(error)
-      expect(consoleSpy).toHaveBeenCalledWith('Network Error')
+      expect(consoleSpy).toHaveBeenCalledWith('Bad Gateway')
       consoleSpy.mockRestore()
     })
 
@@ -251,7 +256,7 @@ describe('API 客户端', () => {
       const data = { account_alias: 'test', project_path: '/path' }
 
       await viteDeploy.setup(data)
-      expect(mockInstance.post).toHaveBeenCalledWith('/deploy/vite/setup', data)
+      expect(mockInstance.post).toHaveBeenCalledWith('/deploy/vite/setup', data, undefined)
     })
 
     it('installDeps 方法应该调用 POST /deploy/vite/install-deps', async () => {
@@ -260,7 +265,7 @@ describe('API 客户端', () => {
       const data = { account_alias: 'test', project_path: '/path' }
 
       await viteDeploy.installDeps(data)
-      expect(mockInstance.post).toHaveBeenCalledWith('/deploy/vite/install-deps', data)
+      expect(mockInstance.post).toHaveBeenCalledWith('/deploy/vite/install-deps', data, undefined)
     })
 
     it('build 方法应该调用 POST /deploy/vite/build', async () => {
@@ -269,7 +274,7 @@ describe('API 客户端', () => {
       const data = { account_alias: 'test', project_path: '/path' }
 
       await viteDeploy.build(data)
-      expect(mockInstance.post).toHaveBeenCalledWith('/deploy/vite/build', data)
+      expect(mockInstance.post).toHaveBeenCalledWith('/deploy/vite/build', data, undefined)
     })
 
     it('nginx 方法应该调用 POST /deploy/vite/nginx', async () => {
@@ -278,7 +283,7 @@ describe('API 客户端', () => {
       const data = { account_alias: 'test', project_path: '/path' }
 
       await viteDeploy.nginx(data)
-      expect(mockInstance.post).toHaveBeenCalledWith('/deploy/vite/nginx', data)
+      expect(mockInstance.post).toHaveBeenCalledWith('/deploy/vite/nginx', data, undefined)
     })
 
     it('deploy 方法应该调用 POST /deploy/vite/deploy', async () => {
@@ -287,7 +292,7 @@ describe('API 客户端', () => {
       const data = { account_alias: 'test', project_alias: 'myproj', project_path: '/path' }
 
       await viteDeploy.deploy(data)
-      expect(mockInstance.post).toHaveBeenCalledWith('/deploy/vite/deploy', data)
+      expect(mockInstance.post).toHaveBeenCalledWith('/deploy/vite/deploy', data, undefined)
     })
 
     it('status 方法应该调用 GET /deploy/vite/status/:taskId', async () => {
@@ -295,7 +300,7 @@ describe('API 客户端', () => {
       const mockInstance = axios.create()
 
       await viteDeploy.status('task-123')
-      expect(mockInstance.get).toHaveBeenCalledWith('/deploy/vite/status/task-123')
+      expect(mockInstance.get).toHaveBeenCalledWith('/deploy/vite/status/task-123', undefined)
     })
   })
 
@@ -321,7 +326,7 @@ describe('API 客户端', () => {
       const mockInstance = axios.create()
 
       await dockerStoreApi.getStoreApp('app-1')
-      expect(mockInstance.get).toHaveBeenCalledWith('/docker-store/apps/app-1')
+      expect(mockInstance.get).toHaveBeenCalledWith('/docker-store/apps/app-1', undefined)
     })
 
     it('installStoreApp 应该调用 POST /docker-store/install/:appId', async () => {
@@ -330,7 +335,7 @@ describe('API 客户端', () => {
       const data = { account_alias: 'test' }
 
       await dockerStoreApi.installStoreApp('app-1', data)
-      expect(mockInstance.post).toHaveBeenCalledWith('/docker-store/install/app-1', data)
+      expect(mockInstance.post).toHaveBeenCalledWith('/docker-store/install/app-1', data, undefined)
     })
 
     it('uninstallStoreApp 应该调用 POST /docker-store/uninstall/:appId', async () => {
@@ -339,7 +344,7 @@ describe('API 客户端', () => {
       const data = { account_alias: 'test', purge_data: true }
 
       await dockerStoreApi.uninstallStoreApp('app-1', data)
-      expect(mockInstance.post).toHaveBeenCalledWith('/docker-store/uninstall/app-1', data)
+      expect(mockInstance.post).toHaveBeenCalledWith('/docker-store/uninstall/app-1', data, undefined)
     })
 
     it('getStoreAppStatus 应该调用 GET /docker-store/status/:appId', async () => {
@@ -414,7 +419,7 @@ describe('API 客户端', () => {
       const data = { schedule: '0 2 * * *', command: 'backup' }
 
       await cronBackupApi.createCronJob('test-alias', data)
-      expect(mockInstance.post).toHaveBeenCalledWith('/cron-backup/cron-jobs', { alias: 'test-alias', data })
+      expect(mockInstance.post).toHaveBeenCalledWith('/cron-backup/cron-jobs', { alias: 'test-alias', data }, undefined)
     })
 
     it('deleteCronJob 应该调用 DELETE /cron-backup/cron-jobs/:jobId', async () => {
@@ -448,7 +453,7 @@ describe('API 客户端', () => {
     it('应该导出 ViteCheckResponse 类型', async () => {
       const api = await import('@/api/index')
       // 类型在编译时检查，这里验证模块存在
-      expect(api).toHaveProperty('viteDeployApi')
+      expect(api).toHaveProperty('viteDeploy')
     })
 
     it('应该导出 ViteTaskResponse 类型', async () => {

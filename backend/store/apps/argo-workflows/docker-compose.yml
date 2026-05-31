@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'argoproj/workflow-controller:latest'
+    container_name: panel-argo-workflows
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${ARGO_PORT}:2746'
+    volumes:
+      - /www/server/apps/argo-workflows/data:/tmp/argo

@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  app:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: panel-paperless-ngx
+    restart: unless-stopped
+    ports:
+      - "${PAPERLESS_PORT}:8000"
+    volumes:
+      - /www/server/apps/paperless-ngx/data:/usr/src/paperless/data
+    labels:
+      - managed-by=opsv-kits-store

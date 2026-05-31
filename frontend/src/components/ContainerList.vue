@@ -147,11 +147,11 @@ async function confirmDelete(row: DockerContainer) {
   border: 1px solid var(--md3-glass-border);
   border-radius: var(--md3-shape-sm);
   overflow: hidden;
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
 }
 
 .container-list:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .file-table-wrapper {

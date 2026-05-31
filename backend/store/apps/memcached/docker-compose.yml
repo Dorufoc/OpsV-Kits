@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  app:
+    image: 'memcached:latest'
+    container_name: panel-memcached
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${MEMCACHED_PORT}:11211'
+    command: memcached -m ${MEMCACHED_MAX_MEMORY:-256}

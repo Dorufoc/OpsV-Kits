@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'curlimages/curl:latest'
+    container_name: panel-nginx-ui
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${NGINX_UI_PORT}:8080'
+    volumes:
+      - /www/server/apps/nginx-ui/data:/etc/nginx

@@ -101,8 +101,7 @@ function onChange() {
 
 /* ===== Label ===== */
 .md3-radio-label {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  font: var(--md3-type-body-medium);
   color: var(--md3-on-surface);
 }
 

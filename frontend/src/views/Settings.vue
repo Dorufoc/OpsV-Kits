@@ -1,12 +1,5 @@
 <template>
   <div class="settings">
-    <Md3PageHeader title="OpsV-Kits">
-      <template #content>
-        <span>系统设置</span>
-      </template>
-    </Md3PageHeader>
-    <Md3Divider />
-
     <Md3Card class="theme-card">
       <template #header>
         <span><Md3Icon name="monitor" class="header-icon" /> 主题设置</span>

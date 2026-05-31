@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  app:
+    image: 'plausible/analytics:latest'
+    container_name: panel-plausible
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${PLAUSIBLE_PORT}:8000'
+    volumes:
+      - /www/server/apps/plausible/data:/plausible/data
+    environment:
+      - SECRET_KEY_BASE=${PLAUSIBLE_SECRET_KEY_BASE}

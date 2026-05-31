@@ -173,6 +173,7 @@ const circleBarStyle = computed(() => ({
   display: flex;
   align-items: center;
   justify-content: center;
+  inset: 0;
   font: var(--md3-type-headline-small);
   color: var(--md3-on-surface);
 }

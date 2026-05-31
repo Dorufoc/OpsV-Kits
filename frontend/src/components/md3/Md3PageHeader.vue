@@ -111,7 +111,7 @@ defineSlots<{
 .md3-page-header__subtitle {
   font: var(--md3-type-body-medium);
   color: var(--md3-on-surface-variant);
-  margin: 2px 0 0;
+  margin: var(--md3-space-xs) 0 0;
 }
 
 .md3-page-header__actions {

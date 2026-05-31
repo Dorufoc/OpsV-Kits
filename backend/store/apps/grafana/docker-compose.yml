@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  app:
+    image: 'grafana/grafana:latest'
+    container_name: panel-grafana
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${GRAFANA_PORT}:3000'
+    volumes:
+      - /www/server/apps/grafana/data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}

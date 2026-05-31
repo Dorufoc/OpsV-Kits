@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  app:
+    image: strapi/strapi:latest
+    container_name: panel-strapi
+    restart: unless-stopped
+    ports:
+      - "${STRAPI_PORT}:1337"
+    volumes:
+      - /www/server/apps/strapi/data:/opt/app
+    environment:
+      - ADMIN_JWT_SECRET=${STRAPI_ADMIN_JWT_SECRET}
+    labels:
+      - managed-by=opsv-kits-store

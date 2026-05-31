@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'gocd/gocd-server:latest'
+    container_name: panel-gocd
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${GOCD_PORT}:8153'
+    volumes:
+      - /www/server/apps/gocd/data:/godata

@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: localstack/localstack:latest
+    container_name: panel-localstack
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${LOCALSTACK_PORT}:4566'
+    volumes:
+      - /www/server/apps/localstack/data:/var/lib/localstack

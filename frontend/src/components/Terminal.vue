@@ -271,11 +271,11 @@ watch(() => props.theme, (newTheme) => {
   background: var(--md3-glass-bg);
   backdrop-filter: var(--md3-glass-blur);
   -webkit-backdrop-filter: var(--md3-glass-blur);
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
 }
 
 .terminal-wrapper:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .terminal-toolbar {

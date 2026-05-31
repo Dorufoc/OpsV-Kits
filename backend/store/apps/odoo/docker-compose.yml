@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  app:
+    image: odoo:latest
+    container_name: panel-odoo
+    restart: unless-stopped
+    ports:
+      - "${ODOO_PORT}:8069"
+    volumes:
+      - /www/server/apps/odoo/data:/var/lib/odoo
+    environment:
+      - PASSWORD=${ODOO_DB_PASSWORD}
+    labels:
+      - managed-by=opsv-kits-store

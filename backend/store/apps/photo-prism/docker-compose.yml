@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  app:
+    image: 'photoprism/photoprism:latest'
+    container_name: panel-photo-prism
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${PHOTOPRISM_PORT}:2342'
+    volumes:
+      - /www/server/apps/photo-prism/data:/photoprism/storage
+    environment:
+      PHOTOPRISM_ADMIN_PASSWORD: '${PHOTOPRISM_ADMIN_PASSWORD}'

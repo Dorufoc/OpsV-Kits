@@ -1,12 +1,5 @@
 <template>
   <div class="tools">
-    <Md3PageHeader title="OpsV-Kits">
-      <template #content>
-        <span>工具箱</span>
-      </template>
-    </Md3PageHeader>
-    <Md3Divider />
-
     <Md3Card :shadow="false" class="section-card">
       <template #header>
         <span><Md3Icon name="folder-open" class="header-icon" /> 远程硬盘（NAS）</span>
@@ -140,6 +133,17 @@
     <template v-if="selectedAlias">
       <Md3Card :shadow="false" class="section-card">
         <template #header>
+          <span><Md3Icon name="database" class="header-icon" /> 数据库管理</span>
+          <Md3Tag type="info" size="sm">主机模式</Md3Tag>
+        </template>
+        <DbManagerPanel
+          deploy-mode="host"
+          :account-alias="selectedAlias"
+        />
+      </Md3Card>
+
+      <Md3Card :shadow="false" class="section-card">
+        <template #header>
           <span><Md3Icon name="refresh" class="header-icon" /> 系统操作</span>
         </template>
         <div class="action-grid">
@@ -157,6 +161,15 @@
           </Md3Button>
           <Md3Button icon="delete" @click="executeAction('clear_cache')" :loading="loadingAction === 'clear_cache'">
             清理缓存
+          </Md3Button>
+          <Md3Button icon="schedule" @click="executeAction('toolkit/sync-time')" :loading="loadingAction === 'toolkit/sync-time'">
+            同步系统时间
+          </Md3Button>
+          <Md3Button icon="edit" @click="hostnameDialogVisible = true" :loading="loadingAction === 'toolkit/hostname'">
+            修改主机名
+          </Md3Button>
+          <Md3Button icon="language" @click="openTimezoneDialog" :loading="loadingAction === 'toolkit/timezone'">
+            修改时区
           </Md3Button>
         </div>
         <Md3Divider />
@@ -178,6 +191,82 @@
         </div>
       </Md3Card>
 
+      <Md3Card :shadow="false" class="section-card">
+        <template #header>
+          <span><Md3Icon name="search" class="header-icon" /> 诊断工具</span>
+        </template>
+        <div class="action-grid">
+          <Md3Button icon="people" @click="queryToolkit('logged-users')" :loading="queryLoading === 'logged-users'">
+            当前登录用户
+          </Md3Button>
+          <Md3Button icon="schedule" @click="queryToolkit('boot-time')" :loading="queryLoading === 'boot-time'">
+            系统启动时间
+          </Md3Button>
+          <Md3Button icon="memory" @click="queryToolkit('kernel-modules')" :loading="queryLoading === 'kernel-modules'">
+            内核模块
+          </Md3Button>
+          <Md3Button icon="rocket-launch" @click="queryToolkit('enabled-services')" :loading="queryLoading === 'enabled-services'">
+            开机自启服务
+          </Md3Button>
+          <Md3Button icon="dns" @click="queryToolkit('dns-config')" :loading="queryLoading === 'dns-config'">
+            DNS 配置
+          </Md3Button>
+          <Md3Button icon="tune" @click="queryToolkit('ulimit')" :loading="queryLoading === 'ulimit'">
+            资源限制
+          </Md3Button>
+        </div>
+      </Md3Card>
+
+      <Md3Card :shadow="false" class="section-card">
+        <template #header>
+          <span><Md3Icon name="cleaning-services" class="header-icon" /> 清理维护</span>
+        </template>
+        <div class="action-grid">
+          <Md3Button icon="swap-horiz" @click="confirmSwapRefresh" :loading="loadingAction === 'swap-refresh'">
+            SWAP 查看/刷新
+          </Md3Button>
+          <Md3Button variant="warning" icon="delete-sweep" @click="confirmCleanupKernels" :loading="loadingAction === 'cleanup-kernels'">
+            清理旧内核
+          </Md3Button>
+          <Md3Button icon="auto-delete" @click="confirmCleanupJournal" :loading="loadingAction === 'cleanup-journal'">
+            清理 Journal 日志
+          </Md3Button>
+          <Md3Button icon="system-update" @click="queryToolkit('check-updates')" :loading="queryLoading === 'check-updates'">
+            检查系统更新
+          </Md3Button>
+        </div>
+      </Md3Card>
+
+      <Md3Dialog v-model:visible="resultDialogVisible" :title="resultDialogTitle" width="680px">
+        <div class="result-content">
+          <pre class="result-pre">{{ resultDialogContent }}</pre>
+        </div>
+        <template #footer>
+          <Md3Button @click="resultDialogVisible = false">关闭</Md3Button>
+        </template>
+      </Md3Dialog>
+
+      <Md3Dialog v-model:visible="hostnameDialogVisible" title="修改主机名" width="420px">
+        <div class="dialog-form">
+          <Md3Input v-model="hostnameInput" placeholder="输入新主机名" />
+        </div>
+        <template #footer>
+          <Md3Button @click="hostnameDialogVisible = false">取消</Md3Button>
+          <Md3Button variant="primary" @click="doSetHostname" :loading="loadingAction === 'set-hostname'">确定</Md3Button>
+        </template>
+      </Md3Dialog>
+
+      <Md3Dialog v-model:visible="timezoneDialogVisible" title="修改时区" width="420px">
+        <div class="dialog-form">
+          <Md3Input v-model="timezoneInput" placeholder="如 Asia/Shanghai, UTC" />
+          <div class="dialog-hint">常用: Asia/Shanghai, Asia/Tokyo, America/New_York, UTC</div>
+        </div>
+        <template #footer>
+          <Md3Button @click="timezoneDialogVisible = false">取消</Md3Button>
+          <Md3Button variant="primary" @click="doSetTimezone" :loading="loadingAction === 'set-timezone'">确定</Md3Button>
+        </template>
+      </Md3Dialog>
+
     </template>
 
     <Md3Empty v-else description="请先选择一个 SSH 服务器" :image-size="80" />
@@ -188,6 +277,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { Md3Message, Md3Confirm, Md3Icon } from '@/components/md3'
 import Md3Button from '@/components/Md3Button.vue'
+import DbManagerPanel from '@/components/DbManagerPanel.vue'
 import {
   Md3PageHeader,
   Md3Divider,
@@ -199,6 +289,7 @@ import {
   Md3Collapse,
   Md3Select,
   Md3Empty,
+  Md3Dialog,
 } from '@/components/md3'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { request } from '@/api'
@@ -211,6 +302,17 @@ const tutorialOpen = ref(false)
 const loadingAction = ref('')
 const loadingSelinux = ref(false)
 const selinuxStatus = ref('')
+
+const queryLoading = ref('')
+const resultDialogVisible = ref(false)
+const resultDialogTitle = ref('')
+const resultDialogContent = ref('')
+
+const hostnameDialogVisible = ref(false)
+const hostnameInput = ref('')
+
+const timezoneDialogVisible = ref(false)
+const timezoneInput = ref('')
 
 const remoteDriveEnabled = ref(false)
 const remoteDriveRunning = ref(false)
@@ -346,6 +448,175 @@ async function copyWindowsUrl() {
   }
 }
 
+const queryLabels: Record<string, string> = {
+  'logged-users': '当前登录用户',
+  'boot-time': '系统启动时间',
+  'kernel-modules': '内核模块',
+  'enabled-services': '开机自启服务列表',
+  'dns-config': 'DNS 配置 (/etc/resolv.conf)',
+  'ulimit': '系统资源限制 (ulimit -a)',
+  'check-updates': '系统更新检查',
+  'swap-status': 'SWAP 状态',
+}
+
+async function queryToolkit(endpoint: string) {
+  queryLoading.value = endpoint
+  try {
+    const res = await request.get<any>(`/system/toolkit/${endpoint}`, {
+      params: { alias: selectedAlias.value },
+    })
+    resultDialogTitle.value = queryLabels[endpoint] || endpoint
+    let content = ''
+    if (endpoint === 'logged-users') {
+      const users = res.users || []
+      if (users.length === 0) {
+        content = '当前无用户登录\n'
+      } else {
+        users.forEach((u: any) => {
+          content += `${u.user.padEnd(12)} ${u.tty.padEnd(10)} ${u.login_time.padEnd(20)} ${u.from}\n`
+        })
+      }
+      if (res.raw) content += '\n─'.repeat(40) + '\n' + res.raw
+    } else if (endpoint === 'boot-time') {
+      content = `系统启动时间: ${res.boot_time || ''}\n启动后运行: ${res.since || ''}`
+    } else if (endpoint === 'kernel-modules') {
+      const modules = res.modules || []
+      content = `共 ${res.count || 0} 个已加载内核模块 (显示前 50 个):\n\n`
+      content += '模块名'.padEnd(28) + '大小'.padEnd(12) + '引用数\n'
+      content += '─'.repeat(52) + '\n'
+      modules.forEach((m: any) => {
+        content += `${m.name.padEnd(28)} ${m.size.padEnd(12)} ${m.used_by}\n`
+      })
+    } else if (endpoint === 'enabled-services') {
+      content = res.services || '无开机自启服务'
+    } else if (endpoint === 'dns-config') {
+      content = res.resolv_conf || '未获取到 DNS 配置'
+    } else if (endpoint === 'ulimit') {
+      content = res.ulimit || '未获取到资源限制信息'
+    } else if (endpoint === 'check-updates') {
+      if ((res.update_count || 0) === 0) {
+        content = '系统已是最新，无可用更新'
+      } else {
+        content = `发现 ${res.update_count} 个可用更新:\n\n`
+        const updates = res.updates || []
+        updates.forEach((u: string) => { content += u + '\n' })
+      }
+    } else {
+      content = JSON.stringify(res, null, 2)
+    }
+    resultDialogContent.value = content
+    resultDialogVisible.value = true
+  } catch (e: any) {
+    Md3Message.error(e?.response?.data?.detail || '查询失败')
+  } finally {
+    queryLoading.value = ''
+  }
+}
+
+async function doSetHostname() {
+  const name = hostnameInput.value.trim()
+  if (!name) { Md3Message.warning('请输入主机名'); return }
+  loadingAction.value = 'toolkit/hostname'
+  try {
+    const res = await request.post<any>('/system/toolkit/hostname', null, {
+      params: { alias: selectedAlias.value, hostname: name },
+    })
+    Md3Message.success(res.message)
+    hostnameDialogVisible.value = false
+    hostnameInput.value = ''
+  } catch { Md3Message.error('修改失败') }
+  finally { loadingAction.value = '' }
+}
+
+async function openTimezoneDialog() {
+  timezoneDialogVisible.value = true
+  try {
+    const res = await request.get<any>('/system/toolkit/timezone', {
+      params: { alias: selectedAlias.value },
+    })
+    timezoneInput.value = res.timezone || ''
+  } catch {}
+}
+
+async function doSetTimezone() {
+  const tz = timezoneInput.value.trim()
+  if (!tz) { Md3Message.warning('请输入时区'); return }
+  loadingAction.value = 'toolkit/timezone'
+  try {
+    const res = await request.post<any>('/system/toolkit/timezone', null, {
+      params: { alias: selectedAlias.value, timezone: tz },
+    })
+    Md3Message.success(res.message)
+    timezoneDialogVisible.value = false
+  } catch { Md3Message.error('修改失败') }
+  finally { loadingAction.value = '' }
+}
+
+async function confirmSwapRefresh() {
+  try {
+    await Md3Confirm.show({
+      title: 'SWAP 操作',
+      message: '将查看 SWAP 状态并刷新 SWAP 分区，确定继续？',
+      confirmText: '确定',
+      cancelText: '取消',
+    })
+  } catch { return }
+  loadingAction.value = 'swap-refresh'
+  try {
+    const status = await request.get<any>('/system/toolkit/swap-status', {
+      params: { alias: selectedAlias.value },
+    })
+    resultDialogTitle.value = 'SWAP 状态'
+    resultDialogContent.value = (status.swapon || '无 SWAP') + '\n\n' + (status.free || '')
+    resultDialogVisible.value = true
+
+    const res = await request.post<any>('/system/toolkit/swap-refresh', null, {
+      params: { alias: selectedAlias.value },
+    })
+    Md3Message.success(res.message)
+  } catch { Md3Message.error('操作失败') }
+  finally { loadingAction.value = '' }
+}
+
+async function confirmCleanupKernels() {
+  try {
+    await Md3Confirm.show({
+      title: '清理旧内核',
+      message: '将保留最新的 2 个内核版本，删除其余旧内核。确定继续？',
+      confirmText: '确定清理',
+      cancelText: '取消',
+      type: 'danger',
+    })
+  } catch { return }
+  loadingAction.value = 'cleanup-kernels'
+  try {
+    const res = await request.post<any>('/system/toolkit/cleanup-kernels', null, {
+      params: { alias: selectedAlias.value },
+    })
+    Md3Message.success(res.message)
+  } catch { Md3Message.error('清理失败') }
+  finally { loadingAction.value = '' }
+}
+
+async function confirmCleanupJournal() {
+  try {
+    await Md3Confirm.show({
+      title: '清理 Journal 日志',
+      message: '将清理 7 天前的 systemd journal 日志。确定继续？',
+      confirmText: '确定清理',
+      cancelText: '取消',
+    })
+  } catch { return }
+  loadingAction.value = 'cleanup-journal'
+  try {
+    const res = await request.post<any>('/system/toolkit/cleanup-journal', null, {
+      params: { alias: selectedAlias.value, days: 7 },
+    })
+    Md3Message.success(res.message)
+  } catch { Md3Message.error('清理失败') }
+  finally { loadingAction.value = '' }
+}
+
 onMounted(async () => {
   await sshStore.fetchAccounts()
   sshAccounts.value = sshStore.accounts
@@ -416,5 +687,31 @@ onMounted(async () => {
 }
 .tutorial-content strong { color: var(--md3-on-surface); }
 
+.result-content {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.result-pre {
+  margin: 0;
+  font-family: var(--md3-font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--md3-on-surface);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-md);
+}
+
+.dialog-hint {
+  font-size: 12px;
+  color: var(--md3-on-surface-variant);
+  line-height: 1.5;
+}
 
 </style>

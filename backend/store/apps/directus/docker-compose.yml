@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  app:
+    image: directus/directus:latest
+    container_name: panel-directus
+    restart: unless-stopped
+    ports:
+      - "${DIRECTUS_PORT}:8055"
+    volumes:
+      - /www/server/apps/directus/data:/directus/uploads
+    environment:
+      - SECRET=${DIRECTUS_SECRET}
+    labels:
+      - managed-by=opsv-kits-store

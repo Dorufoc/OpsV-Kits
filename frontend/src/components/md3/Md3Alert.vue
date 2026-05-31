@@ -78,12 +78,11 @@ defineSlots<{
 
 .md3-alert__title {
   font: var(--md3-type-title-small);
-  margin-bottom: 2px;
+  margin-bottom: var(--md3-space-xs);
 }
 
 .md3-alert__message {
   font: var(--md3-type-body-medium);
-  line-height: 1.5;
 }
 
 .md3-alert__close {

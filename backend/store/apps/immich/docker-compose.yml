@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'ghcr.io/immich-app/immich-server:latest'
+    container_name: panel-immich
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${IMMICH_PORT}:3001'
+    volumes:
+      - /www/server/apps/immich/data:/usr/src/app/upload

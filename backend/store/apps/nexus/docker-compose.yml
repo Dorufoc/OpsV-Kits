@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'sonatype/nexus3:latest'
+    container_name: panel-nexus
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${NEXUS_PORT}:8081'
+    volumes:
+      - /www/server/apps/nexus/data:/nexus-data

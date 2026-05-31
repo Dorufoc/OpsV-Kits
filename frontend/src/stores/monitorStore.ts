@@ -48,6 +48,19 @@ export const useMonitorStore = defineStore('monitor', () => {
   async function fetchSnapshot(alias?: string) {
     const a = alias || currentAlias.value
     if (!a) return
+
+    const now = Date.now()
+    const recentThreshold = 5000
+
+    const existing = history.value
+      .filter((h) => h.alias === a && now - h.timestamp * 1000 < recentThreshold)
+      .sort((x, y) => y.timestamp - x.timestamp)
+
+    if (existing.length > 0) {
+      snapshot.value = existing[0]
+      return existing[0]
+    }
+
     loading.value = true
     try {
       const res = await request.get<SnapshotData>('/monitor/snapshot', { params: { alias: a } })
@@ -67,7 +80,14 @@ export const useMonitorStore = defineStore('monitor', () => {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
     const url = `${protocol}//${location.host}/api/monitor/ws/stream?alias=${encodeURIComponent(a)}`
     ws.value = new WebSocket(url)
-    ws.value.onopen = () => { streaming.value = true }
+    ws.value.onopen = () => {
+      streaming.value = true
+      fetchHistory(a).then((hist) => {
+        if (hist && hist.length > 0) {
+          snapshot.value = hist[hist.length - 1]
+        }
+      })
+    }
     ws.value.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
@@ -103,9 +123,19 @@ export const useMonitorStore = defineStore('monitor', () => {
     return history.value
   }
 
+  async function initWithHistory(alias?: string) {
+    const a = alias || currentAlias.value
+    if (!a) return
+    const hist = await fetchHistory(a, 300)
+    if (hist && hist.length > 0) {
+      snapshot.value = hist[hist.length - 1]
+    }
+  }
+
   return {
-    currentAlias, snapshot, loading, streaming, history,
+    currentAlias, snapshot, loading, streaming, ws, history,
     cpuPercent, memPercent, memTotal, memUsed, loadAvg, hostname,
     formatBytes, fetchSnapshot, connectWebSocket, disconnect, fetchHistory,
+    initWithHistory,
   }
 })

@@ -300,19 +300,25 @@
             <template #header>
               <span><Md3Icon name="clipboard-list" class="header-icon" /> 操作审计日志</span>
               <div class="card-header-right">
-                <Md3Button size="sm" @click="refreshOpsAuditLogs" :loading="store.loadingLogs">
+                <Md3Button size="sm" @click="refreshAuditWidget" :loading="auditStore.loading">
                   <Md3Icon name="refresh" size="1em" />刷新
+                </Md3Button>
+                <Md3Button size="sm" variant="primary" @click="goToAuditLog">
+                  <Md3Icon name="arrow-right" size="1em" />查看全部
                 </Md3Button>
               </div>
             </template>
 
-            <Md3Table
-              :columns="opsAuditColumns"
-              :data="opsAuditLogs"
-              stripe
-              max-height="320"
-              empty-text="暂无审计日志"
-            />
+            <div v-if="recentAuditLogs.length === 0" class="audit-widget-empty">暂无审计日志</div>
+            <div v-else class="audit-widget-list">
+              <div v-for="log in recentAuditLogs" :key="log.id" class="audit-widget-item">
+                <span class="audit-widget-time">{{ formatAuditTime(log.timestamp) }}</span>
+                <Md3Tag :type="log.status === 'success' ? 'success' : 'danger'" size="sm">{{ log.status === 'success' ? '成功' : '失败' }}</Md3Tag>
+                <span class="audit-widget-user">{{ log.username }}</span>
+                <span class="audit-widget-action">{{ log.action_type }}</span>
+                <span class="audit-widget-module">{{ log.module }}</span>
+              </div>
+            </div>
           </Md3Card>
         </template>
 
@@ -421,11 +427,15 @@ import { Md3Confirm } from '@/components/md3/Md3Confirm'
 import { useSecurityNetworkStore } from '@/stores/securityNetworkStore'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { useDockerStore } from '@/stores/dockerStore'
+import { useAuditLogStore } from '@/stores/auditLogStore'
+import { useRouter } from 'vue-router'
 import type { LoginLogEntry, OpsAuditLogEntry } from '@/api'
 
 const store = useSecurityNetworkStore()
 const sshStore = useSshAccountStore()
 const dockerStore = useDockerStore()
+const auditStore = useAuditLogStore()
+const router = useRouter()
 
 const selectedAlias = ref('')
 const activeTab = ref('firewall')
@@ -598,6 +608,7 @@ const bannedIpRows = computed(() => {
   return rows
 })
 const opsAuditLogs = computed(() => store.opsAuditLogs)
+const recentAuditLogs = computed(() => auditStore.logs.slice(0, 5))
 
 watch(() => store.sshConfig, (cfg) => {
   if (cfg) {
@@ -640,6 +651,7 @@ async function refreshAudit() {
   await store.loadLoginLogs()
   await store.loadFail2banStatus()
   await store.loadOpsAuditLogs()
+  refreshAuditWidget()
 }
 
 async function addPortRule() {
@@ -799,6 +811,18 @@ async function refreshLoginLogs() {
 
 async function refreshOpsAuditLogs() {
   await store.loadOpsAuditLogs()
+}
+
+function refreshAuditWidget() {
+  auditStore.loadRecentLogs(5)
+}
+
+function goToAuditLog() {
+  router.push('/audit-log')
+}
+
+function formatAuditTime(ts: string) {
+  return new Date(ts).toLocaleString('zh-CN')
 }
 
 async function installFail2ban() {
@@ -1215,5 +1239,43 @@ onMounted(async () => {
   gap: var(--md3-space-sm);
   margin-top: var(--md3-space-md);
   flex-wrap: wrap;
+}
+
+.audit-widget-empty {
+  text-align: center;
+  color: var(--md3-on-surface-variant);
+  padding: var(--md3-space-xl) 0;
+  font-size: 14px;
+}
+.audit-widget-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md3-space-xs);
+}
+.audit-widget-item {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-sm);
+  font-size: 13px;
+  padding: var(--md3-space-xs) 0;
+  border-bottom: 1px solid var(--md3-outline-variant);
+}
+.audit-widget-item:last-child {
+  border-bottom: none;
+}
+.audit-widget-time {
+  color: var(--md3-on-surface-variant);
+  font-size: 12px;
+  min-width: 140px;
+}
+.audit-widget-user {
+  min-width: 60px;
+}
+.audit-widget-action {
+  color: var(--md3-primary);
+  min-width: 70px;
+}
+.audit-widget-module {
+  color: var(--md3-on-surface-variant);
 }
 </style>

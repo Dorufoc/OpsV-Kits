@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
+import threading
+import time
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
 from app.services.docker_service import DockerCommandError
@@ -160,6 +164,38 @@ async def get_app_status(
         _handle_docker_error(e, "get_app_status")
 
 
+@router.get("/size/{app_id}")
+async def get_app_size(
+    app_id: str,
+    account_alias: str = Query(..., description="SSH 账户别名"),
+):
+    """获取应用的实际磁盘占用大小（镜像 + 容器层 + 卷 + 数据目录）."""
+    _verify_account(account_alias)
+    try:
+        from app.services.docker_store_service import docker_store_service
+        return docker_store_service.get_app_size_info(account_alias, app_id)
+    except DockerCommandError as e:
+        _handle_docker_error(e, "get_app_size")
+
+
+@router.get("/image-sizes/{app_id}")
+async def get_image_version_sizes(
+    app_id: str,
+):
+    """获取应用镜像各版本的 Docker Hub 大小信息.
+
+    无需 SSH 账户，直接查询 Docker Hub Registry API.
+    """
+    try:
+        from app.services.docker_store_service import docker_store_service
+        return docker_store_service.get_image_version_sizes(app_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"查询镜像版本大小失败: {e}")
+        raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
+
+
 # ── 镜像源配置 ───────────────────────────────────────────────────
 
 
@@ -188,3 +224,123 @@ async def set_registry_mirrors(
         return {"message": result}
     except DockerCommandError as e:
         _handle_docker_error(e, "set_registry_mirrors")
+
+
+# ── WebSocket 实时安装进度 ──────────────────────────────────────
+
+
+@router.websocket("/ws/install/{app_id}")
+async def install_app_ws(
+    websocket: WebSocket,
+    app_id: str,
+):
+    """WebSocket 端点：实时推送应用安装进度.
+
+    连接后客户端需发送 JSON 消息:
+    {
+        "account_alias": "my-server",
+        "user_config": { "PORT": 8080, "PASSWORD": "secret" }
+    }
+
+    服务端推送进度事件:
+    - { "type": "stage", "stage": "prepare", "message": "..." }
+    - { "type": "pull_progress", "progress_percent": 45.5, "message": "..." }
+    - { "type": "pull_complete", "image": "nginx:latest", "message": "..." }
+    - { "type": "complete", "success": true, "message": "..." }
+    - { "type": "error", "message": "..." }
+    """
+    await websocket.accept()
+
+    # 等待客户端发送安装参数
+    account_alias = None
+    user_config = {}
+    try:
+        data = await asyncio.wait_for(websocket.receive_text(), timeout=15.0)
+        msg = json.loads(data)
+        account_alias = msg.get("account_alias")
+        user_config = msg.get("user_config", {})
+        if not account_alias:
+            await websocket.send_json({
+                "type": "error",
+                "message": "缺少 account_alias 参数",
+            })
+            await websocket.close()
+            return
+    except (asyncio.TimeoutError, json.JSONDecodeError, WebSocketDisconnect):
+        await websocket.close()
+        return
+
+    try:
+        _verify_account(account_alias)
+    except HTTPException as e:
+        await websocket.send_json({"type": "error", "message": e.detail})
+        await websocket.close()
+        return
+
+    from app.services.docker_store_service import docker_store_service
+
+    # 用于线程间通信的队列
+    progress_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+    install_done = threading.Event()
+    install_result: dict[str, Any] = {"success": False, "error": ""}
+
+    def _on_progress(progress: dict[str, Any]) -> None:
+        try:
+            loop = _get_running_loop()
+            if loop and loop.is_running():
+                asyncio.run_coroutine_threadsafe(
+                    progress_queue.put(progress), loop
+                )
+        except Exception:
+            pass
+
+    def _do_install() -> None:
+        try:
+            result = docker_store_service.install_app_streaming(
+                account_alias, app_id, user_config, on_progress=_on_progress
+            )
+            install_result["success"] = True
+            install_result["result"] = result
+        except Exception as e:
+            install_result["success"] = False
+            install_result["error"] = str(e)
+            logger.error(f"应用安装失败 [app_id={app_id}]: {e}")
+        finally:
+            install_done.set()
+
+    # 在后台线程执行安装
+    install_thread = threading.Thread(target=_do_install, daemon=True)
+    install_thread.start()
+
+    # 推送进度事件
+    try:
+        while not install_done.is_set() or not progress_queue.empty():
+            try:
+                progress = await asyncio.wait_for(progress_queue.get(), timeout=0.5)
+                await websocket.send_json(progress)
+            except asyncio.TimeoutError:
+                continue
+
+        # 发送最终结果
+        if install_result["success"]:
+            await websocket.send_json({
+                "type": "complete",
+                "success": True,
+                "message": install_result.get("result", {}).get("message", "安装完成"),
+            })
+        else:
+            await websocket.send_json({
+                "type": "error",
+                "message": install_result.get("error", "安装失败"),
+            })
+
+        await websocket.close()
+    except (WebSocketDisconnect, Exception):
+        pass
+
+
+def _get_running_loop():
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        return None

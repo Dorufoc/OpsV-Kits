@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'prom/prometheus:latest'
+    container_name: panel-prometheus
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${PROMETHEUS_PORT}:9090'
+    volumes:
+      - /www/server/apps/prometheus/data:/prometheus

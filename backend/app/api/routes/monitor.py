@@ -191,6 +191,17 @@ async def monitor_websocket(websocket: WebSocket, alias: str = Query(...)):
     monitor_service.subscribe(alias, websocket)
     await monitor_service.start_streaming(alias, interval=2.0)
     logger.info(f"[monitor-ws] connected: alias={alias}")
+
+    # 立即推送最近的历史数据（最多 60 个点）
+    try:
+        history = monitor_service.get_history(alias, seconds=120)
+        if history:
+            recent = history[-60:]
+            for entry in recent:
+                await websocket.send_json(entry)
+    except Exception as e:
+        logger.warning(f"[monitor-ws] 推送历史数据失败: {e}")
+
     try:
         while True:
             raw = await websocket.receive_text()

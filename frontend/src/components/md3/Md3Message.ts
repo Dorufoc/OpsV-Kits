@@ -61,7 +61,9 @@ function renderMessages() {
       )
     },
   })
-  messageContainer.innerHTML = ''
+  while (messageContainer.firstChild) {
+    messageContainer.removeChild(messageContainer.firstChild)
+  }
   app.mount(messageContainer)
 }
 
@@ -101,27 +103,26 @@ const styleEl = document.createElement('style')
 styleEl.textContent = `
 .md3-message-container {
   position: fixed;
-  top: 16px;
+  top: var(--md3-space-xl);
   left: 50%;
   transform: translateX(-50%);
   z-index: 3000;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--md3-space-sm);
   pointer-events: none;
 }
 
 .md3-message {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  gap: var(--md3-space-sm);
+  padding: var(--md3-space-md) var(--md3-space-lg);
+  border-radius: var(--md3-shape-md);
+  font: var(--md3-type-label-large);
+  box-shadow: var(--md3-elevation-level3);
   pointer-events: auto;
-  animation: md3-message-in 250ms cubic-bezier(0.2, 0, 0, 1) forwards;
+  animation: md3-message-in var(--md3-motion-duration-medium) var(--md3-motion-easing-standard) forwards;
   min-width: 280px;
   max-width: 480px;
 }
@@ -167,9 +168,9 @@ styleEl.textContent = `
   cursor: pointer;
   color: inherit;
   opacity: 0.7;
-  font-size: 16px;
-  border-radius: 50%;
-  transition: opacity 150ms;
+  font: var(--md3-type-label-large);
+  border-radius: var(--md3-shape-full);
+  transition: opacity var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 .md3-message-close:hover {
@@ -179,7 +180,7 @@ styleEl.textContent = `
 @keyframes md3-message-in {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(calc(-1 * var(--md3-space-sm)));
   }
   to {
     opacity: 1;

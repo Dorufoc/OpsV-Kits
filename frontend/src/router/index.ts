@@ -92,6 +92,42 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/CronBackupPage.vue'),
     meta: { title: '计划任务与备份' },
   },
+  {
+    path: '/log-analysis',
+    name: 'LogAnalysis',
+    component: () => import('@/views/LogAnalysisPage.vue'),
+    meta: { title: '日志分析' },
+  },
+  {
+    path: '/automation',
+    name: 'Automation',
+    component: () => import('@/views/AutomationPage.vue'),
+    meta: { title: '自动化' },
+  },
+  {
+    path: '/automation/workflow/:id',
+    name: 'WorkflowEditor',
+    component: () => import('@/views/WorkflowEditorPage.vue'),
+    meta: { title: '工作流编辑器' },
+  },
+  {
+    path: '/git-integration',
+    name: 'GitIntegration',
+    component: () => import('@/views/GitIntegrationPage.vue'),
+    meta: { title: 'Git 集成' },
+  },
+  {
+    path: '/audit-log',
+    name: 'AuditLog',
+    component: () => import('@/views/AuditLogPage.vue'),
+    meta: { title: '审计日志' },
+  },
+  {
+    path: '/health-probe',
+    name: 'HealthProbe',
+    component: () => import('@/views/HealthProbePage.vue'),
+    meta: { title: '健康检查' },
+  },
 ]
 
 const router = createRouter({

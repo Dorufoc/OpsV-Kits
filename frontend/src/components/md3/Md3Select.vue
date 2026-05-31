@@ -259,8 +259,7 @@ onUnmounted(() => {
   min-height: 48px;
   user-select: none;
   transition: border-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard),
-              background-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard),
-              box-shadow var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+              background-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 /* ===== Outlined ===== */
@@ -300,7 +299,7 @@ onUnmounted(() => {
   left: var(--md3-space-md);
   top: 50%;
   transform: translateY(-50%);
-  font-size: 1rem;
+  font: var(--md3-type-body-large);
   color: var(--md3-on-surface-variant);
   pointer-events: none;
   transition: all var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
@@ -309,15 +308,14 @@ onUnmounted(() => {
 .md3-select-label--floating {
   top: 0;
   transform: translateY(-50%);
-  font-size: 0.75rem;
+  font: var(--md3-type-body-small);
   color: var(--md3-primary);
 }
 
 /* ===== Value ===== */
 .md3-select-value {
   flex: 1;
-  font-size: 1rem;
-  line-height: 1.5rem;
+  font: var(--md3-type-body-large);
   color: var(--md3-on-surface);
   padding: var(--md3-space-md) 0;
 }
@@ -337,9 +335,9 @@ onUnmounted(() => {
 .md3-select-chip {
   background: var(--md3-primary-container);
   color: var(--md3-on-primary-container);
-  padding: 2px 8px;
+  padding: 2px var(--md3-space-sm);
   border-radius: var(--md3-shape-full);
-  font-size: 0.75rem;
+  font: var(--md3-type-body-small);
 }
 
 /* ===== Clear Button ===== */
@@ -377,7 +375,9 @@ onUnmounted(() => {
 .md3-select-dropdown {
   border-radius: var(--md3-shape-xs);
   overflow: hidden;
-  box-shadow: var(--md3-elevation-level3);
+  border: 1px solid var(--md3-outline-variant);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
   max-height: 280px;
 }
 
@@ -403,7 +403,7 @@ onUnmounted(() => {
   background: var(--md3-surface-container-highest);
   border-radius: var(--md3-shape-xs);
   padding: var(--md3-space-sm) var(--md3-space-md);
-  font-size: 0.875rem;
+  font: var(--md3-type-body-medium);
   color: var(--md3-on-surface);
 }
 
@@ -439,13 +439,13 @@ onUnmounted(() => {
   padding: var(--md3-space-lg);
   text-align: center;
   color: var(--md3-on-surface-variant);
-  font-size: 0.875rem;
+  font: var(--md3-type-body-medium);
 }
 
 /* ===== Error ===== */
 .md3-select-error {
   margin: 0;
-  font-size: 0.75rem;
+  font: var(--md3-type-body-small);
   color: var(--md3-error);
   padding-left: var(--md3-space-md);
 }

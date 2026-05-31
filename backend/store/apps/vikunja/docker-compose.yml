@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'vikunja/vikunja:latest'
+    container_name: panel-vikunja
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${VIKUNJA_PORT}:3456'
+    volumes:
+      - /www/server/apps/vikunja/data:/vikunja/data

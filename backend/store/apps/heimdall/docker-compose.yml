@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'linuxserver/heimdall:latest'
+    container_name: panel-heimdall
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${HEIMDALL_PORT}:80'
+    volumes:
+      - /www/server/apps/heimdall/data:/config

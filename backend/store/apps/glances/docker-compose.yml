@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  app:
+    image: 'nicolargo/glances:latest'
+    container_name: panel-glances
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${GLANCES_PORT}:61208'

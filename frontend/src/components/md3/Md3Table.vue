@@ -103,7 +103,7 @@ interface Column {
 
 const props = withDefaults(defineProps<{
   columns: Column[]
-  data: Record<string, unknown>[]
+  data: any[]
   stripe?: boolean
   border?: boolean
   hover?: boolean
@@ -124,12 +124,12 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  'selection-change': [rows: Record<string, unknown>[]]
+  'selection-change': [rows: any[]]
 }>()
 
 const currentPage = ref(1)
 const pageSize = ref(props.pageSize)
-const selectedRows = ref<Record<string, unknown>[]>([])
+const selectedRows = ref<any[]>([])
 
 const totalPages = computed(() => Math.ceil(props.data.length / pageSize.value))
 
@@ -143,11 +143,11 @@ const isAllSelected = computed(() => {
   return pageData.value.length > 0 && pageData.value.every(row => isRowSelected(row))
 })
 
-function isRowSelected(row: Record<string, unknown>): boolean {
+function isRowSelected(row: any): boolean {
   return selectedRows.value.includes(row)
 }
 
-function toggleRowSelection(row: Record<string, unknown>) {
+function toggleRowSelection(row: any) {
   const idx = selectedRows.value.indexOf(row)
   if (idx === -1) {
     selectedRows.value.push(row)
@@ -185,8 +185,7 @@ function toggleSelectAll() {
 .md3-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  font: var(--md3-type-body-medium);
 }
 
 /* ===== Header ===== */
@@ -280,7 +279,7 @@ function toggleSelectAll() {
 }
 
 .md3-table-pagination-info {
-  font-size: 0.75rem;
+  font: var(--md3-type-body-small);
   color: var(--md3-on-surface-variant);
 }
 
@@ -288,9 +287,9 @@ function toggleSelectAll() {
   border: 1px solid var(--md3-outline-variant);
   background: var(--md3-surface);
   color: var(--md3-on-surface);
-  padding: 4px 8px;
+  padding: var(--md3-space-xs) var(--md3-space-sm);
   border-radius: var(--md3-shape-xs);
-  font-size: 0.75rem;
+  font: var(--md3-type-body-small);
   outline: none;
 }
 

@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    image: 'influxdb:2'
+    container_name: panel-influxdb
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${INFLUXDB_PORT}:8086'
+    volumes:
+      - /www/server/apps/influxdb/data:/var/lib/influxdb2
+      - /www/server/apps/influxdb/config:/etc/influxdb2

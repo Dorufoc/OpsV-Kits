@@ -226,20 +226,22 @@ describe('Docker Store', () => {
     })
 
     it('startContainer 应该启动容器并刷新列表', async () => {
+      vi.useFakeTimers()
       const mockContainers = [
         { id: 'c1', name: 'nginx', status: 'running', state: 'running', ports: '80:80', created: '2024-01-01' },
       ]
-      
-      // mock 第一次 fetchContainers
-      vi.mocked(api.request.get).mockResolvedValueOnce({} as any) // start
-      vi.mocked(api.request.get).mockResolvedValueOnce(mockContainers as any) // fetch containers 1
-      vi.mocked(api.request.get).mockResolvedValueOnce(mockContainers as any) // fetch containers 2
+
+      vi.mocked(api.request.get).mockResolvedValueOnce([] as any) // first fetchContainers
+      vi.mocked(api.request.get).mockResolvedValueOnce(mockContainers as any) // second fetchContainers after delay
 
       const store = useDockerStore()
       store.setAccountAlias('test-server')
-      const result = await store.startContainer('c1')
+      const promise = store.startContainer('c1')
+      await vi.advanceTimersByTimeAsync(10000)
+      const result = await promise
 
       expect(result.success).toBe(true)
+      vi.useRealTimers()
     })
 
     it('stopContainer 应该停止容器并刷新列表', async () => {
@@ -255,7 +257,7 @@ describe('Docker Store', () => {
       store.setAccountAlias('test-server')
       await store.restartContainer('c1')
 
-      expect(api.request.post).toHaveBeenCalledWith('/docker/containers/c1/restart', { params: { account_alias: 'test-server' } })
+      expect(api.request.post).toHaveBeenCalledWith('/docker/containers/c1/restart', null, { params: { account_alias: 'test-server' } })
     })
 
     it('killContainer 应该强制终止容器', async () => {
@@ -263,7 +265,7 @@ describe('Docker Store', () => {
       store.setAccountAlias('test-server')
       await store.killContainer('c1')
 
-      expect(api.request.post).toHaveBeenCalledWith('/docker/containers/c1/kill', { params: { account_alias: 'test-server' } })
+      expect(api.request.post).toHaveBeenCalledWith('/docker/containers/c1/kill', null, { params: { account_alias: 'test-server' } })
     })
 
     it('deleteContainer 应该删除容器并刷新列表', async () => {
@@ -279,7 +281,7 @@ describe('Docker Store', () => {
       store.setAccountAlias('test-server')
       await store.pauseContainer('c1')
 
-      expect(api.request.post).toHaveBeenCalledWith('/docker/containers/c1/pause', { params: { account_alias: 'test-server' } })
+      expect(api.request.post).toHaveBeenCalledWith('/docker/containers/c1/pause', null, { params: { account_alias: 'test-server' } })
     })
 
     it('unpauseContainer 应该恢复暂停的容器', async () => {
@@ -287,7 +289,7 @@ describe('Docker Store', () => {
       store.setAccountAlias('test-server')
       await store.unpauseContainer('c1')
 
-      expect(api.request.post).toHaveBeenCalledWith('/docker/containers/c1/unpause', { params: { account_alias: 'test-server' } })
+      expect(api.request.post).toHaveBeenCalledWith('/docker/containers/c1/unpause', null, { params: { account_alias: 'test-server' } })
     })
 
     it('容器操作当没有 alias 时应该返回', async () => {
@@ -359,7 +361,7 @@ describe('Docker Store', () => {
       store.setAccountAlias('test-server')
       await store.pruneImages()
 
-      expect(api.request.post).toHaveBeenCalledWith('/docker/images/prune', { params: { account_alias: 'test-server' } })
+      expect(api.request.post).toHaveBeenCalledWith('/docker/images/prune', null, { params: { account_alias: 'test-server' } })
     })
   })
 

@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'ghcr.io/logspace-ai/langflow:latest'
+    container_name: panel-langflow
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${LANGFLOW_PORT}:7860'
+    volumes:
+      - /www/server/apps/langflow/data:/app/data

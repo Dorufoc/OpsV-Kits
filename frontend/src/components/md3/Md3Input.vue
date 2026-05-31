@@ -120,9 +120,7 @@ function onInput(event: Event) {
   width: 100%;
   border: none;
   outline: none;
-  font-family: var(--md3-font-body);
-  font-size: 1rem;
-  line-height: 1.5rem;
+  font: var(--md3-type-body-large);
   color: var(--md3-on-surface);
   background: transparent;
   padding: var(--md3-space-md);
@@ -182,13 +180,13 @@ function onInput(event: Event) {
   left: var(--md3-space-md);
   top: 50%;
   transform: translateY(-50%);
-  font-size: 1rem;
+  font: var(--md3-type-body-large);
   color: var(--md3-on-surface-variant);
   pointer-events: none;
   transition: all var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
   z-index: 1;
-  padding: 0 4px;
-  margin-left: -4px;
+  padding: 0 var(--md3-space-xs);
+  margin-left: calc(-1 * var(--md3-space-xs));
 }
 
 .md3-input-label-text {
@@ -199,7 +197,7 @@ function onInput(event: Event) {
 .md3-input-label--floating {
   top: 0;
   transform: translateY(-50%);
-  font-size: 0.75rem;
+  font: var(--md3-type-body-small);
   color: var(--md3-primary);
 }
 
@@ -211,13 +209,17 @@ function onInput(event: Event) {
 .md3-input--outlined .md3-input-label--floating::before {
   content: '';
   position: absolute;
-  left: -6px;
-  right: -6px;
+  left: calc(-1.5 * var(--md3-space-xs));
+  right: calc(-1.5 * var(--md3-space-xs));
   top: 50%;
   height: 2px;
   transform: translateY(-50%);
-  background: var(--md3-surface);
+  background: inherit;
   z-index: -1;
+}
+
+.md3-input--outlined .md3-input-label--floating {
+  background: inherit;
 }
 
 /* ===== Prefix/Suffix ===== */
@@ -244,8 +246,7 @@ function onInput(event: Event) {
 /* ===== Error ===== */
 .md3-input-error {
   margin: 0;
-  font-size: 0.75rem;
-  line-height: 1rem;
+  font: var(--md3-type-body-small);
   color: var(--md3-error);
   padding-left: var(--md3-space-md);
 }

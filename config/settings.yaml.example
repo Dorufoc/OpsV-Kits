@@ -1,0 +1,35 @@
+ssh:
+  host: "YOUR_SSH_HOST"
+  port: 22
+  username: "YOUR_SSH_USERNAME"
+  password: "YOUR_SSH_PASSWORD_OR_EMPTY"
+  key_file: "YOUR_SSH_KEY_PATH_OR_EMPTY"
+  timeout: 30
+
+sync:
+  local_dir: "./local_project"
+  remote_dir: "/remote/project/path"
+  exclude_patterns:
+    - "__pycache__"
+    - ".git"
+    - "*.pyc"
+    - ".venv"
+    - "node_modules"
+  watch_interval: 2.0
+
+environment:
+  remote_python: "/usr/bin/python3"
+  remote_work_dir: "/remote/project/path"
+  env_vars:
+    PYTHONUNBUFFERED: "1"
+    LOG_LEVEL: "DEBUG"
+
+build:
+  enabled: false
+  command: ""
+  trigger_on_sync: false
+
+run:
+  mode: "remote"
+  remote_command: "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+  local_command: "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"

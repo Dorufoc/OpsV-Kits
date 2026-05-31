@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  app:
+    image: 'linuxserver/wikijs:latest'
+    container_name: panel-wikijs
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${WIKI_PORT}:3000'
+    volumes:
+      - /www/server/apps/wikijs/data:/config
+    environment:
+      DB_PASS: '${WIKI_DB_PASSWORD}'

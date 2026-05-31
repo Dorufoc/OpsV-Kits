@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  db:
+  app:
     image: 'postgres:alpine'
     container_name: panel-postgres
     restart: unless-stopped

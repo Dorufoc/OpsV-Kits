@@ -16,15 +16,18 @@
         </div>
       </div>
     </div>
-    <textarea
-      ref="textareaRef"
-      v-model="sql"
-      class="sql-input"
-      placeholder="输入 SQL 语句... (Ctrl+Enter 执行)"
-      rows="4"
-      :disabled="loading"
-      @keydown.ctrl.enter="handleExecute"
-    />
+    <div class="editor-container">
+      <pre class="sql-highlight-overlay" v-html="highlightedSql"></pre>
+      <textarea
+        ref="textareaRef"
+        v-model="sql"
+        class="sql-input"
+        placeholder="输入 SQL 语句... (Ctrl+Enter 执行)"
+        rows="4"
+        :disabled="loading"
+        @keydown.ctrl.enter="handleExecute"
+      />
+    </div>
     <div class="editor-actions">
       <Md3Button
         variant="primary"
@@ -53,10 +56,54 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useDbToolkitStore } from '@/stores/dbToolkitStore'
-import { Md3Dialog, Md3Icon } from '@/components/md3'
+import { Md3Dialog, Md3Icon, Md3Message } from '@/components/md3'
 import Md3Button from '@/components/Md3Button.vue'
+
+const SQL_KEYWORDS = [
+  'SELECT', 'FROM', 'WHERE', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET',
+  'DELETE', 'CREATE', 'TABLE', 'ALTER', 'DROP', 'INDEX', 'SHOW', 'DESCRIBE',
+  'USE', 'AND', 'OR', 'NOT', 'IN', 'LIKE', 'BETWEEN', 'JOIN', 'LEFT',
+  'RIGHT', 'INNER', 'OUTER', 'ON', 'AS', 'ORDER', 'BY', 'GROUP', 'HAVING',
+  'LIMIT', 'OFFSET', 'DISTINCT', 'COUNT', 'SUM', 'AVG', 'MAX', 'MIN',
+  'UNION', 'ALL', 'EXISTS', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'NULL',
+  'IS', 'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'TRUNCATE', 'DATABASE',
+  'SCHEMAS', 'GRANT', 'REVOKE'
+]
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+const highlightedSql = computed(() => {
+  const input = sql.value
+  if (!input) return '\n'
+  const escaped = escapeHtml(input)
+  const keywordPattern = new RegExp(
+    `\\b(${SQL_KEYWORDS.join('|')})\\b`,
+    'gi'
+  )
+  let result = escaped.replace(keywordPattern, (match) => {
+    return `<span class="sql-keyword">${match}</span>`
+  })
+  result = result.replace(
+    /'([^']*?)'/g,
+    '<span class="sql-string">\'$1\'</span>'
+  )
+  result = result.replace(
+    /\b(\d+(?:\.\d+)?)\b/g,
+    '<span class="sql-number">$1</span>'
+  )
+  result = result.replace(
+    /(--[^\n]*)/g,
+    '<span class="sql-comment">$1</span>'
+  )
+  return result
+})
 
 const props = defineProps<{
   accountAlias: string
@@ -78,11 +125,15 @@ const textareaRef = ref<HTMLTextAreaElement>()
 async function handleExecute() {
   const trimmed = sql.value.trim()
   if (!trimmed) return
-  const check = await store.checkDangerousSql(trimmed)
-  if (check.is_dangerous) {
-    dangerousReason.value = check.reason
-    confirmVisible.value = true
-    return
+  try {
+    const check = await store.checkDangerousSql(trimmed)
+    if (check.is_dangerous) {
+      dangerousReason.value = check.reason
+      confirmVisible.value = true
+      return
+    }
+  } catch (e: any) {
+    Md3Message.error(e?.response?.data?.detail || e?.message || 'SQL 检查失败')
   }
   emit('execute', trimmed)
 }
@@ -148,17 +199,49 @@ function selectHistory(h: string) {
   background: var(--md3-surface-container-highest);
 }
 
+.editor-container {
+  position: relative;
+}
+
+.sql-highlight-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--md3-space-sm);
+  font-family: var(--md3-font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: auto;
+  pointer-events: none;
+  color: transparent;
+  margin: 0;
+  border: 1px solid transparent;
+}
+
+.sql-keyword { color: #c678dd; font-weight: 600; }
+.sql-string { color: #98c379; }
+.sql-number { color: #d19a66; }
+.sql-comment { color: #5c6370; font-style: italic; }
+
 .sql-input {
   width: 100%;
   font-family: var(--md3-font-mono);
   font-size: 13px;
+  line-height: 1.5;
   padding: var(--md3-space-sm);
   border: 1px solid var(--md3-glass-border);
   border-radius: var(--md3-shape-xs);
   background: var(--md3-surface-container-low);
-  color: var(--md3-on-surface);
+  color: transparent;
+  caret-color: var(--md3-on-surface);
   resize: vertical;
   outline: none;
+  position: relative;
+  z-index: 1;
 }
 
 .sql-input:focus {

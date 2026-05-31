@@ -1,8 +1,5 @@
 <template>
   <div class="project-page">
-    <Md3PageHeader title="OpsV-Kits" subtitle="项目配置与一键部署" />
-    <Md3Divider />
-
     <div class="project-layout">
       <div class="project-sidebar">
         <div class="sidebar-title">项目列表</div>
@@ -583,11 +580,11 @@ onMounted(async () => {
   -webkit-backdrop-filter: var(--md3-glass-blur);
   border: 1px solid var(--md3-glass-border);
   border-radius: var(--md3-shape-md);
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
 }
 
 .project-sidebar:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .sidebar-title {
@@ -773,12 +770,12 @@ onMounted(async () => {
   -webkit-backdrop-filter: var(--md3-glass-blur);
   border: 1px solid var(--md3-glass-border);
   border-radius: var(--md3-shape-md);
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
   flex-shrink: 0;
 }
 
 .action-bar:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .status-area {
@@ -800,13 +797,13 @@ onMounted(async () => {
   border: 1px solid var(--md3-glass-border);
   border-radius: var(--md3-shape-md);
   padding: var(--md3-space-md);
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
   overflow-y: auto;
   max-height: 100%;
 }
 
 .status-sidebar:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .status-terminal {

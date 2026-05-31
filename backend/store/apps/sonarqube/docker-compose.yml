@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'sonarqube:community'
+    container_name: panel-sonarqube
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${SONAR_PORT}:9000'
+    volumes:
+      - /www/server/apps/sonarqube/data:/opt/sonarqube/data

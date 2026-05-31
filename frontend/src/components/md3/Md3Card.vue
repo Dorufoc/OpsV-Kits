@@ -3,9 +3,7 @@
     class="md3-card"
     :class="{
       'md3-card--hoverable': hoverable,
-      'md3-card--shadow': shadow,
     }"
-    :style="cardStyle"
   >
     <div class="md3-card-header" v-if="$slots.header">
       <slot name="header" />
@@ -20,42 +18,33 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-
 const props = withDefaults(defineProps<{
-  shadow?: boolean | 'never' | 'hover' | 'always'
   hoverable?: boolean
-  elevation?: 0 | 1 | 2 | 3 | 4 | 5
 }>(), {
-  shadow: true,
   hoverable: false,
-  elevation: 1,
-})
-
-const cardStyle = computed(() => {
-  return {
-    boxShadow: props.shadow ? `var(--md3-elevation-level${props.elevation})` : 'none',
-  }
 })
 </script>
 
 <style scoped>
 .md3-card {
-  background: var(--md3-surface);
+  background: var(--md3-glass-bg);
   border-radius: var(--md3-shape-md);
-  border: 1px solid var(--md3-outline-variant);
+  border: 1px solid var(--md3-card-border);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
   overflow: hidden;
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard),
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard),
               transform var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
 }
 
-.md3-card--shadow {
-  border-color: transparent;
+.md3-card--hoverable:hover {
+  border-color: var(--md3-card-border-hover);
+  transform: translateY(-1px);
 }
 
-.md3-card--hoverable:hover {
-  box-shadow: var(--md3-elevation-level2);
-  transform: translateY(-2px);
+.md3-card--hoverable:active {
+  border-color: var(--md3-card-border);
+  transform: translateY(0);
 }
 
 /* ===== Header ===== */

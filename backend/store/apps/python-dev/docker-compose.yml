@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  app:
+    image: python:${PYTHON_VERSION}-slim
+    container_name: panel-python-dev
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    volumes:
+      - /www/server/apps/python-dev/data:/workspace
+    command: tail -f /dev/null

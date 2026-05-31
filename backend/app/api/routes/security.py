@@ -5,6 +5,8 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from app.services.security_service import security_service
+from app.services.audit_log_service import audit_log_service
+from app.models.audit_log import AuditLogQuery
 
 router = APIRouter(prefix="/security", tags=["security"])
 
@@ -247,7 +249,8 @@ async def get_ops_logs(
     action: str = Query("", description="按动作筛选"),
 ):
     try:
-        return {"logs": security_service.get_ops_logs(alias, limit, action)}
+        logs = security_service.get_ops_logs(alias, limit, action)
+        return {"logs": logs}
     except ValueError as e:
         raise HTTPException(404, str(e))
     except Exception as e:

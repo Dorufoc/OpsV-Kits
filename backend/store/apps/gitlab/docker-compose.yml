@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  app:
+    image: 'gitlab/gitlab-ce:latest'
+    container_name: panel-gitlab
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${GITLAB_PORT}:80'
+      - '${GITLAB_SSH_PORT}:22'
+    volumes:
+      - /www/server/apps/gitlab/data:/etc/gitlab
+      - /www/server/apps/gitlab/logs:/var/log/gitlab
+      - /www/server/apps/gitlab/data:/var/opt/gitlab
+    environment:
+      GITLAB_ROOT_PASSWORD: '${GITLAB_ROOT_PASSWORD}'

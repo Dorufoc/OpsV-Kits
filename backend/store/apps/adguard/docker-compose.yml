@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  app:
+    image: 'adguard/adguardhome:latest'
+    container_name: panel-adguard
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${ADGUARD_WEB_PORT}:80'
+      - '${ADGUARD_DNS_PORT}:53/tcp'
+      - '${ADGUARD_DNS_PORT}:53/udp'
+    volumes:
+      - /www/server/apps/adguard/data:/opt/adguardhome/work
+      - /www/server/apps/adguard/conf:/opt/adguardhome/conf

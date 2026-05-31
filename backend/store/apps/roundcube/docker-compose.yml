@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'roundcube/roundcubemail:latest'
+    container_name: panel-roundcube
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${ROUNDCUBE_PORT}:80'
+    volumes:
+      - /www/server/apps/roundcube/data:/var/roundcube

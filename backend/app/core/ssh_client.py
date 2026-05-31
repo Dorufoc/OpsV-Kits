@@ -90,7 +90,7 @@ class SSHClientManager:
             client.set_missing_host_key_policy(paramiko.RejectPolicy())
         else:
             client.load_system_host_keys(str(_KNOWN_HOSTS_PATH))
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.set_missing_host_key_policy(paramiko.WarningPolicy())
 
     def _resolve_password(self) -> Optional[str]:
         if self._account.auth_type == "password":
@@ -234,7 +234,8 @@ class SSHClientManager:
     def test_connection(self, timeout: float = 10.0) -> tuple[bool, str]:
         try:
             test_client = paramiko.SSHClient()
-            test_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            test_client.load_system_host_keys(str(_KNOWN_HOSTS_PATH))
+            test_client.set_missing_host_key_policy(paramiko.RejectPolicy())
             password = self._resolve_password()
             pkey = self._load_private_key()
             test_client.connect(
@@ -251,6 +252,11 @@ class SSHClientManager:
             return True, "连接成功"
         except paramiko.AuthenticationException as e:
             return False, f"身份认证失败: {e}"
+        except paramiko.SSHException as e:
+            err_msg = str(e)
+            if "not found in known_hosts" in err_msg.lower() or "host key" in err_msg.lower():
+                return False, "主机密钥验证失败：该主机不在 known_hosts 中。请先在系统 known_hosts 中添加主机密钥，或将主机密钥策略设置为 'auto'。"
+            return False, f"SSH 错误: {e}"
         except socket.timeout:
             return False, "连接超时"
         except socket.gaierror:
@@ -279,3 +285,8 @@ def _ensure_known_hosts_dir() -> None:
     _KNOWN_HOSTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     if not _KNOWN_HOSTS_PATH.exists():
         _KNOWN_HOSTS_PATH.touch(exist_ok=True)
+    if os.name == "nt":
+        import stat
+        os.chmod(str(_KNOWN_HOSTS_PATH), stat.S_IRUSR | stat.S_IWUSR)
+    else:
+        os.chmod(str(_KNOWN_HOSTS_PATH), 0o600)

@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  app:
+    image: golang:latest
+    container_name: panel-golang
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    volumes:
+      - /www/server/apps/golang/data:/workspace
+    command: tail -f /dev/null

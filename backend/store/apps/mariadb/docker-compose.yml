@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  app:
+    image: 'mariadb:latest'
+    container_name: panel-mariadb
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${MARIADB_PORT}:3306'
+    environment:
+      MARIADB_ROOT_PASSWORD: '${MARIADB_ROOT_PASSWORD}'
+      MARIADB_DATABASE: '${MARIADB_DATABASE}'
+    volumes:
+      - /www/server/apps/mariadb/data:/var/lib/mysql

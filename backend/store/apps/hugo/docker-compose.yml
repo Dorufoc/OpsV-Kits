@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    image: 'klakegg/hugo:latest'
+    container_name: panel-hugo
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${HUGO_PORT}:1313'
+    volumes:
+      - /www/server/apps/hugo/data:/src
+    command: server -D --bind 0.0.0.0

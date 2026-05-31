@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'wazuh/wazuh-manager:latest'
+    container_name: panel-wazuh
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${WAZUH_PORT}:443'
+    volumes:
+      - /www/server/apps/wazuh/data:/var/ossec/data

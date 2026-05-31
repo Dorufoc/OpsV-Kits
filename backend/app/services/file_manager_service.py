@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from dataclasses import dataclass, field, asdict
@@ -114,6 +115,45 @@ class FileManagerService:
             if len(self._operation_history) > 10000:
                 self._operation_history = self._operation_history[-5000:]
 
+    @staticmethod
+    def _sanitize_command(command: str) -> str:
+        patterns = [
+            (r"(?i)(password\s*=\s*)[^\s;|&]+", r"\1***"),
+            (r"(?i)(-p\s+)[^\s;|&]+", r"\1***"),
+            (r"(?i)(--password\s+)[^\s;|&]+", r"\1***"),
+            (r"(?i)(echo\s+)[^\s;|&]+(\s*\|)", r"\1***\2"),
+            (r"(?i)(secret\s*=\s*)[^\s;|&]+", r"\1***"),
+            (r"(?i)(key\s*=\s*)[^\s;|&]+", r"\1***"),
+            (r"(?i)(token\s*=\s*)[^\s;|&]+", r"\1***"),
+            (r"(?i)(api[_-]?key\s*=\s*)[^\s;|&]+", r"\1***"),
+            (r"(?i)(private[_-]?key\s*=\s*)[^\s;|&]+", r"\1***"),
+        ]
+        sanitized = command
+        for pattern, repl in patterns:
+            sanitized = re.sub(pattern, repl, sanitized)
+        return sanitized
+
+    @staticmethod
+    def _is_dangerous_command(command: str) -> tuple[bool, str]:
+        dangerous_patterns = [
+            (r"(?i)rm\s+-[a-zA-Z]*f[a-zA-Z]*\s+(/|~|\.\.|\$HOME|\$PWD|\${?HOME}?|\${?PWD}?)", "检测到删除根目录或关键目录的危险命令"),
+            (r"(?i)rm\s+.*\s+(/|~|\.\.|\$HOME|\$PWD|\${?HOME}?|\${?PWD}?)", "检测到删除根目录或关键目录的危险命令"),
+            (r"(?i)mkfs\.\w+", "检测到磁盘格式化命令"),
+            (r"(?i)dd\s+.*if=/dev/zero.*of=/dev/[a-zA-Z]+", "检测到直接操作块设备的危险命令"),
+            (r"(?i)dd\s+.*of=/dev/[a-zA-Z]+", "检测到直接操作块设备的危险命令"),
+            (r"(?i):\s*\(\)\s*\{\s*:\s*\|:\s*&\s*\}\s*;\s*:", "检测到 fork 炸弹"),
+            (r"(?i)>\s*/dev/[a-zA-Z0-9]+", "检测到重定向到块设备的危险命令"),
+            (r"(?i)chmod\s+-[a-zA-Z]*R[a-zA-Z]*\s+.*(/|~|\.\.|\$HOME|\$PWD|\${?HOME}?|\${?PWD}?)", "检测到修改根目录权限的危险命令"),
+            (r"(?i)mv\s+.*(/|~|\.\.|\$HOME|\$PWD|\${?HOME}?|\${?PWD}?)\s+/dev/null", "检测到移动关键目录到 /dev/null 的危险命令"),
+            (r"(?i)mv\s+.*(/|~|\.\.|\$HOME|\$PWD|\${?HOME}?|\${?PWD}?)\s+/dev/zero", "检测到移动关键目录到 /dev/zero 的危险命令"),
+            (r"(?i)wget\s+.*\|\s*sh", "检测到下载并直接执行脚本的危险命令"),
+            (r"(?i)curl\s+.*\|\s*sh", "检测到下载并直接执行脚本的危险命令"),
+        ]
+        for pattern, reason in dangerous_patterns:
+            if re.search(pattern, command):
+                return True, reason
+        return False, ""
+
     def _record_command(
         self,
         account_alias: str,
@@ -126,7 +166,7 @@ class FileManagerService:
             record = CommandHistoryRecord(
                 timestamp=datetime.now().isoformat(),
                 account_alias=account_alias,
-                command=command,
+                command=self._sanitize_command(command),
                 exit_code=exit_code,
                 stdout=stdout[:500],
                 stderr=stderr[:500],
@@ -362,6 +402,9 @@ class FileManagerService:
     def exec_command(
         self, alias: str, command: str, timeout: float = 30.0
     ) -> dict:
+        is_dangerous, reason = self._is_dangerous_command(command)
+        if is_dangerous:
+            raise PermissionError(f"危险命令被拒绝: {reason}")
         conn, mgr, _ = self._with_manager(alias, timeout=timeout)
         try:
             result = mgr.exec_command(command, timeout=timeout)
@@ -375,6 +418,10 @@ class FileManagerService:
     def exec_batch(
         self, alias: str, commands: list[str], timeout: float = 60.0
     ) -> list[dict]:
+        for cmd in commands:
+            is_dangerous, reason = self._is_dangerous_command(cmd)
+            if is_dangerous:
+                raise PermissionError(f"危险命令被拒绝: {reason}")
         conn, mgr, _ = self._with_manager(alias, timeout=timeout)
         try:
             results = mgr.exec_batch(commands, timeout=timeout)

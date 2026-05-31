@@ -248,3 +248,198 @@ async def remove_service_rule(
         raise HTTPException(404, str(e))
     except Exception as e:
         raise HTTPException(500, f"删除服务规则失败: {e}")
+
+
+# ── 工具箱：扩展系统操作 ──────────────────────────────────────────
+
+@router.post("/toolkit/sync-time")
+async def toolkit_sync_time(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        message = system_service.sync_time(alias)
+        return {"message": message}
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"时间同步失败: {e}")
+
+
+@router.post("/toolkit/hostname")
+async def toolkit_set_hostname(
+    alias: str = Query(..., description="SSH 账户别名"),
+    hostname: str = Query(..., description="新主机名"),
+):
+    try:
+        message = system_service.set_hostname(alias, hostname)
+        return {"message": message}
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"修改主机名失败: {e}")
+
+
+@router.get("/toolkit/timezone")
+async def toolkit_get_timezone(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        return system_service.get_timezone(alias)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"获取时区失败: {e}")
+
+
+@router.post("/toolkit/timezone")
+async def toolkit_set_timezone(
+    alias: str = Query(..., description="SSH 账户别名"),
+    timezone: str = Query(..., description="时区，如 Asia/Shanghai"),
+):
+    try:
+        message = system_service.set_timezone(alias, timezone)
+        return {"message": message}
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"设置时区失败: {e}")
+
+
+# ── 工具箱：诊断工具 ──────────────────────────────────────────────
+
+@router.get("/toolkit/logged-users")
+async def toolkit_logged_users(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        return system_service.get_logged_users(alias)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"获取登录用户失败: {e}")
+
+
+@router.get("/toolkit/boot-time")
+async def toolkit_boot_time(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        return system_service.get_boot_time(alias)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"获取启动时间失败: {e}")
+
+
+@router.get("/toolkit/kernel-modules")
+async def toolkit_kernel_modules(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        return system_service.get_kernel_modules(alias)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"获取内核模块失败: {e}")
+
+
+@router.get("/toolkit/enabled-services")
+async def toolkit_enabled_services(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        return system_service.get_enabled_services(alias)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"获取开机自启服务失败: {e}")
+
+
+@router.get("/toolkit/dns-config")
+async def toolkit_dns_config(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        return system_service.get_dns_config(alias)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"获取 DNS 配置失败: {e}")
+
+
+@router.get("/toolkit/ulimit")
+async def toolkit_ulimit(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        return system_service.get_ulimit(alias)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"获取资源限制失败: {e}")
+
+
+# ── 工具箱：清理维护 ──────────────────────────────────────────────
+
+@router.get("/toolkit/swap-status")
+async def toolkit_swap_status(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        return system_service.get_swap_status(alias)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"获取 SWAP 状态失败: {e}")
+
+
+@router.post("/toolkit/swap-refresh")
+async def toolkit_swap_refresh(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        message = system_service.swap_refresh(alias)
+        return {"message": message}
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"刷新 SWAP 失败: {e}")
+
+
+@router.post("/toolkit/cleanup-kernels")
+async def toolkit_cleanup_kernels(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        message = system_service.cleanup_old_kernels(alias)
+        return {"message": message}
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"清理旧内核失败: {e}")
+
+
+@router.post("/toolkit/cleanup-journal")
+async def toolkit_cleanup_journal(
+    alias: str = Query(..., description="SSH 账户别名"),
+    days: int = Query(7, description="保留最近 N 天的日志"),
+):
+    try:
+        message = system_service.cleanup_journal(alias, days)
+        return {"message": message}
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"清理 journal 失败: {e}")
+
+
+@router.get("/toolkit/check-updates")
+async def toolkit_check_updates(
+    alias: str = Query(..., description="SSH 账户别名"),
+):
+    try:
+        return system_service.check_updates(alias)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"检查系统更新失败: {e}")

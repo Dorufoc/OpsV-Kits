@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'frooodle/s-pdf:latest'
+    container_name: panel-stirling-pdf
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${STIRLING_PDF_PORT}:8080'
+    volumes:
+      - /www/server/apps/stirling-pdf/data:/usr/share/tessdata

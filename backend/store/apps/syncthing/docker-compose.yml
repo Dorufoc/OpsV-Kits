@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    image: 'linuxserver/syncthing:latest'
+    container_name: panel-syncthing
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${SYNCTHING_PORT}:8384'
+    volumes:
+      - /www/server/apps/syncthing/data:/config
+      - /www/server/apps/syncthing/sync:/sync

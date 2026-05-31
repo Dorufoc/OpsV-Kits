@@ -877,7 +877,8 @@ onBeforeUnmount(() => {
   background: var(--md3-surface-container);
   border: 1px solid var(--md3-outline-variant);
   border-radius: var(--md3-shape-sm);
-  box-shadow: var(--md3-elevation-level2);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
   min-width: 160px;
   padding: var(--md3-space-xs) 0;
 }

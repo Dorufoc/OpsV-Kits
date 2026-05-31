@@ -308,11 +308,11 @@ function formatSize(bytes: number): string {
   border: 1px solid var(--md3-glass-border);
   border-radius: var(--md3-shape-sm);
   padding: var(--md3-space-md);
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
 }
 
 .file-browser:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .browser-toolbar {
@@ -380,7 +380,8 @@ function formatSize(bytes: number): string {
   background: var(--md3-surface-container);
   border: 1px solid var(--md3-outline-variant);
   border-radius: var(--md3-shape-sm);
-  box-shadow: var(--md3-elevation-level2);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
   z-index: 1000;
   animation: dropdown-enter 0.15s var(--md3-motion-easing-standard);
 }

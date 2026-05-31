@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  app:
+    image: 'linuxserver/duckdns:latest'
+    container_name: panel-duckdns
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    environment:
+      TOKEN: '${DUCKDNS_TOKEN}'
+      SUBDOMAINS: '${DUCKDNS_DOMAIN}'

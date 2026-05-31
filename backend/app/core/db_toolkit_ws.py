@@ -5,7 +5,7 @@ import json
 import logging
 import threading
 import time
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import WebSocket
 
@@ -38,7 +38,7 @@ class DbToolkitWebSocketHandler:
         self,
         websocket: WebSocket,
         account_alias: str,
-        container_id: str,
+        container_id: Optional[str],
         connection: MySqlConnectionParams | RedisConnectionParams,
         db_type: str,
     ) -> None:
@@ -46,7 +46,7 @@ class DbToolkitWebSocketHandler:
             conn = connection
             parts = [f"mysql -h {conn.host} -P {conn.port} -u {conn.user}"]
             if conn.password:
-                parts.append(f"-p {conn.password}")
+                parts.append(f"-p{conn.password}")
             if conn.database:
                 parts.append(conn.database)
             cli_command = " ".join(parts)
@@ -77,7 +77,7 @@ class DbToolkitWebSocketHandler:
         self,
         websocket: WebSocket,
         account_alias: str,
-        container_id: str,
+        container_id: Optional[str],
         cli_command: str,
         safe_command: str,
     ) -> None:
@@ -107,12 +107,15 @@ class DbToolkitWebSocketHandler:
 
             chan = transport.open_session()
             chan.get_pty(term="xterm-256color", width=80, height=24)
-            docker_cmd = f"docker exec -i {container_id} {cli_command}"
-            chan.exec_command(docker_cmd)
+            if container_id:
+                exec_cmd = f"docker exec -i {container_id} {cli_command}"
+            else:
+                exec_cmd = cli_command
+            chan.exec_command(exec_cmd)
 
             logger.info(
                 "DB CLI 终端连接 [account=%s, container=%s, cmd=%s]",
-                account_alias, container_id, safe_command,
+                account_alias, container_id or "(host)", safe_command,
             )
 
             await websocket.send_json({
@@ -191,7 +194,7 @@ class DbToolkitWebSocketHandler:
         except Exception as e:
             logger.error(
                 "DB CLI 终端异常 [account=%s, container=%s]: %s",
-                account_alias, container_id, e,
+                account_alias, container_id or "(host)", e,
             )
             try:
                 await websocket.send_json({
@@ -214,7 +217,7 @@ class DbToolkitWebSocketHandler:
         self,
         websocket: WebSocket,
         account_alias: str,
-        container_id: str,
+        container_id: Optional[str],
         cli_command: str,
         safe_command: str,
     ) -> None:
@@ -246,12 +249,15 @@ class DbToolkitWebSocketHandler:
 
             chan = transport.open_session()
             chan.get_pty(term="xterm-256color", width=80, height=24)
-            docker_cmd = f"docker exec -i {container_id} {cli_command}"
-            chan.exec_command(docker_cmd)
+            if container_id:
+                exec_cmd = f"docker exec -i {container_id} {cli_command}"
+            else:
+                exec_cmd = cli_command
+            chan.exec_command(exec_cmd)
 
             logger.info(
                 "DB CLI 终端连接 [account=%s, container=%s, cmd=%s]",
-                account_alias, container_id, safe_command,
+                account_alias, container_id or "(host)", safe_command,
             )
 
             await websocket.send_json({
@@ -330,7 +336,7 @@ class DbToolkitWebSocketHandler:
         except Exception as e:
             logger.error(
                 "DB CLI 终端异常 [account=%s, container=%s]: %s",
-                account_alias, container_id, e,
+                account_alias, container_id or "(host)", e,
             )
             try:
                 await websocket.send_json({
@@ -353,12 +359,12 @@ class DbToolkitWebSocketHandler:
         self,
         websocket: WebSocket,
         account_alias: str,
-        container_id: str,
+        container_id: Optional[str],
         connection: MySqlConnectionParams,
     ) -> None:
         parts = [f"mysql -h {connection.host} -P {connection.port} -u {connection.user}"]
         if connection.password:
-            parts.append(f"-p {connection.password}")
+            parts.append(f"-p{connection.password}")
         if connection.database:
             parts.append(connection.database)
         cli_command = " ".join(parts)
@@ -378,7 +384,7 @@ class DbToolkitWebSocketHandler:
         self,
         websocket: WebSocket,
         account_alias: str,
-        container_id: str,
+        container_id: Optional[str],
         connection: RedisConnectionParams,
     ) -> None:
         parts = [f"redis-cli -h {connection.host} -p {connection.port}"]

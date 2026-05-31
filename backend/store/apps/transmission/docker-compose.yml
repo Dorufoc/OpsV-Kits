@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'linuxserver/transmission:latest'
+    container_name: panel-transmission
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${TRANSMISSION_PORT}:9091'
+    volumes:
+      - /www/server/apps/transmission/data:/config

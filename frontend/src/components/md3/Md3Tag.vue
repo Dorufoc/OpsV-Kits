@@ -56,18 +56,18 @@ const emit = defineEmits<{
 
 /* ===== Sizes ===== */
 .md3-tag--sm {
-  padding: 2px 6px;
-  font-size: 0.625rem;
+  padding: 2px var(--md3-space-xs);
+  font: var(--md3-type-label-small);
 }
 
 .md3-tag--md {
-  padding: 4px 8px;
-  font-size: 0.75rem;
+  padding: var(--md3-space-xs) var(--md3-space-sm);
+  font: var(--md3-type-label-medium);
 }
 
 .md3-tag--lg {
-  padding: 6px 10px;
-  font-size: 0.875rem;
+  padding: var(--md3-space-sm) 10px;
+  font: var(--md3-type-label-large);
 }
 
 /* ===== Primary ===== */

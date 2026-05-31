@@ -384,7 +384,7 @@ function isPresetActive(preset: Preset): boolean {
 .perm-preset-btn.active {
   background: var(--md3-primary-container);
   border-color: var(--md3-primary);
-  box-shadow: var(--md3-elevation-level1);
+  outline: 2px solid var(--md3-primary);
 }
 
 .perm-preset-mode {

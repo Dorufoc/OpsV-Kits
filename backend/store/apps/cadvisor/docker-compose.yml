@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  app:
+    image: 'gcr.io/cadvisor/cadvisor:latest'
+    container_name: panel-cadvisor
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${CADVISOR_PORT}:8080'
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /var/lib/docker/:/var/lib/docker:ro

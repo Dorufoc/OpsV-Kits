@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'ghost:latest'
+    container_name: panel-ghost
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${GHOST_PORT}:2368'
+    volumes:
+      - /www/server/apps/ghost/data:/var/lib/ghost/content

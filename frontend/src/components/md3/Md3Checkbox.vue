@@ -117,8 +117,7 @@ function onChange(event: Event) {
 
 /* ===== Label ===== */
 .md3-checkbox-label {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  font: var(--md3-type-body-medium);
   color: var(--md3-on-surface);
 }
 

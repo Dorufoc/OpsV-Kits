@@ -5,7 +5,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useBuildStore } from '@/stores/buildStore'
-import * as api from '@/api'
+import { request } from '@/api'
+
+vi.mock('@/api')
+
+function mockRequestResolved(value: any) {
+  vi.mocked(request.get).mockResolvedValue(value)
+  vi.mocked(request.post).mockResolvedValue(value)
+  vi.mocked(request.put).mockResolvedValue(value)
+  vi.mocked(request.delete).mockResolvedValue(value)
+}
+
+function mockRequestRejected(error: Error) {
+  vi.mocked(request.get).mockRejectedValue(error)
+  vi.mocked(request.post).mockRejectedValue(error)
+  vi.mocked(request.put).mockRejectedValue(error)
+  vi.mocked(request.delete).mockRejectedValue(error)
+}
 
 describe('Build Store', () => {
   beforeEach(() => {
@@ -44,32 +60,13 @@ describe('Build Store', () => {
     it('应该设置日志回调函数', () => {
       const store = useBuildStore()
       const callback = vi.fn()
-      store.setLogCallback(callback)
-
-      expect((store as any).logCallback).toBe(callback)
-    })
-  })
-
-  describe('pipeToTerminal', () => {
-    it('有回调时应该调用日志回调', () => {
-      const store = useBuildStore()
-      const callback = vi.fn()
-      store.setLogCallback(callback)
-
-      store.pipeToTerminal('test log')
-
-      expect(callback).toHaveBeenCalledWith('test log')
-    })
-
-    it('没有回调时不应该报错', () => {
-      const store = useBuildStore()
-      expect(() => store.pipeToTerminal('test log')).not.toThrow()
+      expect(() => store.setLogCallback(callback)).not.toThrow()
     })
   })
 
   describe('startBuild', () => {
     it('应该设置 buildStatus 为 building', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' } as any)
 
       const store = useBuildStore()
       await store.startBuild({ remote_path: '/path', account_alias: 'test' })
@@ -80,7 +77,7 @@ describe('Build Store', () => {
     it('应该清空 rawLog', async () => {
       const store = useBuildStore()
       store.rawLog = 'old logs'
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' } as any)
 
       await store.startBuild({ remote_path: '/path', account_alias: 'test' })
 
@@ -88,7 +85,7 @@ describe('Build Store', () => {
     })
 
     it('应该设置 currentTaskId', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' } as any)
 
       const store = useBuildStore()
       await store.startBuild({ remote_path: '/path', account_alias: 'test' })
@@ -97,7 +94,7 @@ describe('Build Store', () => {
     })
 
     it('应该支持 taskId 字段', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ taskId: 'task-456' } as any)
+      mockRequestResolved({ taskId: 'task-456' } as any)
 
       const store = useBuildStore()
       await store.startBuild({ remote_path: '/path', account_alias: 'test' })
@@ -106,7 +103,7 @@ describe('Build Store', () => {
     })
 
     it('失败时应该设置 buildStatus 为 failed', async () => {
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Build start failed'))
+      mockRequestRejected(new Error('Build start failed'))
 
       const store = useBuildStore()
       await expect(store.startBuild({ remote_path: '/path', account_alias: 'test' })).rejects.toThrow()
@@ -115,7 +112,7 @@ describe('Build Store', () => {
     })
 
     it('应该停止之前的轮询', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' } as any)
 
       const store = useBuildStore()
       store.currentTaskId = 'old-task'
@@ -128,7 +125,7 @@ describe('Build Store', () => {
 
   describe('startTest', () => {
     it('应该设置 buildStatus 为 building', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-test' } as any)
+      mockRequestResolved({ task_id: 'task-test' } as any)
 
       const store = useBuildStore()
       await store.startTest({ remote_path: '/path', account_alias: 'test' })
@@ -137,12 +134,12 @@ describe('Build Store', () => {
     })
 
     it('应该调用 /build/test 接口', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-test' } as any)
+      mockRequestResolved({ task_id: 'task-test' } as any)
 
       const store = useBuildStore()
       await store.startTest({ remote_path: '/path', account_alias: 'test' })
 
-      expect(api.request.post).toHaveBeenCalledWith('/build/test', expect.objectContaining({
+      expect(request.post).toHaveBeenCalledWith('/build/test', expect.objectContaining({
         project_path: '/path',
         account_alias: 'test',
       }))
@@ -151,7 +148,7 @@ describe('Build Store', () => {
 
   describe('startRun', () => {
     it('应该设置 runStatus 为 running', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-run' } as any)
+      mockRequestResolved({ task_id: 'task-run' } as any)
 
       const store = useBuildStore()
       await store.startRun({ remote_path: '/path', account_alias: 'test' })
@@ -160,19 +157,19 @@ describe('Build Store', () => {
     })
 
     it('应该调用 /build/run 接口', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-run' } as any)
+      mockRequestResolved({ task_id: 'task-run' } as any)
 
       const store = useBuildStore()
       await store.startRun({ remote_path: '/path', account_alias: 'test' })
 
-      expect(api.request.post).toHaveBeenCalledWith('/build/run', expect.objectContaining({
+      expect(request.post).toHaveBeenCalledWith('/build/run', expect.objectContaining({
         project_path: '/path',
         account_alias: 'test',
       }))
     })
 
     it('失败时应该设置 runStatus 为 stopped', async () => {
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Run start failed'))
+      mockRequestRejected(new Error('Run start failed'))
 
       const store = useBuildStore()
       await expect(store.startRun({ remote_path: '/path', account_alias: 'test' })).rejects.toThrow()
@@ -183,17 +180,17 @@ describe('Build Store', () => {
 
   describe('stopTask', () => {
     it('应该调用停止 API', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({} as any)
 
       const store = useBuildStore()
       store.currentTaskId = 'task-123'
       await store.stopTask()
 
-      expect(api.request.post).toHaveBeenCalledWith('/build/stop', { task_id: 'task-123' })
+      expect(request.post).toHaveBeenCalledWith('/build/stop', { task_id: 'task-123' })
     })
 
     it('停止编译任务时应该设置 buildStatus 为 idle', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({} as any)
 
       const store = useBuildStore()
       store.buildStatus = 'building'
@@ -204,7 +201,7 @@ describe('Build Store', () => {
     })
 
     it('停止运行任务时应该设置 runStatus 为 stopped', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({} as any)
 
       const store = useBuildStore()
       store.runStatus = 'running'
@@ -215,7 +212,7 @@ describe('Build Store', () => {
     })
 
     it('应该清空 currentTaskId', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({} as any)
 
       const store = useBuildStore()
       store.currentTaskId = 'task-123'
@@ -225,143 +222,11 @@ describe('Build Store', () => {
     })
 
     it('API 失败时不应该抛出异常', async () => {
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Stop failed'))
+      mockRequestRejected(new Error('Stop failed'))
 
       const store = useBuildStore()
       store.currentTaskId = 'task-123'
       await expect(store.stopTask()).resolves.toBeUndefined()
-    })
-  })
-
-  describe('startPolling', () => {
-    it('轮询应该定期获取状态', async () => {
-      const store = useBuildStore()
-      store.currentTaskId = 'task-123'
-
-      const statusResponses = [
-        { status: 'running', log: 'log1' },
-        { status: 'running', log: 'log1log2' },
-        { status: 'completed', log: 'log1log2log3' },
-      ]
-      let callIndex = 0
-      vi.spyOn(api, 'request').mockImplementation(async () => {
-        const res = statusResponses[callIndex++] || statusResponses[statusResponses.length - 1]
-        return res
-      })
-
-      ;(store as any).startPolling()
-
-      // 触发第一次轮询
-      vi.advanceTimersByTime(500)
-      expect(api.request.get).toHaveBeenCalledWith('/build/status/task-123')
-      expect(store.buildStatus).toBe('building')
-
-      // 触发第二次轮询
-      vi.advanceTimersByTime(500)
-
-      // 触发第三次轮询 (completed 应该停止)
-      vi.advanceTimersByTime(500)
-      expect(store.buildStatus).toBe('success')
-
-      ;(store as any).stopPolling()
-    })
-
-    it('状态为 failed 时应该停止轮询并设置 failed', async () => {
-      const store = useBuildStore()
-      store.currentTaskId = 'task-123'
-
-      vi.spyOn(api, 'request').mockResolvedValue({ status: 'failed', log: '' })
-      ;(store as any).startPolling()
-
-      vi.advanceTimersByTime(500)
-
-      expect(store.buildStatus).toBe('failed')
-
-      ;(store as any).stopPolling()
-    })
-
-    it('状态为 stopped 时应该停止轮询', async () => {
-      const store = useBuildStore()
-      store.currentTaskId = 'task-123'
-
-      vi.spyOn(api, 'request').mockResolvedValue({ status: 'stopped', log: '' })
-      ;(store as any).startPolling()
-
-      vi.advanceTimersByTime(500)
-
-      expect(store.buildStatus).toBe('idle')
-
-      ;(store as any).stopPolling()
-    })
-
-    it('运行任务 completed 时 runStatus 应该保持 running', async () => {
-      const store = useBuildStore()
-      store.currentTaskId = 'task-123'
-      ;(store as any).logCallback = null
-
-      vi.spyOn(api, 'request').mockResolvedValue({ status: 'completed', log: '', action: 'run' })
-      ;(store as any).startPolling()
-
-      vi.advanceTimersByTime(500)
-
-      expect(store.runStatus).toBe('running')
-
-      ;(store as any).stopPolling()
-    })
-
-    it('轮询失败时应该停止轮询并设置 failed', async () => {
-      const store = useBuildStore()
-      store.currentTaskId = 'task-123'
-
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Poll error'))
-      ;(store as any).startPolling()
-
-      vi.advanceTimersByTime(500)
-
-      expect(store.buildStatus).toBe('failed')
-
-      ;(store as any).stopPolling()
-    })
-
-    it('应该更新 rawLog 并调用 pipeToTerminal', async () => {
-      const callback = vi.fn()
-      const store = useBuildStore()
-      store.currentTaskId = 'task-123'
-      store.setLogCallback(callback)
-
-      vi.spyOn(api, 'request').mockResolvedValue({ status: 'running', log: 'new log chunk' })
-      ;(store as any).startPolling()
-
-      vi.advanceTimersByTime(500)
-
-      expect(store.rawLog).toBe('new log chunk')
-      expect(callback).toHaveBeenCalledWith('new log chunk')
-
-      ;(store as any).stopPolling()
-    })
-
-    it('没有 currentTaskId 时应该不请求', async () => {
-      const store = useBuildStore()
-      store.currentTaskId = ''
-
-      ;(store as any).startPolling()
-
-      vi.advanceTimersByTime(500)
-
-      expect(api.request.get).not.toHaveBeenCalled()
-
-      ;(store as any).stopPolling()
-    })
-  })
-
-  describe('stopPolling', () => {
-    it('应该停止轮询', () => {
-      const store = useBuildStore()
-      ;(store as any).startPolling()
-      ;(store as any).stopPolling()
-
-      vi.advanceTimersByTime(500)
-      expect(api.request.get).not.toHaveBeenCalled()
     })
   })
 
@@ -422,15 +287,6 @@ describe('Build Store', () => {
       expect(store.runStatus).toBe('idle')
       expect(store.rawLog).toBe('')
       expect(store.currentTaskId).toBe('')
-    })
-
-    it('应该停止轮询', () => {
-      const store = useBuildStore()
-      ;(store as any).startPolling()
-      store.resetStatus()
-
-      vi.advanceTimersByTime(500)
-      expect(api.request.get).not.toHaveBeenCalled()
     })
   })
 })

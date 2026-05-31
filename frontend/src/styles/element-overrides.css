@@ -70,10 +70,10 @@
   --el-disabled-text-color: var(--md3-outline);
   --el-disabled-border-color: var(--md3-outline-variant);
 
-  --el-box-shadow: var(--md3-elevation-level1);
-  --el-box-shadow-light: var(--md3-elevation-level2);
-  --el-box-shadow-lighter: var(--md3-elevation-level1);
-  --el-box-shadow-dark: var(--md3-elevation-level3);
+  --el-box-shadow: none;
+  --el-box-shadow-light: none;
+  --el-box-shadow-lighter: none;
+  --el-box-shadow-dark: none;
 
   /* El-Tag specific - Light */
   --el-tag-success-bg: #E8F5E9;
@@ -202,7 +202,6 @@
 
 .el-tag:hover {
   transform: translateY(-1px);
-  box-shadow: var(--md3-elevation-level1);
 }
 
 .el-tag:active {
@@ -278,7 +277,6 @@
 
 .el-button:hover {
   transform: translateY(-1px);
-  box-shadow: var(--md3-elevation-level1);
 }
 
 .el-button:active {
@@ -343,21 +341,21 @@
 /* El-Card */
 .el-card {
   border-radius: var(--md3-shape-md);
-  border: 1px solid var(--md3-outline-variant);
+  border: 1px solid var(--md3-card-border);
   background: var(--md3-gradient-card);
   backdrop-filter: var(--md3-glass-blur);
   -webkit-backdrop-filter: var(--md3-glass-blur);
-  transition: box-shadow var(--md3-motion-duration-medium) var(--md3-motion-easing-standard),
+  transition: border-color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard),
               transform var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);
 }
 
 .el-card:hover {
-  box-shadow: var(--md3-elevation-level2);
+  border-color: var(--md3-card-border-hover);
 }
 
 .el-card.is-always-shadow,
 .el-card.is-hover-shadow:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .el-card__header {
@@ -387,7 +385,10 @@
 /* El-Dialog */
 .el-dialog {
   border-radius: var(--md3-shape-lg);
-  box-shadow: var(--md3-elevation-level3);
+  border: 1px solid var(--md3-outline-variant);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
 }
 
 .el-dialog__header {
@@ -546,8 +547,10 @@
 /* Select dropdown panel */
 .el-select-dropdown {
   border-radius: var(--md3-shape-sm);
-  box-shadow: var(--md3-elevation-level2);
   border: 1px solid var(--md3-outline-variant);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
   padding: 4px;
 }
 
@@ -797,7 +800,6 @@
 
 .el-dropdown-menu {
   border-radius: var(--md3-shape-sm);
-  box-shadow: var(--md3-elevation-level3);
   border: 1px solid var(--md3-glass-border);
   padding: 4px;
   background: var(--md3-glass-bg);
@@ -868,8 +870,9 @@
 .el-popper.is-pure {
   border: 1px solid var(--md3-outline-variant) !important;
   border-radius: var(--md3-shape-sm);
-  box-shadow: var(--md3-elevation-level3);
-  background: var(--md3-surface-container-lowest);
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
   padding: 4px;
 }
 

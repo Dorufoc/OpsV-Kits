@@ -270,5 +270,125 @@ class SystemService:
                 zones.append(line)
         return zones or ["public"]
 
+    # ── 工具箱：扩展系统操作 ──────────────────────────────────────
+
+    def sync_time(self, alias: str) -> str:
+        code, _, stderr = self._exec(alias, "sudo chronyd -q 2>/dev/null || sudo ntpdate -s pool.ntp.org 2>/dev/null", 30)
+        if code == 0:
+            return "系统时间已同步"
+        code2, _, _ = self._exec(alias, "sudo timedatectl set-ntp true 2>/dev/null", 10)
+        if code2 == 0:
+            return "NTP 时间同步已启用"
+        return f"时间同步失败: {stderr}"
+
+    def set_hostname(self, alias: str, hostname: str) -> str:
+        code, _, stderr = self._exec(alias, f"sudo hostnamectl set-hostname {hostname} 2>/dev/null", 10)
+        if code == 0:
+            return f"主机名已修改为 {hostname}"
+        return f"修改失败: {stderr}"
+
+    def get_timezone(self, alias: str) -> dict[str, Any]:
+        code, stdout, _ = self._exec(alias, "timedatectl show --property=Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null", 5)
+        tz = stdout.strip()
+        _, tz_list, _ = self._exec(alias, "timedatectl list-timezones 2>/dev/null | grep Asia/Shanghai || echo 'Asia/Shanghai'", 5)
+        return {"timezone": tz, "suggested": tz_list.strip()}
+
+    def set_timezone(self, alias: str, timezone: str) -> str:
+        code, _, stderr = self._exec(alias, f"sudo timedatectl set-timezone {timezone} 2>/dev/null", 10)
+        if code == 0:
+            return f"时区已修改为 {timezone}"
+        return f"修改失败: {stderr}"
+
+    # ── 工具箱：诊断工具 ──────────────────────────────────────────
+
+    def get_logged_users(self, alias: str) -> dict[str, Any]:
+        _, who_out, _ = self._exec(alias, "who 2>/dev/null", 5)
+        _, w_out, _ = self._exec(alias, "w -i 2>/dev/null", 5)
+        users: list[dict[str, str]] = []
+        for line in who_out.split("\n") if who_out else []:
+            parts = line.split()
+            if len(parts) >= 5:
+                users.append({
+                    "user": parts[0],
+                    "tty": parts[1],
+                    "login_time": f"{parts[2]} {parts[3]}",
+                    "from": parts[4] if parts[4].startswith("(") else "",
+                })
+        return {"users": users, "raw": w_out}
+
+    def get_boot_time(self, alias: str) -> dict[str, Any]:
+        _, boot_out, _ = self._exec(alias, "who -b 2>/dev/null", 5)
+        _, uptime_out, _ = self._exec(alias, "uptime -s 2>/dev/null", 5)
+        return {"boot_time": boot_out.strip(), "since": uptime_out.strip()}
+
+    def get_kernel_modules(self, alias: str) -> dict[str, Any]:
+        _, lsmod_out, _ = self._exec(alias, "lsmod 2>/dev/null | head -50", 5)
+        _, count_out, _ = self._exec(alias, "lsmod 2>/dev/null | wc -l", 5)
+        modules: list[dict[str, str]] = []
+        lines = (lsmod_out.split("\n") if lsmod_out else [])[1:]
+        for line in lines:
+            parts = line.split()
+            if len(parts) >= 3:
+                modules.append({
+                    "name": parts[0],
+                    "size": parts[1],
+                    "used_by": parts[2] if len(parts) > 2 else "0",
+                })
+        return {"modules": modules, "count": int(count_out.strip()) - 1 if count_out.strip().isdigit() else 0}
+
+    def get_enabled_services(self, alias: str) -> dict[str, Any]:
+        _, svc_out, _ = self._exec(alias, "systemctl list-unit-files --type=service --state=enabled 2>/dev/null | head -40", 5)
+        return {"services": svc_out}
+
+    def get_dns_config(self, alias: str) -> dict[str, Any]:
+        _, resolv, _ = self._exec(alias, "cat /etc/resolv.conf 2>/dev/null", 5)
+        return {"resolv_conf": resolv}
+
+    def get_ulimit(self, alias: str) -> dict[str, Any]:
+        _, ulimit_out, _ = self._exec(alias, "ulimit -a 2>/dev/null", 5)
+        return {"ulimit": ulimit_out}
+
+    # ── 工具箱：清理维护 ──────────────────────────────────────────
+
+    def get_swap_status(self, alias: str) -> dict[str, Any]:
+        _, swapon_out, _ = self._exec(alias, "swapon --show 2>/dev/null", 5)
+        _, free_out, _ = self._exec(alias, "free -h 2>/dev/null | grep -i swap", 5)
+        return {"swapon": swapon_out, "free": free_out}
+
+    def swap_refresh(self, alias: str) -> str:
+        code, _, stderr = self._exec(alias, "sudo swapoff -a 2>/dev/null && sudo swapon -a 2>/dev/null", 30)
+        if code == 0:
+            return "SWAP 已刷新"
+        return f"刷新失败: {stderr}"
+
+    def cleanup_old_kernels(self, alias: str) -> str:
+        code, stdout, stderr = self._exec(
+            alias,
+            "sudo dnf remove --oldinstallonly --setopt=installonly_limit=2 -y 2>/dev/null || sudo package-cleanup --oldkernels --count=2 -y 2>/dev/null",
+            120,
+        )
+        if code == 0:
+            return "旧内核已清理" if not stdout else stdout.strip()[:200]
+        if "Nothing to do" in stderr or "No old kernels" in stderr:
+            return "没有旧内核需要清理"
+        return f"清理失败: {stderr}"
+
+    def cleanup_journal(self, alias: str, days: int = 7) -> str:
+        code, _, stderr = self._exec(alias, f"sudo journalctl --vacuum-time={days}d 2>/dev/null", 30)
+        if code == 0:
+            return f"已清理 {days} 天前的 journal 日志"
+        return f"清理失败: {stderr}"
+
+    def check_updates(self, alias: str) -> dict[str, Any]:
+        code, stdout, _ = self._exec(alias, "dnf check-update 2>/dev/null || yum check-update 2>/dev/null", 60)
+        lines = stdout.strip().split("\n") if stdout else []
+        count = 0
+        updates: list[str] = []
+        for line in lines:
+            if line.strip() and not line.startswith("Loading") and not line.startswith("Last metadata"):
+                updates.append(line.strip())
+                count += 1
+        return {"update_count": count, "updates": updates[:30], "raw": stdout}
+
 
 system_service = SystemService()

@@ -5,7 +5,7 @@ interface ConfirmOptions {
   message: string
   confirmText?: string
   cancelText?: string
-  type?: 'default' | 'danger'
+  type?: 'default' | 'danger' | 'warning'
 }
 
 let confirmApp: ReturnType<typeof createApp> | null = null
@@ -64,7 +64,7 @@ function showConfirm(options: ConfirmOptions): Promise<boolean> {
                   </button>
                   <button
                     class="md3-confirm-btn md3-confirm-btn--confirm"
-                    :class="{ 'md3-confirm-btn--danger': type === 'danger' }"
+                    :class="{ 'md3-confirm-btn--danger': type === 'danger', 'md3-confirm-btn--warning': type === 'warning' }"
                     @click="onConfirm"
                   >
                     {{ confirmText }}
@@ -117,7 +117,7 @@ styleEl.textContent = `
   align-items: center;
   justify-content: center;
   z-index: 3000;
-  padding: 16px;
+  padding: var(--md3-space-xl);
 }
 
 .md3-confirm-dialog {
@@ -126,33 +126,31 @@ styleEl.textContent = `
   box-shadow: var(--md3-elevation-level3);
   overflow: hidden;
   width: 400px;
-  max-width: calc(100vw - 48px);
+  max-width: calc(100vw - var(--md3-space-3xl));
 }
 
 .md3-confirm-header {
-  padding: 24px 24px 8px;
+  padding: var(--md3-space-xl) var(--md3-space-xl) var(--md3-space-sm);
 }
 
 .md3-confirm-title {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
+  font: var(--md3-type-headline-small);
   color: var(--md3-on-surface);
 }
 
 .md3-confirm-body {
-  padding: 8px 24px 24px;
+  padding: var(--md3-space-sm) var(--md3-space-xl) var(--md3-space-xl);
   color: var(--md3-on-surface-variant);
-  font-size: 0.875rem;
-  line-height: 1.5rem;
+  font: var(--md3-type-body-medium);
 }
 
 .md3-confirm-footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 16px 24px;
+  gap: var(--md3-space-sm);
+  padding: var(--md3-space-md) var(--md3-space-xl);
   border-top: 1px solid var(--md3-outline-variant);
 }
 
@@ -160,14 +158,13 @@ styleEl.textContent = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
+  padding: var(--md3-space-sm) var(--md3-space-lg);
   border: none;
   border-radius: var(--md3-shape-full);
-  font-size: 0.875rem;
-  font-weight: 500;
+  font: var(--md3-type-label-large);
   cursor: pointer;
-  transition: background-color 150ms cubic-bezier(0.2, 0, 0, 1);
-  min-height: 36px;
+  transition: background-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+  min-height: 40px;
 }
 
 .md3-confirm-btn--cancel {
@@ -195,6 +192,15 @@ styleEl.textContent = `
 
 .md3-confirm-btn--danger:hover {
   box-shadow: 0 2px 8px rgba(179, 38, 30, 0.3);
+}
+
+.md3-confirm-btn--warning {
+  background: var(--md3-tertiary);
+  color: var(--md3-on-tertiary);
+}
+
+.md3-confirm-btn--warning:hover {
+  box-shadow: 0 2px 8px rgba(100, 80, 0, 0.3);
 }
 
 /* ===== Transitions ===== */

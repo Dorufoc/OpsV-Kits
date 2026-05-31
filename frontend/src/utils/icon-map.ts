@@ -45,7 +45,33 @@ import {
   mdiAccountBox,
   mdiWrench,
   mdiStore,
+  mdiShield,
+  mdiClipboardList,
+  mdiLock,
+  mdiRocketLaunch,
+  mdiConsole,
+  mdiWebhook,
+  mdiLightningBolt,
+  mdiCodeTags,
+  mdiSourceBranch,
+  mdiRepeat,
+  mdiTimerSand,
+  mdiBell,
+  mdiStop,
+  mdiChevronRight,
+  mdiChevronLeft,
+  mdiChevronDown,
+  mdiChevronUp,
+  mdiDatabase,
+  mdiTable,
+  mdiServer,
+  mdiLogout,
+  mdiDocker,
 } from '@mdi/js'
+
+const mdiStorage = mdiDatabase
+
+const mdiHttp = mdiConnection
 
 // 部分@mdi/js中不存在的图标，使用替代方案
 const mdiCoin = mdiCurrencyUsd  // 用美元符号替代硬币图标
@@ -98,6 +124,32 @@ export type IconName =
   | 'account-box'
   | 'wrench'
   | 'store'
+  | 'shield'
+  | 'clipboard-list'
+  | 'schedule'
+  | 'backup'
+  | 'lock'
+  | 'rocket'
+  | 'terminal'
+  | 'webhook'
+  | 'lightning-bolt'
+  | 'http'
+  | 'code-tags'
+  | 'source-branch'
+  | 'repeat'
+  | 'timer-sand'
+  | 'bell'
+  | 'stop'
+  | 'chevron-right'
+  | 'chevron-left'
+  | 'chevron-down'
+  | 'chevron-up'
+  | 'database'
+  | 'table'
+  | 'server'
+  | 'logout'
+  | 'storage'
+  | 'docker'
 
 export const iconMap: Record<string, string> = {
   'refresh': mdiRefresh,
@@ -146,6 +198,32 @@ export const iconMap: Record<string, string> = {
   'account-box': mdiAccountBox,
   'wrench': mdiWrench,
   'store': mdiStore,
+  'shield': mdiShield,
+  'clipboard-list': mdiClipboardList,
+  'schedule': mdiClockOutline,
+  'backup': mdiClipboardList,
+  'lock': mdiLock,
+  'rocket': mdiRocketLaunch,
+  'terminal': mdiConsole,
+  'webhook': mdiWebhook,
+  'lightning-bolt': mdiLightningBolt,
+  'http': mdiHttp,
+  'code-tags': mdiCodeTags,
+  'source-branch': mdiSourceBranch,
+  'repeat': mdiRepeat,
+  'timer-sand': mdiTimerSand,
+  'bell': mdiBell,
+  'stop': mdiStop,
+  'chevron-right': mdiChevronRight,
+  'chevron-left': mdiChevronLeft,
+  'chevron-down': mdiChevronDown,
+  'chevron-up': mdiChevronUp,
+  'database': mdiDatabase,
+  'table': mdiTable,
+  'server': mdiServer,
+  'logout': mdiLogout,
+  'storage': mdiStorage,
+  'docker': mdiDocker,
 }
 
 export const elementPlusToMdiMap: Record<string, IconName> = {

@@ -5,8 +5,12 @@
     "category": "web_server",
     "description": "可视化的 Nginx 反向代理管理器，支持 SSL 证书自动申请与续期。",
     "require_memory": 512,
-    "icon": "https://cdn.jsdelivr.net/gh/nginx-proxy-manager/nginx-proxy-manager@master/docs/logo.svg",
-    "versions": ["latest", "2.11", "2.10"],
+    "icon": "/store-icons/nginx-proxy-manager.png",
+    "versions": [
+      "latest",
+      "2.11",
+      "2.10"
+    ],
     "features": [
       "可视化 Web 界面管理反向代理",
       "一键申请 Let's Encrypt SSL 证书并自动续期",
@@ -35,8 +39,13 @@
     "category": "web_server",
     "description": "高性能的 HTTP 和反向代理 Web 服务器。",
     "require_memory": 256,
-    "icon": "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/nginx.svg",
-    "versions": ["alpine", "latest", "stable", "1.25"],
+    "icon": "/store-icons/nginx.svg",
+    "versions": [
+      "alpine",
+      "latest",
+      "stable",
+      "1.25"
+    ],
     "features": [
       "高并发连接处理能力，事件驱动架构",
       "轻量级静态文件服务",
@@ -65,13 +74,17 @@
     "category": "web_server",
     "description": "自动 HTTPS 的现代 Web 服务器，配置简洁。",
     "require_memory": 256,
-    "icon": "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/caddy.svg",
-    "versions": ["latest", "2.8", "2.7"],
+    "icon": "/store-icons/caddy.svg",
+    "versions": [
+      "latest",
+      "2.8",
+      "2.7"
+    ],
     "features": [
       "自动 HTTPS 证书申请与续期（零配置）",
       "Caddyfile 简洁配置文件格式",
       "内置 HTTP/2 与 HTTP/3 支持",
-      "丰富的中间件生态（反向代理、Gzip、Gzip）",
+      "丰富的中间件生态（反向代理、Gzip、Brotli）",
       "原生支持 JSON 日志与结构化输出"
     ],
     "recommended_for": [
@@ -90,13 +103,134 @@
     ]
   },
   {
+    "id": "traefik",
+    "name": "Traefik",
+    "category": "web_server",
+    "description": "云原生边缘路由器，自动服务发现与动态路由。",
+    "require_memory": 256,
+    "icon": "/store-icons/traefik.svg",
+    "versions": [
+      "latest",
+      "3.1",
+      "2.11"
+    ],
+    "features": [
+      "自动服务发现（Docker、K8s、Consul 等）",
+      "动态路由配置，零停机更新",
+      "内置 Let's Encrypt 自动证书管理",
+      "中间件链（限流、鉴权、重试、压缩等）",
+      "可视化 Dashboard 实时监控路由状态"
+    ],
+    "recommended_for": [
+      "微服务架构的动态 API 网关",
+      "多容器环境的自动反向代理",
+      "Kubernetes 集群的 Ingress Controller"
+    ],
+    "env_config": [
+      {
+        "key": "TRAEFIK_PORT",
+        "label": "HTTP 服务端口",
+        "type": "port",
+        "default": 80,
+        "required": true
+      },
+      {
+        "key": "TRAEFIK_DASHBOARD_PORT",
+        "label": "Dashboard 端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "apache",
+    "name": "Apache HTTP Server",
+    "category": "web_server",
+    "description": "全球最流行的开源 Web 服务器，功能丰富且稳定可靠。",
+    "require_memory": 256,
+    "icon": "/store-icons/apache.svg",
+    "versions": [
+      "latest",
+      "2.4",
+      "2.4-alpine"
+    ],
+    "features": [
+      "模块化架构，丰富的扩展生态",
+      ".htaccess 分布式配置文件支持",
+      "虚拟主机与 SSL/TLS 加密",
+      "mod_rewrite 强大的 URL 重写引擎",
+      "与 PHP、Python、Perl 等语言的深度集成"
+    ],
+    "recommended_for": [
+      "传统 LAMP 栈（Linux+Apache+MySQL+PHP）",
+      "需要 .htaccess 灵活配置的场景",
+      "企业级 Web 应用托管"
+    ],
+    "env_config": [
+      {
+        "key": "APACHE_PORT",
+        "label": "HTTP 服务端口",
+        "type": "port",
+        "default": 80,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "wordpress",
+    "name": "WordPress",
+    "category": "web_server",
+    "description": "全球使用最广泛的 CMS 内容管理系统，50000+ 插件。",
+    "require_memory": 512,
+    "icon": "/store-icons/wordpress.svg",
+    "versions": [
+      "latest",
+      "6.5",
+      "6.4"
+    ],
+    "features": [
+      "可视化文章编辑器（Gutenberg 块编辑器）",
+      "50000+ 插件扩展生态",
+      "6000+ 免费主题模板",
+      "多站点网络（Multisite）支持",
+      "REST API 与 Headless CMS 能力"
+    ],
+    "recommended_for": [
+      "个人博客与企业官网快速搭建",
+      "内容驱动型网站（新闻、杂志、电商）",
+      "非技术人员的内容管理需求"
+    ],
+    "env_config": [
+      {
+        "key": "WORDPRESS_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8000,
+        "required": true
+      },
+      {
+        "key": "WORDPRESS_DB_PASSWORD",
+        "label": "数据库密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
     "id": "mysql8",
     "name": "MySQL 8.0",
     "category": "database",
     "description": "企业级关系型数据库，已默认开启原生密码认证插件优化。",
     "require_memory": 1024,
-    "icon": "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mysql.svg",
-    "versions": ["lts", "latest", "8.0", "8.1"],
+    "icon": "/store-icons/mysql8.svg",
+    "versions": [
+      "lts",
+      "latest",
+      "8.0",
+      "8.1"
+    ],
     "features": [
       "事务型 InnoDB 存储引擎，支持 ACID",
       "JSON 数据类型与原生 JSON 函数",
@@ -127,13 +261,59 @@
     ]
   },
   {
+    "id": "mariadb",
+    "name": "MariaDB",
+    "category": "database",
+    "description": "MySQL 的社区驱动分支，完全兼容且性能更优。",
+    "require_memory": 512,
+    "icon": "/store-icons/mariadb.svg",
+    "versions": [
+      "latest",
+      "11.4",
+      "10.11"
+    ],
+    "features": [
+      "完全兼容 MySQL 协议与语法",
+      "更快的查询优化器与执行引擎",
+      "Galera Cluster 多主同步复制",
+      "ColumnStore 列式存储引擎（OLAP）",
+      "Spider 存储引擎支持分片"
+    ],
+    "recommended_for": [
+      "需要 MySQL 兼容但追求更高性能的场景",
+      "开源优先的企业数据库方案",
+      "需要内置高可用复制的部署"
+    ],
+    "env_config": [
+      {
+        "key": "MARIADB_PORT",
+        "label": "宿主机映射端口",
+        "type": "port",
+        "default": 3306,
+        "required": true
+      },
+      {
+        "key": "MARIADB_ROOT_PASSWORD",
+        "label": "Root 用户密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
     "id": "postgres",
     "name": "PostgreSQL",
     "category": "database",
     "description": "功能强大的开源对象关系型数据库系统。",
     "require_memory": 512,
-    "icon": "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/postgresql.svg",
-    "versions": ["alpine", "latest", "16", "15"],
+    "icon": "/store-icons/postgres.svg",
+    "versions": [
+      "alpine",
+      "latest",
+      "16",
+      "15"
+    ],
     "features": [
       "完整的 SQL 标准支持，包括复杂查询",
       "原生 JSONB 类型，支持高效 JSON 查询与索引",
@@ -169,8 +349,13 @@
     "category": "database",
     "description": "高性能的键值对内存数据库，支持持久化。",
     "require_memory": 256,
-    "icon": "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/redis.svg",
-    "versions": ["alpine", "latest", "7.2", "7.0"],
+    "icon": "/store-icons/redis.svg",
+    "versions": [
+      "alpine",
+      "latest",
+      "7.2",
+      "7.0"
+    ],
     "features": [
       "内存级读写性能，单线程模型无锁竞争",
       "支持 String、Hash、List、Set、ZSet 五种数据结构",
@@ -206,8 +391,12 @@
     "category": "database",
     "description": "流行的 NoSQL 文档型数据库，灵活的数据模型。",
     "require_memory": 512,
-    "icon": "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mongodb.svg",
-    "versions": ["latest", "7.0", "6.0"],
+    "icon": "/store-icons/mongo.svg",
+    "versions": [
+      "latest",
+      "7.0",
+      "6.0"
+    ],
     "features": [
       "BSON 文档存储，数据结构灵活可变",
       "内置水平扩展能力（Sharding 分片）",
@@ -238,13 +427,188 @@
     ]
   },
   {
+    "id": "elasticsearch",
+    "name": "Elasticsearch",
+    "category": "database",
+    "description": "分布式全文搜索引擎，ELK Stack 的核心组件。",
+    "require_memory": 2048,
+    "icon": "/store-icons/elasticsearch.svg",
+    "versions": [
+      "latest",
+      "8.13",
+      "8.12"
+    ],
+    "features": [
+      "基于 Lucene 的分布式全文检索",
+      "近实时搜索与分析（Near Real-Time）",
+      "聚合分析（Aggregations）支持复杂数据统计",
+      "多租户与跨集群复制",
+      "RESTful API 与丰富的客户端 SDK"
+    ],
+    "recommended_for": [
+      "日志搜索与分析（配合 Kibana）",
+      "电商网站的商品搜索与推荐",
+      "安全信息与事件管理（SIEM）"
+    ],
+    "env_config": [
+      {
+        "key": "ES_PORT",
+        "label": "HTTP 服务端口",
+        "type": "port",
+        "default": 9200,
+        "required": true
+      },
+      {
+        "key": "ES_PASSWORD",
+        "label": "elastic 用户密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "clickhouse",
+    "name": "ClickHouse",
+    "category": "database",
+    "description": "面向列的 OLAP 数据库，极速分析查询引擎。",
+    "require_memory": 2048,
+    "icon": "/store-icons/clickhouse.svg",
+    "versions": [
+      "latest",
+      "24.3",
+      "24.1"
+    ],
+    "features": [
+      "列式存储，查询速度比行式数据库快 100-1000 倍",
+      "支持 SQL 查询语言",
+      "数据压缩率高达 10:1",
+      "分布式查询执行与线性扩展",
+      "物化视图与实时数据摄入"
+    ],
+    "recommended_for": [
+      "实时数据分析与 BI 报表",
+      "用户行为分析与事件追踪",
+      "日志与监控指标的大规模存储分析"
+    ],
+    "env_config": [
+      {
+        "key": "CLICKHOUSE_PORT",
+        "label": "HTTP 服务端口",
+        "type": "port",
+        "default": 8123,
+        "required": true
+      },
+      {
+        "key": "CLICKHOUSE_PASSWORD",
+        "label": "默认用户密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "influxdb",
+    "name": "InfluxDB",
+    "category": "database",
+    "description": "专为时序数据设计的高性能数据库，配合 Grafana 使用。",
+    "require_memory": 512,
+    "icon": "/store-icons/influxdb.svg",
+    "versions": [
+      "latest",
+      "2.7",
+      "2.6"
+    ],
+    "features": [
+      "时序数据专用存储引擎",
+      "Flux 查询语言支持复杂时间序列分析",
+      "内置数据保留策略与降采样",
+      "Telegraf 采集器生态（200+ 插件）",
+      "与 Grafana 原生集成"
+    ],
+    "recommended_for": [
+      "系统监控指标存储（CPU、内存、网络）",
+      "IoT 设备传感器数据采集",
+      "应用性能监控（APM）指标存储"
+    ],
+    "env_config": [
+      {
+        "key": "INFLUXDB_PORT",
+        "label": "HTTP 服务端口",
+        "type": "port",
+        "default": 8086,
+        "required": true
+      },
+      {
+        "key": "INFLUXDB_ADMIN_PASSWORD",
+        "label": "管理员密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "minio",
+    "name": "MinIO",
+    "category": "database",
+    "description": "高性能 S3 兼容对象存储，云原生架构。",
+    "require_memory": 512,
+    "icon": "/store-icons/minio.svg",
+    "versions": [
+      "latest",
+      "RELEASE.2024",
+      "RELEASE.2023"
+    ],
+    "features": [
+      "完全兼容 AWS S3 API",
+      "纠删码（Erasure Code）数据保护",
+      "分布式多节点部署支持",
+      "内置 Web 控制台管理界面",
+      "事件通知（Webhook、Kafka、Redis）"
+    ],
+    "recommended_for": [
+      "私有云对象存储方案",
+      "备份与归档存储",
+      "AI/ML 训练数据集存储"
+    ],
+    "env_config": [
+      {
+        "key": "MINIO_PORT",
+        "label": "API 服务端口",
+        "type": "port",
+        "default": 9000,
+        "required": true
+      },
+      {
+        "key": "MINIO_CONSOLE_PORT",
+        "label": "控制台端口",
+        "type": "port",
+        "default": 9001,
+        "required": true
+      },
+      {
+        "key": "MINIO_ROOT_PASSWORD",
+        "label": "Root 用户密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
     "id": "gitea",
     "name": "Gitea",
     "category": "dev_ops",
     "description": "轻量级自托管 Git 服务，类 GitHub 的代码托管平台。",
     "require_memory": 512,
-    "icon": "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/gitea.svg",
-    "versions": ["latest", "1.21", "1.20"],
+    "icon": "/store-icons/gitea.svg",
+    "versions": [
+      "latest",
+      "1.21",
+      "1.20"
+    ],
     "features": [
       "完整的 Git 仓库托管，支持 HTTP/HTTPS/SSH 克隆",
       "内置 Issue 追踪与 Pull Request 审查",
@@ -275,13 +639,64 @@
     ]
   },
   {
+    "id": "gitlab",
+    "name": "GitLab CE",
+    "category": "dev_ops",
+    "description": "完整的 DevOps 平台，一体化代码管理到部署。",
+    "require_memory": 4096,
+    "icon": "/store-icons/gitlab.svg",
+    "versions": [
+      "latest",
+      "17.0",
+      "16.11"
+    ],
+    "features": [
+      "完整的 Git 仓库托管与代码审查",
+      "内置 CI/CD 流水线（GitLab CI）",
+      "容器注册表与包注册表",
+      "安全扫描（SAST、DAST、依赖扫描）",
+      "看板与敏捷项目管理"
+    ],
+    "recommended_for": [
+      "企业级 DevOps 平台建设",
+      "需要一体化代码管理到部署的团队",
+      "安全合规要求高的软件开发"
+    ],
+    "env_config": [
+      {
+        "key": "GITLAB_PORT",
+        "label": "HTTP 服务端口",
+        "type": "port",
+        "default": 80,
+        "required": true
+      },
+      {
+        "key": "GITLAB_SSH_PORT",
+        "label": "SSH 服务端口",
+        "type": "port",
+        "default": 2222,
+        "required": true
+      },
+      {
+        "key": "GITLAB_ROOT_PASSWORD",
+        "label": "Root 初始密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
     "id": "jenkins",
     "name": "Jenkins",
     "category": "dev_ops",
     "description": "开源的自动化 CI/CD 服务器，支持丰富的插件生态。",
     "require_memory": 1024,
-    "icon": "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/jenkins.svg",
-    "versions": ["lts", "latest"],
+    "icon": "/store-icons/jenkins.svg",
+    "versions": [
+      "lts",
+      "latest"
+    ],
     "features": [
       "丰富的插件生态（2000+ 插件）",
       "Pipeline as Code（Jenkinsfile 流水线定义）",
@@ -305,13 +720,131 @@
     ]
   },
   {
+    "id": "drone",
+    "name": "Drone CI",
+    "category": "dev_ops",
+    "description": "基于容器的 CI/CD 平台，配置简洁、执行快速。",
+    "require_memory": 512,
+    "icon": "/store-icons/drone.svg",
+    "versions": [
+      "latest",
+      "2.23",
+      "2.22"
+    ],
+    "features": [
+      "Pipeline 即代码（.drone.yml 配置）",
+      "每个步骤在独立容器中执行",
+      "原生支持 Gitea、GitHub、GitLab、Bitbucket",
+      "丰富的插件市场（Docker、K8s、AWS 等）",
+      "支持矩阵构建与并行执行"
+    ],
+    "recommended_for": [
+      "轻量级 CI/CD 方案",
+      "容器优先的构建流程",
+      "与 Gitea 深度集成的 DevOps 平台"
+    ],
+    "env_config": [
+      {
+        "key": "DRONE_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 80,
+        "required": true
+      },
+      {
+        "key": "DRONE_GITEA_SERVER",
+        "label": "Gitea 服务器地址",
+        "type": "text",
+        "default": "",
+        "required": true
+      },
+      {
+        "key": "DRONE_RPC_SECRET",
+        "label": "RPC 密钥",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "nexus",
+    "name": "Nexus Repository",
+    "category": "dev_ops",
+    "description": "统一的制品仓库，管理 Maven、npm、Docker 等格式。",
+    "require_memory": 2048,
+    "icon": "/store-icons/nexus.svg",
+    "versions": [
+      "latest",
+      "3.67",
+      "3.66"
+    ],
+    "features": [
+      "支持 Maven、npm、Docker、PyPI、RubyGems 等 20+ 格式",
+      "代理远程仓库缓存加速",
+      "组件安全分析与漏洞扫描",
+      "细粒度权限控制与审计",
+      "REST API 与 CLI 工具支持"
+    ],
+    "recommended_for": [
+      "企业私有制品仓库管理",
+      "加速第三方依赖下载",
+      "内部包分发与版本管理"
+    ],
+    "env_config": [
+      {
+        "key": "NEXUS_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8081,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "sonarqube",
+    "name": "SonarQube",
+    "category": "dev_ops",
+    "description": "代码质量管理平台，自动化代码审查与安全扫描。",
+    "require_memory": 2048,
+    "icon": "/store-icons/sonarqube.svg",
+    "versions": [
+      "community",
+      "latest",
+      "10.4"
+    ],
+    "features": [
+      "支持 30+ 编程语言的静态代码分析",
+      "代码异味、Bug、安全漏洞检测",
+      "代码覆盖率与重复率统计",
+      "质量阈值（Quality Gate）阻断不达标代码",
+      "与 CI/CD 流水线深度集成"
+    ],
+    "recommended_for": [
+      "代码质量门禁管理",
+      "安全漏洞自动化扫描",
+      "技术债务量化与追踪"
+    ],
+    "env_config": [
+      {
+        "key": "SONAR_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 9000,
+        "required": true
+      }
+    ]
+  },
+  {
     "id": "showdoc",
     "name": "ShowDoc",
     "category": "dev_ops",
     "description": "在线 API 文档和技术文档管理工具，支持 Markdown。",
     "require_memory": 256,
-    "icon": "https://cdn.jsdelivr.net/gh/star7th/showdoc@master/public/images/logo.png",
-    "versions": ["latest"],
+    "icon": "/store-icons/showdoc.png",
+    "versions": [
+      "latest"
+    ],
     "features": [
       "Markdown 语法编写技术文档",
       "API 文档自动生成（支持导入 Postman/Swagger）",
@@ -335,13 +868,58 @@
     ]
   },
   {
+    "id": "wikijs",
+    "name": "Wiki.js",
+    "category": "dev_ops",
+    "description": "现代化的 Wiki 引擎，支持 Markdown 和 Git 同步。",
+    "require_memory": 512,
+    "icon": "/store-icons/wikijs.svg",
+    "versions": [
+      "latest",
+      "2.5",
+      "2.4"
+    ],
+    "features": [
+      "Markdown 编辑器与可视化编辑双模式",
+      "与 Git 仓库双向同步",
+      "支持多语言与权限管理",
+      "全文搜索引擎（Elasticsearch 集成）",
+      "丰富的主题与插件扩展"
+    ],
+    "recommended_for": [
+      "团队知识库与技术文档管理",
+      "项目 Wiki 与操作手册",
+      "企业内部知识沉淀平台"
+    ],
+    "env_config": [
+      {
+        "key": "WIKI_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      },
+      {
+        "key": "WIKI_DB_PASSWORD",
+        "label": "数据库密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
     "id": "vaultwarden",
     "name": "Vaultwarden",
     "category": "network",
     "description": "轻量级的 Bitwarden 密码管理服务器，团队凭证加密自建。",
     "require_memory": 256,
-    "icon": "https://cdn.jsdelivr.net/gh/dani-garcia/vaultwarden@main/resources/vaultwarden-icon.svg",
-    "versions": ["latest", "1.30", "1.29"],
+    "icon": "/store-icons/vaultwarden.svg",
+    "versions": [
+      "latest",
+      "1.30",
+      "1.29"
+    ],
     "features": [
       "完全兼容 Bitwarden 客户端生态",
       "端到端加密，零知识安全模型",
@@ -365,13 +943,92 @@
     ]
   },
   {
+    "id": "adguard",
+    "name": "AdGuard Home",
+    "category": "network",
+    "description": "全网广告拦截与 DNS 隐私保护，家庭网络安全管家。",
+    "require_memory": 256,
+    "icon": "/store-icons/adguard.svg",
+    "versions": [
+      "latest",
+      "0.107",
+      "0.106"
+    ],
+    "features": [
+      "全网广告与跟踪器拦截",
+      "DNS over HTTPS/TLS 加密查询",
+      "家长控制与网站过滤",
+      "DNS 查询日志与统计面板",
+      "自定义过滤规则（支持 AdGuard/EasyList 格式）"
+    ],
+    "recommended_for": [
+      "家庭网络级广告拦截",
+      "DNS 隐私保护与加密",
+      "家长控制与儿童上网保护"
+    ],
+    "env_config": [
+      {
+        "key": "ADGUARD_DNS_PORT",
+        "label": "DNS 服务端口",
+        "type": "port",
+        "default": 53,
+        "required": true
+      },
+      {
+        "key": "ADGUARD_WEB_PORT",
+        "label": "管理面板端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "wireguard",
+    "name": "WireGuard",
+    "category": "network",
+    "description": "新一代高性能 VPN 协议，配置简洁、性能卓越。",
+    "require_memory": 128,
+    "icon": "/store-icons/wireguard.svg",
+    "versions": [
+      "latest",
+      "1.0",
+      "0.0"
+    ],
+    "features": [
+      "极简配置（仅需公钥与 IP 地址）",
+      "基于 Noise 协议框架的加密",
+      "UDP 传输，低延迟高吞吐",
+      "自动密钥轮换与会话管理",
+      "跨平台原生支持（Linux、Windows、macOS、iOS、Android）"
+    ],
+    "recommended_for": [
+      "安全的远程办公 VPN 接入",
+      "VPS 与家庭网络互联",
+      "替代 OpenVPN 的高性能方案"
+    ],
+    "env_config": [
+      {
+        "key": "WIREGUARD_PORT",
+        "label": "UDP 服务端口",
+        "type": "port",
+        "default": 51820,
+        "required": true
+      }
+    ]
+  },
+  {
     "id": "mihomo",
     "name": "Mihomo",
     "category": "network",
     "description": "Clash Meta 内核的代理网关，支持多种协议和规则分流。",
     "require_memory": 256,
-    "icon": "https://cdn.jsdelivr.net/gh/MetaCubeX/mihomo@main/README.assets/icon.png",
-    "versions": ["latest", "v1.18", "v1.17"],
+    "icon": "/store-icons/mihomo.png",
+    "versions": [
+      "latest",
+      "v1.18",
+      "v1.17"
+    ],
     "features": [
       "支持 VMess、VLESS、Trojan、Shadowsocks 等多种协议",
       "基于域名/IP/协议的智能路由分流",
@@ -400,8 +1057,10 @@
     "category": "monitor",
     "description": "秒级站点可用性监控工具，支持多种通知渠道。",
     "require_memory": 512,
-    "icon": "https://cdn.jsdelivr.net/gh/louislam/uptime-kuma@master/public/img/icon.svg",
-    "versions": ["1"],
+    "icon": "/store-icons/uptime-kuma.png",
+    "versions": [
+      "1"
+    ],
     "features": [
       "支持 HTTP(s)、TCP、Ping、DNS、Push 等多种监控类型",
       "秒级检测间隔，实时状态面板",
@@ -430,8 +1089,12 @@
     "category": "monitor",
     "description": "Docker 可视化管理平台，轻松管理容器、镜像和网络。",
     "require_memory": 512,
-    "icon": "https://cdn.jsdelivr.net/gh/portainer/portainer@develop/app/assets/ico/android-chrome-192x192.png",
-    "versions": ["latest", "2.20", "2.19"],
+    "icon": "/store-icons/portainer.svg",
+    "versions": [
+      "latest",
+      "2.20",
+      "2.19"
+    ],
     "features": [
       "可视化容器、镜像、卷、网络管理",
       "Stack（Compose）模板一键部署",
@@ -455,13 +1118,92 @@
     ]
   },
   {
+    "id": "grafana",
+    "name": "Grafana",
+    "category": "monitor",
+    "description": "开源的数据可视化与监控仪表盘平台。",
+    "require_memory": 512,
+    "icon": "/store-icons/grafana.svg",
+    "versions": [
+      "latest",
+      "11.0",
+      "10.4"
+    ],
+    "features": [
+      "丰富的可视化图表（时序图、热力图、仪表盘等）",
+      "支持 Prometheus、InfluxDB、MySQL、PostgreSQL 等 50+ 数据源",
+      "告警规则与多渠道通知",
+      "Dashboard 模板社区（数万现成模板）",
+      "Team 协作与权限管理"
+    ],
+    "recommended_for": [
+      "系统监控仪表盘搭建",
+      "业务指标可视化分析",
+      "应用性能监控（APM）"
+    ],
+    "env_config": [
+      {
+        "key": "GRAFANA_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      },
+      {
+        "key": "GRAFANA_ADMIN_PASSWORD",
+        "label": "Admin 初始密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "prometheus",
+    "name": "Prometheus",
+    "category": "monitor",
+    "description": "云原生监控告警系统，时间序列数据库。",
+    "require_memory": 1024,
+    "icon": "/store-icons/prometheus.svg",
+    "versions": [
+      "latest",
+      "2.51",
+      "2.50"
+    ],
+    "features": [
+      "多维数据模型（标签系统）",
+      "PromQL 强大的查询语言",
+      "内置告警管理器（Alertmanager）",
+      "服务发现（K8s、Consul、DNS 等）",
+      "与 Grafana 完美配合"
+    ],
+    "recommended_for": [
+      "Kubernetes 集群监控",
+      "微服务架构的指标采集",
+      "基础设施性能监控"
+    ],
+    "env_config": [
+      {
+        "key": "PROMETHEUS_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 9090,
+        "required": true
+      }
+    ]
+  },
+  {
     "id": "alist",
     "name": "AList",
     "category": "monitor",
     "description": "多网盘聚合挂载工具，支持阿里云盘、百度网盘等。",
     "require_memory": 256,
-    "icon": "https://cdn.jsdelivr.net/gh/AlistGo/alist@main/public/images/logo.svg",
-    "versions": ["latest", "3.36", "3.35"],
+    "icon": "/store-icons/alist.png",
+    "versions": [
+      "latest",
+      "3.36",
+      "3.35"
+    ],
     "features": [
       "支持 20+ 网盘和存储协议（阿里云盘、百度网盘、OneDrive、S3、FTP 等）",
       "统一的 WebDAV 访问接口",
@@ -480,6 +1222,3069 @@
         "label": "Web 服务端口",
         "type": "port",
         "default": 5244,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "nextcloud",
+    "name": "Nextcloud",
+    "category": "media",
+    "description": "开源私有云协作平台，文件同步、日历、联系人一站式。",
+    "require_memory": 1024,
+    "icon": "/store-icons/nextcloud.svg",
+    "versions": [
+      "latest",
+      "29.0",
+      "28.0"
+    ],
+    "features": [
+      "文件同步与共享（类似 Dropbox）",
+      "在线文档编辑（OnlyOffice/Collabora 集成）",
+      "日历、联系人、邮件管理",
+      "端到端加密与双因素认证",
+      "丰富的应用市场（500+ 应用）"
+    ],
+    "recommended_for": [
+      "替代公有云盘的企业私有云方案",
+      "团队协作与文件共享",
+      "需要数据完全自控的场景"
+    ],
+    "env_config": [
+      {
+        "key": "NEXTCLOUD_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "jellyfin",
+    "name": "Jellyfin",
+    "category": "media",
+    "description": "开源媒体服务器，自建流媒体中心（Netflix 替代方案）。",
+    "require_memory": 1024,
+    "icon": "/store-icons/jellyfin.svg",
+    "versions": [
+      "latest",
+      "10.9",
+      "10.8"
+    ],
+    "features": [
+      "自动媒体库扫描与元数据抓取",
+      "硬件加速转码（Intel QSV、NVIDIA NVENC）",
+      "多客户端支持（Web、Android、iOS、Roku）",
+      "直播电视与 DVR 录制",
+      "多用户管理与播放权限"
+    ],
+    "recommended_for": [
+      "家庭影音中心搭建",
+      "个人媒体库管理",
+      "替代商业流媒体平台的自建方案"
+    ],
+    "env_config": [
+      {
+        "key": "JELLYFIN_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8096,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "emby",
+    "name": "Emby",
+    "category": "media",
+    "description": "媒体服务器，自动整理影视库并支持多端播放。",
+    "require_memory": 1024,
+    "icon": "/store-icons/emby.svg",
+    "versions": [
+      "latest",
+      "4.8",
+      "4.7"
+    ],
+    "features": [
+      "自动媒体元数据与海报墙",
+      "实时转码与自适应码率",
+      "多客户端（Web、移动端、智能电视）",
+      "直播电视与录制",
+      "离线同步与远程访问"
+    ],
+    "recommended_for": [
+      "个人影视库管理",
+      "家庭多媒体中心",
+      "需要转码支持的媒体服务"
+    ],
+    "env_config": [
+      {
+        "key": "EMBY_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8096,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "plex",
+    "name": "Plex",
+    "category": "media",
+    "description": "流行的媒体服务器，精美界面与强大的转码能力。",
+    "require_memory": 1024,
+    "icon": "/store-icons/plex.svg",
+    "versions": [
+      "latest",
+      "1.40",
+      "1.39"
+    ],
+    "features": [
+      "精美的媒体库界面与海报墙",
+      "强大的实时转码引擎",
+      "自动元数据抓取与整理",
+      "Plex Pass 独家功能（硬件转码、移动同步）",
+      "跨平台客户端生态完善"
+    ],
+    "recommended_for": [
+      "家庭影音娱乐中心",
+      "需要精美 UI 的媒体管理",
+      "多设备媒体同步播放"
+    ],
+    "env_config": [
+      {
+        "key": "PLEX_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 32400,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "qbittorrent",
+    "name": "qBittorrent",
+    "category": "media",
+    "description": "轻量级 BitTorrent 客户端，Web UI 远程管理。",
+    "require_memory": 256,
+    "icon": "/store-icons/qbittorrent.svg",
+    "versions": [
+      "latest",
+      "4.6",
+      "4.5"
+    ],
+    "features": [
+      "完整的 BitTorrent 协议支持",
+      "Web UI 远程管理与监控",
+      "RSS 订阅与自动下载",
+      "IP 过滤与加密连接",
+      "搜索插件集成多站点"
+    ],
+    "recommended_for": [
+      "PT/BT 下载管理",
+      "种子文件远程管理与监控",
+      "自动化媒体资源获取"
+    ],
+    "env_config": [
+      {
+        "key": "QBIT_PORT",
+        "label": "Web UI 端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "transmission",
+    "name": "Transmission",
+    "category": "media",
+    "description": "极简高效的 BitTorrent 客户端，资源占用极低。",
+    "require_memory": 128,
+    "icon": "/store-icons/transmission.svg",
+    "versions": [
+      "latest",
+      "4.0",
+      "3.0"
+    ],
+    "features": [
+      "极简设计，资源占用极低",
+      "Web 界面与 RPC API",
+      "加密传输与 PEX/DHT/LPD 支持",
+      "队列管理与速度限制",
+      "块列表与 IP 过滤"
+    ],
+    "recommended_for": [
+      "低配设备的 BT 下载",
+      "NAS 设备集成下载",
+      "需要轻量级 BT 客户端的场景"
+    ],
+    "env_config": [
+      {
+        "key": "TRANSMISSION_PORT",
+        "label": "Web UI 端口",
+        "type": "port",
+        "default": 9091,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "n8n",
+    "name": "n8n",
+    "category": "automation",
+    "description": "可视化工作流自动化平台，500+ 集成节点。",
+    "require_memory": 1024,
+    "icon": "/store-icons/n8n.svg",
+    "versions": [
+      "latest",
+      "1.45",
+      "1.44"
+    ],
+    "features": [
+      "可视化拖拽构建工作流",
+      "500+ 集成节点（HTTP、数据库、API、SaaS）",
+      "自托管部署，数据完全可控",
+      "支持 JavaScript/Python 自定义代码节点",
+      "定时触发与 Webhook 触发"
+    ],
+    "recommended_for": [
+      "跨系统数据同步与自动化",
+      "替代 Zapier/IFTTT 的自建方案",
+      "IT 运维自动化流程"
+    ],
+    "env_config": [
+      {
+        "key": "N8N_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 5678,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "home-assistant",
+    "name": "Home Assistant",
+    "category": "automation",
+    "description": "开源智能家居平台，支持 2000+ 设备与集成。",
+    "require_memory": 1024,
+    "icon": "/store-icons/home-assistant.svg",
+    "versions": [
+      "latest",
+      "2024.6",
+      "2024.5"
+    ],
+    "features": [
+      "支持 2000+ 智能家居设备与平台",
+      "自动化规则引擎（IFTTT 风格）",
+      "可视化 Dashboard 与 Lovelace UI",
+      "本地优先架构，断网可用",
+      "Node-RED、AppDaemon 等高级自动化"
+    ],
+    "recommended_for": [
+      "全屋智能家居中枢",
+      "DIY 智能家居爱好者",
+      "需要本地控制的隐私敏感场景"
+    ],
+    "env_config": [
+      {
+        "key": "HA_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8123,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "node-red",
+    "name": "Node-RED",
+    "category": "automation",
+    "description": "IBM 开源的可视化编程工具，IoT 与自动化利器。",
+    "require_memory": 256,
+    "icon": "/store-icons/node-red.svg",
+    "versions": [
+      "latest",
+      "4.0",
+      "3.1"
+    ],
+    "features": [
+      "可视化拖拽构建数据流",
+      "3000+ 社区节点（HTTP、MQTT、数据库等）",
+      "JavaScript 函数自定义节点",
+      "Dashboard UI 快速构建",
+      "与 Home Assistant、IoT 设备深度集成"
+    ],
+    "recommended_for": [
+      "IoT 设备数据采集与处理",
+      "快速原型开发与自动化",
+      "智能家居逻辑编排"
+    ],
+    "env_config": [
+      {
+        "key": "NODERED_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 1880,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "syncthing",
+    "name": "Syncthing",
+    "category": "automation",
+    "description": "开源的文件同步工具，点对点加密传输。",
+    "require_memory": 256,
+    "icon": "/store-icons/syncthing.svg",
+    "versions": [
+      "latest",
+      "1.27",
+      "1.26"
+    ],
+    "features": [
+      "点对点（P2P）加密文件同步",
+      "无需中心服务器，去中心化架构",
+      "跨平台支持（Windows、macOS、Linux、Android）",
+      "文件版本历史与冲突解决",
+      "细粒度文件夹共享与权限控制"
+    ],
+    "recommended_for": [
+      "多设备文件实时同步",
+      "替代 Dropbox 的私有同步方案",
+      "团队文件协作与备份"
+    ],
+    "env_config": [
+      {
+        "key": "SYNCTHING_PORT",
+        "label": "Web UI 端口",
+        "type": "port",
+        "default": 8384,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "jupyter",
+    "name": "Jupyter Notebook",
+    "category": "dev_tools",
+    "description": "交互式编程环境，数据科学与 AI 开发利器。",
+    "require_memory": 1024,
+    "icon": "/store-icons/jupyter.svg",
+    "versions": [
+      "latest",
+      "scipy-notebook",
+      "tensorflow-notebook"
+    ],
+    "features": [
+      "交互式代码执行与可视化",
+      "支持 40+ 编程语言（Python、R、Julia 等）",
+      "Markdown 与 LaTeX 公式支持",
+      "丰富的数据可视化图表",
+      "JupyterHub 多用户管理"
+    ],
+    "recommended_for": [
+      "数据科学与机器学习开发",
+      "教学与在线编程实验",
+      "数据探索与原型验证"
+    ],
+    "env_config": [
+      {
+        "key": "JUPYTER_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8888,
+        "required": true
+      },
+      {
+        "key": "JUPYTER_TOKEN",
+        "label": "访问令牌",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "vscode-server",
+    "name": "VS Code Server",
+    "category": "dev_tools",
+    "description": "基于浏览器的 VS Code 开发环境，远程编码。",
+    "require_memory": 1024,
+    "icon": "/store-icons/vscode-server.svg",
+    "versions": [
+      "latest",
+      "1.90",
+      "1.89"
+    ],
+    "features": [
+      "完整 VS Code 体验（浏览器访问）",
+      "丰富的扩展市场支持",
+      "终端集成与 Git 操作",
+      "远程开发能力（SSH、Container、WSL）",
+      "多语言智能代码补全"
+    ],
+    "recommended_for": [
+      "远程服务器上的编码环境",
+      "随时随地编程（平板/手机浏览器）",
+      "统一的开发环境托管"
+    ],
+    "env_config": [
+      {
+        "key": "VSCODE_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      },
+      {
+        "key": "VSCODE_PASSWORD",
+        "label": "访问密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "golang",
+    "name": "Go 开发环境",
+    "category": "dev_tools",
+    "description": "Golang 编译与运行环境，内置基础工具链。",
+    "require_memory": 256,
+    "icon": "/store-icons/golang.svg",
+    "versions": [
+      "latest",
+      "1.22",
+      "1.21"
+    ],
+    "features": [
+      "Go 编译器与标准库",
+      "Go Modules 依赖管理",
+      "内置性能分析工具（pprof）",
+      "交叉编译支持多平台",
+      "Race Detector 数据竞争检测"
+    ],
+    "recommended_for": [
+      "Go 语言开发与编译",
+      "微服务与云原生应用开发",
+      "高性能网络服务构建"
+    ],
+    "env_config": [
+      {
+        "key": "GO_WORK_DIR",
+        "label": "工作目录路径",
+        "type": "text",
+        "default": "/workspace",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "python-dev",
+    "name": "Python 开发环境",
+    "category": "dev_tools",
+    "description": "Python 开发环境，内置 pip、venv 与常用科学计算库。",
+    "require_memory": 512,
+    "icon": "/store-icons/python-dev.svg",
+    "versions": [
+      "3.12",
+      "3.11",
+      "3.10"
+    ],
+    "features": [
+      "Python 3 解释器与 pip 包管理",
+      "venv 虚拟环境隔离",
+      "预装 NumPy、Pandas、Matplotlib",
+      "Jupyter 兼容环境",
+      "多版本 Python 共存支持"
+    ],
+    "recommended_for": [
+      "数据科学与机器学习项目",
+      "Web 后端开发（Django/Flask/FastAPI）",
+      "自动化脚本与运维工具开发"
+    ],
+    "env_config": [
+      {
+        "key": "PYTHON_VERSION",
+        "label": "Python 版本",
+        "type": "text",
+        "default": "3.12",
+        "required": false
+      },
+      {
+        "key": "PYTHON_WORK_DIR",
+        "label": "工作目录路径",
+        "type": "text",
+        "default": "/workspace",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "filebrowser",
+    "name": "File Browser",
+    "category": "tools",
+    "description": "简洁的文件管理器，Web 界面浏览与编辑服务器文件。",
+    "require_memory": 128,
+    "icon": "/store-icons/filebrowser.png",
+    "versions": [
+      "latest",
+      "2.31",
+      "2.30"
+    ],
+    "features": [
+      "Web 界面文件浏览、上传、下载",
+      "在线代码编辑（语法高亮）",
+      "多用户管理与权限控制",
+      "分享链接生成与过期时间",
+      "视频/图片/文档在线预览"
+    ],
+    "recommended_for": [
+      "服务器文件远程管理",
+      "轻量级 Web 文件管理器",
+      "团队文件共享与协作"
+    ],
+    "env_config": [
+      {
+        "key": "FILEBROWSER_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "calibre-web",
+    "name": "Calibre Web",
+    "category": "tools",
+    "description": "电子书管理与阅读平台，支持 EPUB、PDF、MOBI 等格式。",
+    "require_memory": 512,
+    "icon": "/store-icons/calibre-web.png",
+    "versions": [
+      "latest",
+      "0.6.21",
+      "0.6.20"
+    ],
+    "features": [
+      "电子书库管理与分类",
+      "在线阅读器（EPUB、PDF、MOBI、CBZ）",
+      "元数据编辑与封面管理",
+      "OPDS 目录服务（配合阅读器 APP）",
+      "多用户与阅读进度同步"
+    ],
+    "recommended_for": [
+      "个人电子书库管理",
+      "家庭数字图书馆",
+      "电子书资源分享平台"
+    ],
+    "env_config": [
+      {
+        "key": "CALIBRE_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8083,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "whoami",
+    "name": "Whoami",
+    "category": "tools",
+    "description": "极简 HTTP 服务，返回请求信息，用于调试与测试。",
+    "require_memory": 16,
+    "icon": "/store-icons/whoami.svg",
+    "versions": [
+      "latest"
+    ],
+    "features": [
+      "返回 HTTP 请求的完整信息",
+      "显示客户端 IP、Host、Headers",
+      "支持 HTTPS/TLS 配置",
+      "极简资源占用（<16MB 内存）",
+      "适合反向代理健康检查"
+    ],
+    "recommended_for": [
+      "反向代理配置调试",
+      "负载均衡器后端测试",
+      "网络请求信息查看"
+    ],
+    "env_config": [
+      {
+        "key": "WHOAMI_PORT",
+        "label": "HTTP 服务端口",
+        "type": "port",
+        "default": 80,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "duckdns",
+    "name": "DuckDNS",
+    "category": "tools",
+    "description": "免费动态 DNS 服务，让家庭网络拥有固定域名。",
+    "require_memory": 16,
+    "icon": "/store-icons/duckdns.svg",
+    "versions": [
+      "latest"
+    ],
+    "features": [
+      "免费动态 DNS 解析",
+      "自动更新 IP 地址",
+      "支持多个子域名",
+      "轻量级 Docker 镜像",
+      "配合 Let's Encrypt 实现 HTTPS"
+    ],
+    "recommended_for": [
+      "家庭服务器外网访问",
+      "NAS 远程管理域名绑定",
+      "免费 DDNS 替代方案"
+    ],
+    "env_config": [
+      {
+        "key": "DUCKDNS_TOKEN",
+        "label": "DuckDNS Token",
+        "type": "password",
+        "default": "",
+        "required": true
+      },
+      {
+        "key": "DUCKDNS_DOMAIN",
+        "label": "域名（不含 .duckdns.org）",
+        "type": "text",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "ollama",
+    "name": "Ollama",
+    "category": "ai_ml",
+    "description": "本地大模型运行与推理平台，支持 Llama、Mistral 等模型。",
+    "require_memory": 4096,
+    "icon": "/store-icons/ollama.svg",
+    "versions": [
+      "latest",
+      "0.3",
+      "0.2"
+    ],
+    "features": [
+      "一键下载并运行开源大模型",
+      "支持 Llama 3、Mistral、Gemma、Qwen 等主流模型",
+      "本地 CPU/GPU 推理加速",
+      "OpenAI 兼容的 REST API 接口",
+      "模型量化与内存优化"
+    ],
+    "recommended_for": [
+      "本地私有 AI 助手部署",
+      "大模型开发与 API 测试",
+      "离线 AI 推理场景"
+    ],
+    "env_config": [
+      {
+        "key": "OLLAMA_PORT",
+        "label": "API 服务端口",
+        "type": "port",
+        "default": 11434,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "open-webui",
+    "name": "Open WebUI",
+    "category": "ai_ml",
+    "description": "现代化的本地大模型 Web 聊天界面，Ollama 的最佳搭档。",
+    "require_memory": 1024,
+    "icon": "/store-icons/open-webui.png",
+    "versions": [
+      "latest",
+      "0.3",
+      "0.2"
+    ],
+    "features": [
+      "类 ChatGPT 的 Web 聊天界面",
+      "支持 Ollama、OpenAI、Anthropic 等多模型后端",
+      "RAG 知识库与文档上传",
+      "多轮对话与上下文记忆",
+      "插件系统与自定义提示词模板"
+    ],
+    "recommended_for": [
+      "本地私有 AI 聊天助手",
+      "基于自有文档的问答系统",
+      "多模型对比与测试平台"
+    ],
+    "env_config": [
+      {
+        "key": "WEBUI_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      },
+      {
+        "key": "OLLAMA_BASE_URL",
+        "label": "Ollama 服务器地址",
+        "type": "text",
+        "default": "http://host.docker.internal:11434",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "stable-diffusion",
+    "name": "Stable Diffusion WebUI",
+    "category": "ai_ml",
+    "description": "AI 图像生成与编辑平台，文生图、图生图一站式。",
+    "require_memory": 8192,
+    "icon": "/store-icons/stable-diffusion.png",
+    "versions": [
+      "latest",
+      "v1.8",
+      "v1.7"
+    ],
+    "features": [
+      "文生图（txt2img）与图生图（img2img）",
+      "ControlNet 精确姿态控制",
+      "LoRA 微调模型支持",
+      "高清修复与放大算法",
+      "丰富的插件生态（Regional Prompter 等）"
+    ],
+    "recommended_for": [
+      "AI 艺术创作与插画设计",
+      "产品概念图快速生成",
+      "图像风格迁移与编辑"
+    ],
+    "env_config": [
+      {
+        "key": "SD_WEBUI_PORT",
+        "label": "WebUI 服务端口",
+        "type": "port",
+        "default": 7860,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "langflow",
+    "name": "Langflow",
+    "category": "ai_ml",
+    "description": "可视化 LangChain 流程编排工具，零代码构建 AI 应用。",
+    "require_memory": 1024,
+    "icon": "/store-icons/langflow.ico",
+    "versions": [
+      "latest",
+      "1.0",
+      "0.7"
+    ],
+    "features": [
+      "拖拽式构建 LLM 应用流程",
+      "内置 100+ 组件（Prompt、Chain、Memory 等）",
+      "支持 OpenAI、HuggingFace、本地模型",
+      "实时调试与流程可视化",
+      "一键导出为 Python 代码"
+    ],
+    "recommended_for": [
+      "快速原型验证 AI 应用",
+      "非开发者构建 AI 工作流",
+      "LangChain 流程调试与优化"
+    ],
+    "env_config": [
+      {
+        "key": "LANGFLOW_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 7860,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "dify",
+    "name": "Dify",
+    "category": "ai_ml",
+    "description": "开源 LLM 应用开发平台，RAG、Agent、Workflow 全覆盖。",
+    "require_memory": 2048,
+    "icon": "/store-icons/dify.svg",
+    "versions": [
+      "latest",
+      "0.8",
+      "0.7"
+    ],
+    "features": [
+      "可视化 AI 应用编排（Workflow）",
+      "RAG 知识库管理（文档解析、分段、检索）",
+      "Agent 智能体与工具调用",
+      "多模型支持（OpenAI、Anthropic、本地模型）",
+      "应用发布与 API 托管"
+    ],
+    "recommended_for": [
+      "企业级 AI 应用开发平台",
+      "基于自有数据的智能问答系统",
+      "AI Agent 开发与部署"
+    ],
+    "env_config": [
+      {
+        "key": "DIFY_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      },
+      {
+        "key": "DIFY_DB_PASSWORD",
+        "label": "数据库密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "chatwoot",
+    "name": "Chatwoot",
+    "category": "collaboration",
+    "description": "开源客户互动平台，全渠道客服系统替代 Zendesk。",
+    "require_memory": 1024,
+    "icon": "/store-icons/chatwoot.svg",
+    "versions": [
+      "latest",
+      "3.10",
+      "3.9"
+    ],
+    "features": [
+      "全渠道接入（网站、WhatsApp、邮件、Telegram 等）",
+      "团队协作与客户分配",
+      "CRM 客户资料管理",
+      "自动化路由与 Canned Response",
+      "多语言支持与分析报表"
+    ],
+    "recommended_for": [
+      "中小企业客户支持系统",
+      "全渠道客服平台",
+      "替代 Zendesk/Intercom 的自建方案"
+    ],
+    "env_config": [
+      {
+        "key": "CHATWOOT_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "mattermost",
+    "name": "Mattermost",
+    "category": "collaboration",
+    "description": "开源团队聊天工具，Slack 的安全替代方案。",
+    "require_memory": 1024,
+    "icon": "/store-icons/mattermost.svg",
+    "versions": [
+      "latest",
+      "9.5",
+      "9.4"
+    ],
+    "features": [
+      "频道与私聊消息系统",
+      "文件共享与代码片段",
+      "音视频通话集成",
+      "Bot 与 Webhook 自动化",
+      "企业级安全合规（SSO、MFA、审计）"
+    ],
+    "recommended_for": [
+      "技术团队日常沟通协作",
+      "数据敏感型企业的内部通讯",
+      "替代 Slack 的自托管方案"
+    ],
+    "env_config": [
+      {
+        "key": "MATTERMOST_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8065,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "discourse",
+    "name": "Discourse",
+    "category": "collaboration",
+    "description": "现代化的论坛与社区平台，替代传统 BBS。",
+    "require_memory": 2048,
+    "icon": "/store-icons/discourse.svg",
+    "versions": [
+      "latest",
+      "3.2",
+      "3.1"
+    ],
+    "features": [
+      "现代化的论坛 UI 与移动端适配",
+      "信任等级与用户徽章系统",
+      "实时通知与草稿自动保存",
+      "完善的权限与版主管理",
+      "SSO 单点登录与社交账号登录"
+    ],
+    "recommended_for": [
+      "产品用户社区与技术支持论坛",
+      "企业内部知识讨论区",
+      "兴趣社群与粉丝社区"
+    ],
+    "env_config": [
+      {
+        "key": "DISCOURSE_PORT",
+        "label": "HTTP 服务端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      },
+      {
+        "key": "DISCOURSE_HOSTNAME",
+        "label": "论坛域名",
+        "type": "text",
+        "default": "forum.example.com",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "outline",
+    "name": "Outline",
+    "category": "collaboration",
+    "description": "快速优雅的团队知识库，替代 Notion 的开源方案。",
+    "require_memory": 1024,
+    "icon": "/store-icons/outline.svg",
+    "versions": [
+      "latest",
+      "0.76",
+      "0.75"
+    ],
+    "features": [
+      "实时协作编辑（类 Notion 体验）",
+      "Markdown 与富文本双模式",
+      "文档层级结构与标签管理",
+      "Slack/Discord 集成通知",
+      "细粒度权限控制（公开/私有/团队）"
+    ],
+    "recommended_for": [
+      "团队 Wiki 与操作手册",
+      "产品需求文档（PRD）管理",
+      "替代 Notion/Confluence 的私有知识库"
+    ],
+    "env_config": [
+      {
+        "key": "OUTLINE_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      },
+      {
+        "key": "OUTLINE_SECRET_KEY",
+        "label": "加密密钥（至少 32 位）",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "penpot",
+    "name": "Penpot",
+    "category": "collaboration",
+    "description": "开源设计与原型平台，Figma 的开源替代。",
+    "require_memory": 1024,
+    "icon": "/store-icons/penpot.svg",
+    "versions": [
+      "latest",
+      "2.1",
+      "2.0"
+    ],
+    "features": [
+      "矢量设计与 UI/UX 原型构建",
+      "实时多人协作编辑",
+      "组件系统与样式变量",
+      "原型交互与动效预览",
+      "SVG 导出与开发者检查模式"
+    ],
+    "recommended_for": [
+      "UI/UX 设计师协作平台",
+      "产品设计团队原型管理",
+      "替代 Figma 的自托管方案"
+    ],
+    "env_config": [
+      {
+        "key": "PENPOT_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 9001,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "excalidraw",
+    "name": "Excalidraw",
+    "category": "collaboration",
+    "description": "手绘风格的虚拟白板工具，支持实时协作。",
+    "require_memory": 128,
+    "icon": "/store-icons/excalidraw.svg",
+    "versions": [
+      "latest"
+    ],
+    "features": [
+      "手绘风格图形与自由绘制",
+      "实时多人协作白板",
+      "丰富的图形库（UML、架构图、流程图）",
+      "端到端加密共享",
+      "导出 PNG、SVG、Clipboard"
+    ],
+    "recommended_for": [
+      "远程团队头脑风暴与会议白板",
+      "系统架构草图绘制",
+      "教学演示与笔记"
+    ],
+    "env_config": [
+      {
+        "key": "EXCALIDRAW_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "supabase",
+    "name": "Supabase",
+    "category": "database",
+    "description": "开源 Firebase 替代方案，一体化后端平台。",
+    "require_memory": 2048,
+    "icon": "/store-icons/supabase.svg",
+    "versions": [
+      "latest",
+      "1.20",
+      "1.19"
+    ],
+    "features": [
+      "PostgreSQL 数据库 + 自动 REST API",
+      "实时订阅与 WebSocket 推送",
+      "身份认证与行级安全策略",
+      "边缘函数（Serverless 计算）",
+      "对象存储与文件管理"
+    ],
+    "recommended_for": [
+      "快速全栈应用后端搭建",
+      "实时应用（聊天、协作、游戏）",
+      "替代 Firebase 的开源方案"
+    ],
+    "env_config": [
+      {
+        "key": "SUPABASE_PORT",
+        "label": "API Gateway 端口",
+        "type": "port",
+        "default": 8000,
+        "required": true
+      },
+      {
+        "key": "SUPABASE_JWT_SECRET",
+        "label": "JWT 密钥（至少 32 位）",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "hasura",
+    "name": "Hasura",
+    "category": "database",
+    "description": "即时生成 GraphQL API，连接现有数据库。",
+    "require_memory": 512,
+    "icon": "/store-icons/hasura.svg",
+    "versions": [
+      "latest",
+      "2.41",
+      "2.40"
+    ],
+    "features": [
+      "自动从数据库生成 GraphQL API",
+      "实时订阅与数据变更推送",
+      "细粒度行/列级权限控制",
+      "远程 Schema 与 REST API 合并",
+      "事件触发器与 Webhook 集成"
+    ],
+    "recommended_for": [
+      "现有数据库快速 GraphQL 化",
+      "多数据源统一 GraphQL 网关",
+      "前后端分离架构的 API 层"
+    ],
+    "env_config": [
+      {
+        "key": "HASURA_PORT",
+        "label": "GraphQL 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      },
+      {
+        "key": "HASURA_GRAPHQL_ADMIN_SECRET",
+        "label": "Admin 密钥",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "kafka",
+    "name": "Apache Kafka",
+    "category": "database",
+    "description": "分布式事件流平台，高吞吐消息队列与实时数据管道。",
+    "require_memory": 2048,
+    "icon": "/store-icons/kafka.svg",
+    "versions": [
+      "latest",
+      "3.7",
+      "3.6"
+    ],
+    "features": [
+      "高吞吐、低延迟的消息发布订阅",
+      "分布式分区与副本机制",
+      "消息持久化与回溯消费",
+      "Kafka Connect 数据集成管道",
+      "Kafka Streams 实时流处理"
+    ],
+    "recommended_for": [
+      "微服务间异步事件驱动架构",
+      "日志聚合与实时数据分析",
+      "用户行为追踪与数据管道"
+    ],
+    "env_config": [
+      {
+        "key": "KAFKA_PORT",
+        "label": "Broker 服务端口",
+        "type": "port",
+        "default": 9092,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "rabbitmq",
+    "name": "RabbitMQ",
+    "category": "database",
+    "description": "成熟稳定的消息代理，支持 AMQP、MQTT 等多协议。",
+    "require_memory": 512,
+    "icon": "/store-icons/rabbitmq.svg",
+    "versions": [
+      "management",
+      "latest",
+      "3.13"
+    ],
+    "features": [
+      "AMQP 0-9-1 标准协议支持",
+      "多种消息模式（路由、主题、RPC）",
+      "管理插件 Web UI 监控",
+      "集群与高可用队列镜像",
+      "死信队列与消息延迟"
+    ],
+    "recommended_for": [
+      "任务队列与异步任务处理",
+      "微服务间解耦通信",
+      "需要复杂消息路由的场景"
+    ],
+    "env_config": [
+      {
+        "key": "RABBITMQ_PORT",
+        "label": "AMQP 端口",
+        "type": "port",
+        "default": 5672,
+        "required": true
+      },
+      {
+        "key": "RABBITMQ_MGMT_PORT",
+        "label": "管理界面端口",
+        "type": "port",
+        "default": 15672,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "memcached",
+    "name": "Memcached",
+    "category": "database",
+    "description": "高性能分布式内存缓存系统，极致简单与快速。",
+    "require_memory": 256,
+    "icon": "/store-icons/memcached.svg",
+    "versions": [
+      "latest",
+      "1.6",
+      "1.5"
+    ],
+    "features": [
+      "简单键值缓存，极低延迟读写",
+      "LRU 淘汰与过期时间管理",
+      "分布式一致性哈希",
+      "SASL 认证支持",
+      "多线程高性能架构"
+    ],
+    "recommended_for": [
+      "数据库查询结果缓存",
+      "会话存储与会话共享",
+      "高频读数据的内存加速"
+    ],
+    "env_config": [
+      {
+        "key": "MEMCACHED_PORT",
+        "label": "服务端口",
+        "type": "port",
+        "default": 11211,
+        "required": true
+      },
+      {
+        "key": "MEMCACHED_MAX_MEMORY",
+        "label": "最大内存 (MB)",
+        "type": "number",
+        "default": 256,
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "mailcow",
+    "name": "Mailcow",
+    "category": "email",
+    "description": "完整的自托管邮件服务器套件，含 Webmail 与管理面板。",
+    "require_memory": 2048,
+    "icon": "/store-icons/mailcow.svg",
+    "versions": [
+      "latest",
+      "2024-05",
+      "2024-04"
+    ],
+    "features": [
+      "完整的邮件服务器（SMTP/IMAP/POP3）",
+      "内置 SOGo Webmail 客户端",
+      "多域名与多邮箱管理",
+      "反垃圾邮件与反病毒（Rspamd、ClamAV）",
+      "ActiveSync 支持（移动端推送）"
+    ],
+    "recommended_for": [
+      "企业私有邮件服务器",
+      "自有域名邮箱管理",
+      "数据隐私敏感的邮件系统"
+    ],
+    "env_config": [
+      {
+        "key": "MAILCOW_HTTP_PORT",
+        "label": "HTTP 端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      },
+      {
+        "key": "MAILCOW_HTTPS_PORT",
+        "label": "HTTPS 端口",
+        "type": "port",
+        "default": 8443,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "roundcube",
+    "name": "Roundcube",
+    "category": "email",
+    "description": "流行的 Webmail 客户端，轻量级且易于部署。",
+    "require_memory": 256,
+    "icon": "/store-icons/roundcube.svg",
+    "versions": [
+      "latest",
+      "1.6",
+      "1.5"
+    ],
+    "features": [
+      "MIME 邮件支持与富文本编辑",
+      "多语言与主题切换",
+      "联系人管理与地址簿",
+      "日历与任务插件",
+      "Sieve 过滤规则管理"
+    ],
+    "recommended_for": [
+      "自托管邮件的 Webmail 前端",
+      "企业内网邮件客户端",
+      "轻量级 Web 邮件访问"
+    ],
+    "env_config": [
+      {
+        "key": "ROUNDCUBE_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 80,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "erpnext",
+    "name": "ERPNext",
+    "category": "business",
+    "description": "开源 ERP 系统，覆盖财务、CRM、库存、HR 全业务。",
+    "require_memory": 2048,
+    "icon": "/store-icons/erpnext.svg",
+    "versions": [
+      "latest",
+      "15",
+      "14"
+    ],
+    "features": [
+      "会计与财务管理（总账、发票、报表）",
+      "CRM 与销售管理",
+      "库存与采购管理",
+      "HR 与工资管理",
+      "项目管理与制造模块"
+    ],
+    "recommended_for": [
+      "中小企业一站式 ERP 系统",
+      "替代 SAP/Oracle 的开源方案",
+      "多模块一体化业务管理"
+    ],
+    "env_config": [
+      {
+        "key": "ERPNEXT_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "odoo",
+    "name": "Odoo",
+    "category": "business",
+    "description": "模块化企业资源规划（ERP）与业务管理平台。",
+    "require_memory": 2048,
+    "icon": "/store-icons/odoo.svg",
+    "versions": [
+      "latest",
+      "17",
+      "16"
+    ],
+    "features": [
+      "模块化架构（40+ 官方应用）",
+      "CRM、销售、采购、库存一体化",
+      "会计与发票管理",
+      "网站构建与电子商务",
+      "制造与项目管理"
+    ],
+    "recommended_for": [
+      "快速部署一体化企业管理系统",
+      "按需选择模块的灵活 ERP",
+      "替代商业 ERP 的开源方案"
+    ],
+    "env_config": [
+      {
+        "key": "ODOO_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8069,
+        "required": true
+      },
+      {
+        "key": "ODOO_DB_PASSWORD",
+        "label": "数据库管理员密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "metabase",
+    "name": "Metabase",
+    "category": "business",
+    "description": "商业智能（BI）工具，人人可用的数据分析平台。",
+    "require_memory": 1024,
+    "icon": "/store-icons/metabase.svg",
+    "versions": [
+      "latest",
+      "0.50",
+      "0.49"
+    ],
+    "features": [
+      "可视化查询构建器（无 SQL 经验）",
+      "丰富的图表类型（柱状图、饼图、地图等）",
+      "Dashboard 仪表板与定时推送",
+      "嵌入分析到其他应用（Embedded Analytics）",
+      "支持多种数据库数据源"
+    ],
+    "recommended_for": [
+      "业务数据分析与可视化",
+      "非技术人员自助数据查询",
+      "替代 Tableau/Looker 的轻量 BI"
+    ],
+    "env_config": [
+      {
+        "key": "METABASE_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "nocodb",
+    "name": "NocoDB",
+    "category": "business",
+    "description": "开源 Airtable 替代方案，将数据库变为智能电子表格。",
+    "require_memory": 512,
+    "icon": "/store-icons/nocodb.png",
+    "versions": [
+      "latest",
+      "0.205",
+      "0.204"
+    ],
+    "features": [
+      "电子表格视图管理数据库",
+      "多视图（表格、看板、画廊、甘特图）",
+      "API 自动生成（REST + GraphQL）",
+      "协作与权限管理",
+      "支持 MySQL、PostgreSQL、SQLite 等"
+    ],
+    "recommended_for": [
+      "非技术人员数据库管理",
+      "轻量级 CRM 与项目管理",
+      "替代 Airtable 的自托管方案"
+    ],
+    "env_config": [
+      {
+        "key": "NOCODB_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "directus",
+    "name": "Directus",
+    "category": "business",
+    "description": "即时 Headless CMS 与数据管理平台，API 优先。",
+    "require_memory": 1024,
+    "icon": "/store-icons/directus.svg",
+    "versions": [
+      "latest",
+      "11",
+      "10"
+    ],
+    "features": [
+      "自动将 SQL 数据库转为 REST/GraphQL API",
+      "可视化数据模型管理",
+      "内容管理与发布工作流",
+      "文件管理与媒体库",
+      "细粒度权限与角色系统"
+    ],
+    "recommended_for": [
+      "Headless CMS 内容管理",
+      "内部数据管理平台搭建",
+      "快速 API 生成与数据建模"
+    ],
+    "env_config": [
+      {
+        "key": "DIRECTUS_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8055,
+        "required": true
+      },
+      {
+        "key": "DIRECTUS_SECRET",
+        "label": "加密密钥",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "strapi",
+    "name": "Strapi",
+    "category": "business",
+    "description": "流行的 Headless CMS，Node.js 构建，高度可扩展。",
+    "require_memory": 1024,
+    "icon": "/store-icons/strapi.svg",
+    "versions": [
+      "latest",
+      "4.24",
+      "4.23"
+    ],
+    "features": [
+      "内容类型构建器（可视化定义模型）",
+      "自动 REST API 与 GraphQL",
+      "媒体库与资产管道",
+      "RBAC 角色权限管理",
+      "丰富的插件市场（SEO、i18n、S3 等）"
+    ],
+    "recommended_for": [
+      "网站或应用内容管理",
+      "多端内容分发（Web、移动、IoT）",
+      "开发者友好的 Headless CMS"
+    ],
+    "env_config": [
+      {
+        "key": "STRAPI_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 1337,
+        "required": true
+      },
+      {
+        "key": "STRAPI_ADMIN_JWT_SECRET",
+        "label": "Admin JWT 密钥",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "joplin",
+    "name": "Joplin Server",
+    "category": "collaboration",
+    "description": "开源笔记与待办应用，支持端到端加密同步。",
+    "require_memory": 256,
+    "icon": "/store-icons/joplin.png",
+    "versions": [
+      "latest",
+      "3.0",
+      "2.14"
+    ],
+    "features": [
+      "Markdown 笔记与待办事项",
+      "端到端加密同步",
+      "Web 剪藏插件（Chrome、Firefox）",
+      "笔记版本历史",
+      "支持附件、图片、PDF 嵌入"
+    ],
+    "recommended_for": [
+      "个人笔记管理与同步",
+      "替代 Evernote 的开源方案",
+      "知识管理与研究笔记"
+    ],
+    "env_config": [
+      {
+        "key": "JOPLIN_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 22300,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "vikunja",
+    "name": "Vikunja",
+    "category": "collaboration",
+    "description": "开源任务管理与项目规划工具，替代 Trello。",
+    "require_memory": 256,
+    "icon": "/store-icons/vikunja.svg",
+    "versions": [
+      "latest",
+      "0.23",
+      "0.22"
+    ],
+    "features": [
+      "列表、看板、甘特图、表格多视图",
+      "任务分配与截止日期",
+      "标签与过滤器",
+      "项目共享与协作",
+      "REST API 与第三方集成"
+    ],
+    "recommended_for": [
+      "团队项目与任务管理",
+      "个人待办与目标跟踪",
+      "替代 Trello/Asana 的轻量方案"
+    ],
+    "env_config": [
+      {
+        "key": "VIKUNJA_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3456,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "planka",
+    "name": "Planka",
+    "category": "collaboration",
+    "description": "极简看板工具，实时协作，替代 Trello 的优雅方案。",
+    "require_memory": 256,
+    "icon": "/store-icons/planka.svg",
+    "versions": [
+      "latest",
+      "1.20",
+      "1.19"
+    ],
+    "features": [
+      "实时协作看板（WebSocket）",
+      "任务卡片与清单",
+      "项目、看板、列表、卡片层级",
+      "任务分配与标签",
+      "附件与评论"
+    ],
+    "recommended_for": [
+      "敏捷开发看板管理",
+      "轻量级项目任务跟踪",
+      "团队每日站会看板"
+    ],
+    "env_config": [
+      {
+        "key": "PLANKA_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "changedetection",
+    "name": "Change Detection",
+    "category": "tools",
+    "description": "网站变更监控与通知工具，秒级发现页面变化。",
+    "require_memory": 256,
+    "icon": "/store-icons/changedetection.png",
+    "versions": [
+      "latest",
+      "0.45",
+      "0.44"
+    ],
+    "features": [
+      "网页内容变化检测",
+      "支持 CSS 选择器与 XPath 过滤",
+      "多渠道通知（邮件、Slack、Webhook）",
+      "截图对比与历史版本",
+      "定时检测与自定义间隔"
+    ],
+    "recommended_for": [
+      "竞品价格监控",
+      "新闻/公告变更提醒",
+      "网站可用性监测"
+    ],
+    "env_config": [
+      {
+        "key": "CHANGEDETECTION_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 5000,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "speedtest",
+    "name": "Speedtest Tracker",
+    "category": "tools",
+    "description": "自动网络速度测试与历史记录图表。",
+    "require_memory": 256,
+    "icon": "/store-icons/speedtest.png",
+    "versions": [
+      "latest",
+      "0.20",
+      "0.19"
+    ],
+    "features": [
+      "定时自动测速（Ookla Speedtest）",
+      "历史速度趋势图表",
+      "网络质量统计与报告",
+      "支持多个测速服务器",
+      "API 与 Webhook 通知"
+    ],
+    "recommended_for": [
+      "家庭/办公室网络质量监控",
+      "ISP 网络稳定性追踪",
+      "VPN/代理速度测试"
+    ],
+    "env_config": [
+      {
+        "key": "SPEEDTEST_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 80,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "it-tools",
+    "name": "IT Tools",
+    "category": "tools",
+    "description": "开发者实用工具集，包含数十种常用在线工具。",
+    "require_memory": 128,
+    "icon": "/store-icons/it-tools.ico",
+    "versions": [
+      "latest"
+    ],
+    "features": [
+      "JSON 格式化与验证",
+      "JWT 编解码与验签",
+      "UUID 生成与 Base64 编解码",
+      "哈希计算（MD5、SHA1、SHA256）",
+      "颜色转换、时间戳转换等 50+ 工具"
+    ],
+    "recommended_for": [
+      "开发者日常辅助工具",
+      "快速数据格式转换",
+      "调试与问题排查辅助"
+    ],
+    "env_config": [
+      {
+        "key": "ITTOOLS_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 80,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "stirling-pdf",
+    "name": "Stirling PDF",
+    "category": "tools",
+    "description": "功能强大的自托管 PDF 操作工具，30+ 种 PDF 处理能力。",
+    "require_memory": 512,
+    "icon": "/store-icons/stirling-pdf.png",
+    "versions": [
+      "latest",
+      "0.27",
+      "0.26"
+    ],
+    "features": [
+      "PDF 合并、拆分、旋转、压缩",
+      "OCR 文字识别与转换",
+      "PDF 转 Word/图片/HTML",
+      "添加水印与数字签名",
+      "网页表单填写与导出"
+    ],
+    "recommended_for": [
+      "日常 PDF 文件处理",
+      "办公自动化 PDF 转换",
+      "替代 Smallpdf/iLovePDF 的私有方案"
+    ],
+    "env_config": [
+      {
+        "key": "STIRLING_PDF_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "linkding",
+    "name": "Linkding",
+    "category": "tools",
+    "description": "简洁的自托管书签管理器，支持标签与搜索。",
+    "require_memory": 128,
+    "icon": "/store-icons/linkding.png",
+    "versions": [
+      "latest",
+      "1.30",
+      "1.29"
+    ],
+    "features": [
+      "快速添加与管理书签",
+      "标签分类与全文搜索",
+      "浏览器插件（Chrome、Firefox）",
+      "导入/导出（HTML、Netscape）",
+      "Markdown 笔记附加"
+    ],
+    "recommended_for": [
+      "个人书签收藏管理",
+      "团队共享链接库",
+      "替代 Pocket/Instapaper 的私有方案"
+    ],
+    "env_config": [
+      {
+        "key": "LINKDING_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 9090,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "heimdall",
+    "name": "Heimdall",
+    "category": "tools",
+    "description": "优雅的应用仪表板，集中管理所有 Web 应用入口。",
+    "require_memory": 128,
+    "icon": "/store-icons/heimdall.ico",
+    "versions": [
+      "latest"
+    ],
+    "features": [
+      "美观的应用启动页",
+      "自定义应用图标与链接",
+      "支持 API 状态显示",
+      "主题与背景自定义",
+      "多用户与权限管理"
+    ],
+    "recommended_for": [
+      "个人 NAS/服务器应用入口管理",
+      "团队内部服务导航页",
+      "Docker 环境的统一访问入口"
+    ],
+    "env_config": [
+      {
+        "key": "HEIMDALL_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 80,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "dashy",
+    "name": "Dashy",
+    "category": "tools",
+    "description": "高度可配置的仪表板，支持状态监控与应用展示。",
+    "require_memory": 128,
+    "icon": "/store-icons/dashy.png",
+    "versions": [
+      "latest",
+      "3.1",
+      "3.0"
+    ],
+    "features": [
+      "高度可配置的 YAML 主题与布局",
+      "实时服务状态监控",
+      "多种 Widget（天气、时钟、资源使用）",
+      "认证与多用户支持",
+      "搜索与快捷键"
+    ],
+    "recommended_for": [
+      "个人服务器仪表板",
+      "家庭实验室（Homelab）主页",
+      "团队内部服务导航"
+    ],
+    "env_config": [
+      {
+        "key": "DASHY_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "paperless-ngx",
+    "name": "Paperless-ngx",
+    "category": "business",
+    "description": "文档管理系统，OCR 扫描与数字化归档。",
+    "require_memory": 1024,
+    "icon": "/store-icons/paperless-ngx.png",
+    "versions": [
+      "latest",
+      "2.10",
+      "2.9"
+    ],
+    "features": [
+      "OCR 文字识别（多语言）",
+      "自动标签与分类",
+      "全文搜索与过滤",
+      "支持 PDF、图片、Office 文档",
+      "邮件自动抓取文档"
+    ],
+    "recommended_for": [
+      "企业文档数字化与归档",
+      "个人票据与合同管理",
+      "无纸化办公方案"
+    ],
+    "env_config": [
+      {
+        "key": "PAPERLESS_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8000,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "budget-zen",
+    "name": "Budget Zen",
+    "category": "business",
+    "description": "极简个人财务管理工具，快速记录与分析支出。",
+    "require_memory": 128,
+    "icon": "/store-icons/budget-zen.svg",
+    "versions": [
+      "latest"
+    ],
+    "features": [
+      "快速记录收支",
+      "分类统计与预算设置",
+      "图表可视化分析",
+      "数据导入导出（CSV）",
+      "多账户管理"
+    ],
+    "recommended_for": [
+      "个人日常记账",
+      "家庭财务预算规划",
+      "轻量级财务管理"
+    ],
+    "env_config": [
+      {
+        "key": "BUDGETZEN_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "ghost",
+    "name": "Ghost",
+    "category": "web_server",
+    "description": "专业的开源发布平台，专注于博客与内容创作。",
+    "require_memory": 512,
+    "icon": "/store-icons/ghost.svg",
+    "versions": [
+      "latest",
+      "5.81",
+      "5.80"
+    ],
+    "features": [
+      "优雅的编辑器与排版",
+      "SEO 优化与社交分享",
+      "会员订阅与付费内容",
+      "邮件通讯集成",
+      "丰富的主题与自定义"
+    ],
+    "recommended_for": [
+      "专业博客与个人网站",
+      "新闻与杂志发布平台",
+      "付费内容创作者平台"
+    ],
+    "env_config": [
+      {
+        "key": "GHOST_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 2368,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "hugo",
+    "name": "Hugo",
+    "category": "web_server",
+    "description": "极速静态网站生成器，Go 语言构建，毫秒级构建速度。",
+    "require_memory": 256,
+    "icon": "/store-icons/hugo.svg",
+    "versions": [
+      "latest",
+      "0.126",
+      "0.125"
+    ],
+    "features": [
+      "极速构建（毫秒级生成静态站）",
+      "丰富的主题生态（200+ 主题）",
+      "Markdown 内容管理",
+      "内置服务器支持热重载",
+      "多语言与 Taxonomy 系统"
+    ],
+    "recommended_for": [
+      "个人博客与文档网站",
+      "企业官网与技术文档",
+      "高性能静态站点生成"
+    ],
+    "env_config": [
+      {
+        "key": "HUGO_PORT",
+        "label": "开发服务器端口",
+        "type": "port",
+        "default": 1313,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "vault",
+    "name": "HashiCorp Vault",
+    "category": "network",
+    "description": "密钥管理与数据保护平台，安全存储 Secrets。",
+    "require_memory": 512,
+    "icon": "/store-icons/vault.svg",
+    "versions": [
+      "latest",
+      "1.16",
+      "1.15"
+    ],
+    "features": [
+      "动态密钥生成与自动轮换",
+      "加密即服务（Transit Engine）",
+      "身份认证集成（LDAP、OIDC、K8s）",
+      "审计日志与合规",
+      "高可用集群部署"
+    ],
+    "recommended_for": [
+      "企业级密钥管理",
+      "数据库凭据动态生成",
+      "微服务间安全认证"
+    ],
+    "env_config": [
+      {
+        "key": "VAULT_PORT",
+        "label": "API 端口",
+        "type": "port",
+        "default": 8200,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "keycloak",
+    "name": "Keycloak",
+    "category": "network",
+    "description": "开源身份与访问管理（IAM）解决方案，SSO 单点登录。",
+    "require_memory": 1024,
+    "icon": "/store-icons/keycloak.svg",
+    "versions": [
+      "latest",
+      "24.0",
+      "23.0"
+    ],
+    "features": [
+      "单点登录（SSO）与 SAML/OIDC 支持",
+      "社交登录与身份代理",
+      "细粒度授权与角色管理",
+      "用户联合与 LDAP/AD 集成",
+      "多因素认证（MFA）"
+    ],
+    "recommended_for": [
+      "多应用统一身份认证",
+      "企业 SSO 解决方案",
+      "替代 Auth0/Okta 的开源方案"
+    ],
+    "env_config": [
+      {
+        "key": "KEYCLOAK_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      },
+      {
+        "key": "KEYCLOAK_ADMIN_PASSWORD",
+        "label": "Admin 初始密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "pihole",
+    "name": "Pi-hole",
+    "category": "network",
+    "description": "网络级广告拦截 DNS，保护整个家庭网络。",
+    "require_memory": 256,
+    "icon": "/store-icons/pihole.png",
+    "versions": [
+      "latest",
+      "2024.07",
+      "2024.06"
+    ],
+    "features": [
+      "DNS 级广告与跟踪器拦截",
+      "全局网络覆盖（所有设备生效）",
+      "详细的 DNS 查询日志",
+      "自定义黑名单与白名单",
+      "多 Pi-hole 冗余部署"
+    ],
+    "recommended_for": [
+      "家庭网络广告拦截",
+      "IoT 设备保护",
+      "隐私保护与网络性能优化"
+    ],
+    "env_config": [
+      {
+        "key": "PIHOLE_WEB_PORT",
+        "label": "Web 管理端口",
+        "type": "port",
+        "default": 80,
+        "required": true
+      },
+      {
+        "key": "PIHOLE_DNS_PORT",
+        "label": "DNS 服务端口",
+        "type": "port",
+        "default": 53,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "authelia",
+    "name": "Authelia",
+    "category": "network",
+    "description": "开源认证与授权服务器，为反向代理提供安全认证。",
+    "require_memory": 256,
+    "icon": "/store-icons/authelia.svg",
+    "versions": [
+      "latest",
+      "4.38",
+      "4.37"
+    ],
+    "features": [
+      "双因素认证（TOTP、WebAuthn、Duo）",
+      "基于规则的访问控制",
+      "与 Nginx/Traefik/Haproxy 集成",
+      "密码重置与用户自助服务",
+      "单点登录（SSO）支持"
+    ],
+    "recommended_for": [
+      "自托管服务统一认证",
+      "家庭实验室安全访问",
+      "替代商业认证服务"
+    ],
+    "env_config": [
+      {
+        "key": "AUTHELIA_PORT",
+        "label": "认证服务端口",
+        "type": "port",
+        "default": 9091,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "firefly-iii",
+    "name": "Firefly III",
+    "category": "business",
+    "description": "个人财务管家，自托管的支出与收入追踪工具。",
+    "require_memory": 512,
+    "icon": "/store-icons/firefly-iii.svg",
+    "versions": [
+      "latest",
+      "6.1",
+      "6.0"
+    ],
+    "features": [
+      "支出与收入记录",
+      "预算管理与分类",
+      "账单与订阅追踪",
+      "多币种与多账户",
+      "丰富的图表与报表"
+    ],
+    "recommended_for": [
+      "个人财务管理",
+      "家庭预算与支出分析",
+      "替代 Mint/YNAB 的自托管方案"
+    ],
+    "env_config": [
+      {
+        "key": "FIREFLY_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "immich",
+    "name": "Immich",
+    "category": "media",
+    "description": "高性能照片与视频备份管理，Google Photos 替代方案。",
+    "require_memory": 2048,
+    "icon": "/store-icons/immich.svg",
+    "versions": [
+      "latest",
+      "1.108",
+      "1.107"
+    ],
+    "features": [
+      "自动照片与视频备份",
+      "AI 人脸识别与对象检测",
+      "地图视图与时间线浏览",
+      "相册共享与协作",
+      "移动端 APP 支持（iOS/Android）"
+    ],
+    "recommended_for": [
+      "个人照片云备份",
+      "家庭相册共享",
+      "替代 Google Photos 的私有方案"
+    ],
+    "env_config": [
+      {
+        "key": "IMMICH_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 2283,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "photo-prism",
+    "name": "PhotoPrism",
+    "category": "media",
+    "description": "AI 驱动的照片管理工具，智能分类与搜索。",
+    "require_memory": 2048,
+    "icon": "/store-icons/photo-prism.svg",
+    "versions": [
+      "latest",
+      "240915",
+      "240711"
+    ],
+    "features": [
+      "AI 图像识别与标签",
+      "地理位置与地图浏览",
+      "面部识别与人物分类",
+      "RAW 格式支持",
+      "WebDAV 与同步"
+    ],
+    "recommended_for": [
+      "摄影师照片管理",
+      "大量图片智能分类",
+      "替代 Apple Photos 的跨平台方案"
+    ],
+    "env_config": [
+      {
+        "key": "PHOTOPRISM_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 2342,
+        "required": true
+      },
+      {
+        "key": "PHOTOPRISM_ADMIN_PASSWORD",
+        "label": "Admin 密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "audiobookshelf",
+    "name": "Audiobookshelf",
+    "category": "media",
+    "description": "有声读物与播客服务器，自动同步播放进度。",
+    "require_memory": 512,
+    "icon": "/store-icons/audiobookshelf.svg",
+    "versions": [
+      "latest",
+      "2.13",
+      "2.12"
+    ],
+    "features": [
+      "有声读物库管理",
+      "播客订阅与自动下载",
+      "多设备播放进度同步",
+      "移动端 APP 支持",
+      "元数据自动抓取"
+    ],
+    "recommended_for": [
+      "有声读物收藏与播放",
+      "播客爱好者管理平台",
+      "通勤听书场景"
+    ],
+    "env_config": [
+      {
+        "key": "AUDIOBOOKSHELF_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 13378,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "komga",
+    "name": "Komga",
+    "category": "media",
+    "description": "漫画与数字图书服务器，在线阅读体验。",
+    "require_memory": 512,
+    "icon": "/store-icons/komga.png",
+    "versions": [
+      "latest",
+      "1.11",
+      "1.10"
+    ],
+    "features": [
+      "漫画库管理与在线阅读",
+      "支持 CBZ、CBR、PDF、EPUB",
+      "Web 阅读器（连续/分页模式）",
+      "元数据编辑与封面管理",
+      "REST API 与第三方集成"
+    ],
+    "recommended_for": [
+      "漫画爱好者收藏管理",
+      "数字图书在线阅读",
+      "替代 Plex 的漫画方案"
+    ],
+    "env_config": [
+      {
+        "key": "KOMGA_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "navidrome",
+    "name": "Navidrome",
+    "category": "media",
+    "description": "音乐流媒体服务器，Subsonic API 兼容。",
+    "require_memory": 256,
+    "icon": "/store-icons/navidrome.png",
+    "versions": [
+      "latest",
+      "0.52",
+      "0.51"
+    ],
+    "features": [
+      "音乐库管理与流媒体播放",
+      "Subsonic API 兼容（支持多客户端）",
+      "智能播放列表与随机播放",
+      "歌词与歌手元数据",
+      "多用户与播放统计"
+    ],
+    "recommended_for": [
+      "个人音乐库流媒体服务",
+      "替代 Spotify 的自建方案",
+      "音乐收藏管理与分享"
+    ],
+    "env_config": [
+      {
+        "key": "NAVIDROME_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 4533,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "tautulli",
+    "name": "Tautulli",
+    "category": "monitor",
+    "description": "Plex 媒体服务器监控与统计工具。",
+    "require_memory": 256,
+    "icon": "/store-icons/tautulli.png",
+    "versions": [
+      "latest",
+      "2.14",
+      "2.13"
+    ],
+    "features": [
+      "Plex 观看历史统计",
+      "用户观看行为分析",
+      "实时观看监控",
+      "通知与告警（邮件、Webhook）",
+      "新闻通讯与报告导出"
+    ],
+    "recommended_for": [
+      "Plex 媒体库使用分析",
+      "家庭观影习惯统计",
+      "媒体服务器性能监控"
+    ],
+    "env_config": [
+      {
+        "key": "TAUTULLI_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8181,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "glances",
+    "name": "Glances",
+    "category": "monitor",
+    "description": "跨平台系统监控工具，Web 界面展示资源使用。",
+    "require_memory": 128,
+    "icon": "/store-icons/glances.png",
+    "versions": [
+      "latest",
+      "3.4",
+      "3.3"
+    ],
+    "features": [
+      "CPU、内存、磁盘、网络实时监控",
+      "Docker 容器监控",
+      "传感器温度与风扇转速",
+      "Web 界面与 REST API",
+      "导出到 InfluxDB、Prometheus、Elasticsearch"
+    ],
+    "recommended_for": [
+      "单台服务器资源监控",
+      "轻量级系统健康看板",
+      "替代 top/htop 的远程方案"
+    ],
+    "env_config": [
+      {
+        "key": "GLANCES_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 61208,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "dozzle",
+    "name": "Dozzle",
+    "category": "monitor",
+    "description": "轻量级 Docker 日志查看器，实时 Web 日志流。",
+    "require_memory": 128,
+    "icon": "/store-icons/dozzle.svg",
+    "versions": [
+      "latest",
+      "8.4",
+      "8.3"
+    ],
+    "features": [
+      "实时 Docker 日志流",
+      "容器搜索与日志过滤",
+      "多容器日志聚合",
+      "容器事件统计",
+      "无数据库依赖，极简架构"
+    ],
+    "recommended_for": [
+      "Docker 容器日志实时监控",
+      "开发环境快速调试",
+      "替代 docker logs 命令的可视化工具"
+    ],
+    "env_config": [
+      {
+        "key": "DOZZLE_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "wazuh",
+    "name": "Wazuh",
+    "category": "monitor",
+    "description": "开源安全与合规平台，入侵检测与日志分析。",
+    "require_memory": 4096,
+    "icon": "/store-icons/wazuh.png",
+    "versions": [
+      "latest",
+      "4.8",
+      "4.7"
+    ],
+    "features": [
+      "入侵检测系统（IDS）",
+      "文件完整性监控（FIM）",
+      "漏洞检测与配置评估",
+      "日志数据分析与关联",
+      "合规报告（PCI DSS、HIPAA、GDPR）"
+    ],
+    "recommended_for": [
+      "企业安全运营中心（SOC）",
+      "入侵检测与威胁响应",
+      "合规审计与安全监控"
+    ],
+    "env_config": [
+      {
+        "key": "WAZUH_PORT",
+        "label": "Web 界面端口",
+        "type": "port",
+        "default": 443,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "cadvisor",
+    "name": "cAdvisor",
+    "category": "monitor",
+    "description": "Google 开源的容器资源分析与监控工具。",
+    "require_memory": 256,
+    "icon": "/store-icons/cadvisor.jpg",
+    "versions": [
+      "latest",
+      "0.49",
+      "0.48"
+    ],
+    "features": [
+      "容器 CPU、内存、网络、磁盘监控",
+      "历史数据图表展示",
+      "支持 Docker、containerd、CRI-O",
+      "Prometheus 指标导出",
+      "实时资源使用排行"
+    ],
+    "recommended_for": [
+      "Docker 容器资源性能监控",
+      "与 Prometheus + Grafana 集成",
+      "容器化应用的资源分析"
+    ],
+    "env_config": [
+      {
+        "key": "CADVISOR_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "argo-workflows",
+    "name": "Argo Workflows",
+    "category": "dev_ops",
+    "description": "云原生工作流引擎，Kubernetes 上的 CI/CD 与数据管道。",
+    "require_memory": 1024,
+    "icon": "/store-icons/argo-workflows.svg",
+    "versions": [
+      "latest",
+      "3.5",
+      "3.4"
+    ],
+    "features": [
+      "YAML 定义工作流与步骤",
+      "DAG（有向无环图）任务编排",
+      "并行执行与条件分支",
+      "制品管理与归档",
+      "可视化 UI 监控工作流状态"
+    ],
+    "recommended_for": [
+      "Kubernetes 上的数据处理管道",
+      "机器学习训练流水线",
+      "复杂 CI/CD 工作流编排"
+    ],
+    "env_config": [
+      {
+        "key": "ARGO_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 2746,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "gocd",
+    "name": "GoCD",
+    "category": "dev_ops",
+    "description": "持续交付服务器，可视化构建与部署管道。",
+    "require_memory": 1024,
+    "icon": "/store-icons/gocd.svg",
+    "versions": [
+      "latest",
+      "23.5",
+      "23.4"
+    ],
+    "features": [
+      "可视化 CI/CD 管道建模",
+      "依赖关系与并行阶段",
+      "环境变量与密钥管理",
+      "丰富的插件生态",
+      "审计跟踪与版本比较"
+    ],
+    "recommended_for": [
+      "企业级持续交付流程",
+      "复杂构建与部署管道",
+      "需要可视化依赖关系的 CI/CD"
+    ],
+    "env_config": [
+      {
+        "key": "GOCD_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8153,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "reg",
+    "name": "Docker Registry",
+    "category": "dev_ops",
+    "description": "官方 Docker 镜像仓库服务，私有镜像托管。",
+    "require_memory": 256,
+    "icon": "/store-icons/reg.svg",
+    "versions": [
+      "2",
+      "latest"
+    ],
+    "features": [
+      "私有 Docker 镜像托管",
+      "镜像版本管理与标签",
+      "访问控制与认证",
+      "镜像层缓存与垃圾回收",
+      "与 CI/CD 深度集成"
+    ],
+    "recommended_for": [
+      "团队私有镜像仓库",
+      "企业内部镜像分发",
+      "加速镜像拉取与缓存"
+    ],
+    "env_config": [
+      {
+        "key": "REGISTRY_PORT",
+        "label": "HTTP 服务端口",
+        "type": "port",
+        "default": 5000,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "harbor",
+    "name": "Harbor",
+    "category": "dev_ops",
+    "description": "企业级容器镜像仓库，镜像扫描与签名。",
+    "require_memory": 2048,
+    "icon": "/store-icons/harbor.svg",
+    "versions": [
+      "latest",
+      "2.10",
+      "2.9"
+    ],
+    "features": [
+      "基于角色的访问控制（RBAC）",
+      "镜像漏洞扫描（Trivy、Clair）",
+      "镜像签名与验证",
+      "多项目与复制策略",
+      "审计日志与合规报告"
+    ],
+    "recommended_for": [
+      "企业级私有镜像仓库",
+      "安全合规镜像管理",
+      "多数据中心镜像同步"
+    ],
+    "env_config": [
+      {
+        "key": "HARBOR_PORT",
+        "label": "HTTP 端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      },
+      {
+        "key": "HARBOR_ADMIN_PASSWORD",
+        "label": "Admin 密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "localstack",
+    "name": "LocalStack",
+    "category": "dev_tools",
+    "description": "本地 AWS 云服务模拟平台，开发与测试利器。",
+    "require_memory": 2048,
+    "icon": "/store-icons/localstack.png",
+    "versions": [
+      "latest",
+      "3.4",
+      "3.3"
+    ],
+    "features": [
+      "模拟 70+ AWS 服务（S3、Lambda、DynamoDB 等）",
+      "本地开发与测试环境",
+      "AWS CLI 与 SDK 兼容",
+      "Infrastructure as Code 支持",
+      "多账户与多区域模拟"
+    ],
+    "recommended_for": [
+      "AWS 云服务本地开发",
+      "降低云开发成本",
+      "离线环境与 CI 测试"
+    ],
+    "env_config": [
+      {
+        "key": "LOCALSTACK_PORT",
+        "label": "Edge 服务端口",
+        "type": "port",
+        "default": 4566,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "mockserver",
+    "name": "MockServer",
+    "category": "dev_tools",
+    "description": "API 模拟服务，快速模拟任意 HTTP 接口。",
+    "require_memory": 256,
+    "icon": "/store-icons/mockserver.png",
+    "versions": [
+      "latest",
+      "5.15",
+      "5.14"
+    ],
+    "features": [
+      "模拟任意 HTTP/HTTPS 接口",
+      "请求匹配与响应模板",
+      "动态响应（JavaScript 回调）",
+      "请求验证与期望断言",
+      "代理模式记录真实流量"
+    ],
+    "recommended_for": [
+      "前端开发 Mock 后端",
+      "第三方 API 测试与开发",
+      "微服务集成测试"
+    ],
+    "env_config": [
+      {
+        "key": "MOCKSERVER_PORT",
+        "label": "服务端口",
+        "type": "port",
+        "default": 1080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "dbgate",
+    "name": "DbGate",
+    "category": "dev_tools",
+    "description": "多数据库管理工具，支持 MySQL、PostgreSQL、MongoDB 等。",
+    "require_memory": 512,
+    "icon": "/store-icons/dbgate.ico",
+    "versions": [
+      "latest",
+      "5.3",
+      "5.2"
+    ],
+    "features": [
+      "支持 10+ 数据库类型",
+      "SQL 编辑器与智能补全",
+      "数据浏览与编辑",
+      "ER 图与 Schema 可视化",
+      "导入导出（CSV、JSON、SQL）"
+    ],
+    "recommended_for": [
+      "多数据库统一管理",
+      "Web 端数据库查询与分析",
+      "替代 DBeaver 的轻量方案"
+    ],
+    "env_config": [
+      {
+        "key": "DBGATE_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "pma",
+    "name": "phpMyAdmin",
+    "category": "dev_tools",
+    "description": "流行的 MySQL/MariaDB Web 管理界面。",
+    "require_memory": 256,
+    "icon": "/store-icons/pma.svg",
+    "versions": [
+      "latest",
+      "5.2",
+      "5.1"
+    ],
+    "features": [
+      "可视化数据库与表管理",
+      "SQL 查询编辑器",
+      "数据导入导出（SQL、CSV、XML）",
+      "用户权限管理",
+      "服务器监控与变量配置"
+    ],
+    "recommended_for": [
+      "MySQL/MariaDB 快速管理",
+      "数据库备份与恢复",
+      "轻量级 Web 数据库管理工具"
+    ],
+    "env_config": [
+      {
+        "key": "PMA_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "adminer",
+    "name": "Adminer",
+    "category": "dev_tools",
+    "description": "轻量级数据库管理工具，单文件 PHP 应用。",
+    "require_memory": 128,
+    "icon": "/store-icons/adminer.svg",
+    "versions": [
+      "latest",
+      "4.8",
+      "4.7"
+    ],
+    "features": [
+      "支持 MySQL、PostgreSQL、SQLite、MongoDB 等",
+      "单文件部署，极简架构",
+      "表结构与数据管理",
+      "SQL 执行与结果查看",
+      "主题与插件扩展"
+    ],
+    "recommended_for": [
+      "轻量级数据库管理",
+      "快速查看与编辑数据库",
+      "替代 phpMyAdmin 的更轻方案"
+    ],
+    "env_config": [
+      {
+        "key": "ADMINER_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "nginx-ui",
+    "name": "Nginx UI",
+    "category": "web_server",
+    "description": "Nginx 配置可视化管理工具，简化配置流程。",
+    "require_memory": 128,
+    "icon": "/store-icons/nginx-ui.svg",
+    "versions": [
+      "latest",
+      "2.1",
+      "2.0"
+    ],
+    "features": [
+      "可视化 Nginx 配置管理",
+      "虚拟主机与反向代理配置",
+      "SSL 证书申请与续期",
+      "配置文件语法检查",
+      "服务状态与日志查看"
+    ],
+    "recommended_for": [
+      "Nginx 配置快速管理",
+      "替代命令行配置",
+      "多站点 Web 服务器管理"
+    ],
+    "env_config": [
+      {
+        "key": "NGINX_UI_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8080,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "halo",
+    "name": "Halo",
+    "category": "web_server",
+    "description": "强大的开源建站工具，现代化博客与 CMS 系统。",
+    "require_memory": 512,
+    "icon": "/store-icons/halo.png",
+    "versions": [
+      "latest",
+      "2.16",
+      "2.15"
+    ],
+    "features": [
+      "丰富的主题与插件生态",
+      "Markdown 与富文本编辑器",
+      "SEO 优化与社交分享",
+      "多端适配与 PWA 支持",
+      "备份与数据迁移"
+    ],
+    "recommended_for": [
+      "个人博客与技术网站",
+      "内容管理系统搭建",
+      "快速建站方案"
+    ],
+    "env_config": [
+      {
+        "key": "HALO_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8090,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "umami",
+    "name": "Umami",
+    "category": "monitor",
+    "description": "简洁的网站访问分析工具，替代 Google Analytics。",
+    "require_memory": 256,
+    "icon": "/store-icons/umami.png",
+    "versions": [
+      "latest",
+      "2.12",
+      "2.11"
+    ],
+    "features": [
+      "网站访问量统计与趋势",
+      "页面浏览与事件追踪",
+      "设备、浏览器、地理位置分析",
+      "隐私友好（无 Cookie、无外部请求）",
+      "多网站管理与 API"
+    ],
+    "recommended_for": [
+      "网站流量分析",
+      "用户行为追踪",
+      "隐私合规的网站统计"
+    ],
+    "env_config": [
+      {
+        "key": "UMAMI_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3000,
+        "required": true
+      },
+      {
+        "key": "UMAMI_DB_PASSWORD",
+        "label": "数据库密码",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "plausible",
+    "name": "Plausible Analytics",
+    "category": "monitor",
+    "description": "轻量级隐私友好的网站分析，Google Analytics 替代。",
+    "require_memory": 512,
+    "icon": "/store-icons/plausible.svg",
+    "versions": [
+      "latest",
+      "2.1",
+      "2.0"
+    ],
+    "features": [
+      "极简主义统计面板",
+      "隐私合规（GDPR、CCPA、PECR）",
+      "实时访客与页面浏览",
+      "自定义事件与目标转化",
+      "轻量级 JS 脚本（<1KB）"
+    ],
+    "recommended_for": [
+      "隐私敏感的网站分析",
+      "轻量级统计需求",
+      "合规优先的网站运营"
+    ],
+    "env_config": [
+      {
+        "key": "PLAUSIBLE_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 8000,
+        "required": true
+      },
+      {
+        "key": "PLAUSIBLE_SECRET_KEY_BASE",
+        "label": "加密密钥",
+        "type": "password",
+        "default": "",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "stump",
+    "name": "Stump",
+    "category": "media",
+    "description": "快速现代的漫画与数字图书服务器，Rust 构建。",
+    "require_memory": 256,
+    "icon": "/store-icons/stump.png",
+    "versions": [
+      "latest",
+      "0.6",
+      "0.5"
+    ],
+    "features": [
+      "漫画与电子书管理",
+      "Web 阅读器与移动 APP",
+      "智能书架与推荐",
+      "元数据编辑与封面",
+      "多用户与阅读进度"
+    ],
+    "recommended_for": [
+      "漫画爱好者收藏",
+      "数字图书流媒体",
+      "替代 Komga 的更轻方案"
+    ],
+    "env_config": [
+      {
+        "key": "STUMP_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 1337,
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "zanarr-player",
+    "name": "Zanarr Player",
+    "category": "media",
+    "description": "轻量级音乐播放器，支持本地音乐库管理。",
+    "require_memory": 256,
+    "icon": "/store-icons/zanarr-player.svg",
+    "versions": [
+      "latest"
+    ],
+    "features": [
+      "本地音乐库管理",
+      "Web 播放器与播放列表",
+      "艺术家与专辑分类",
+      "歌词显示",
+      "API 与第三方集成"
+    ],
+    "recommended_for": [
+      "个人音乐收藏管理",
+      "轻量级音乐流媒体",
+      "本地音乐 Web 访问"
+    ],
+    "env_config": [
+      {
+        "key": "ZANARR_PORT",
+        "label": "Web 服务端口",
+        "type": "port",
+        "default": 3000,
         "required": true
       }
     ]

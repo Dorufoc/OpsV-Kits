@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  app:
+    image: fireflyiii/core:latest
+    container_name: panel-firefly-iii
+    restart: unless-stopped
+    ports:
+      - "${FIREFLY_PORT}:8080"
+    volumes:
+      - /www/server/apps/firefly-iii/data:/var/www/html/storage/upload
+    labels:
+      - managed-by=opsv-kits-store

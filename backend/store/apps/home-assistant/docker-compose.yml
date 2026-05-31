@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    image: 'ghcr.io/home-assistant/home-assistant:latest'
+    container_name: panel-home-assistant
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${HA_PORT}:8123'
+    privileged: true
+    volumes:
+      - /www/server/apps/home-assistant/data:/config

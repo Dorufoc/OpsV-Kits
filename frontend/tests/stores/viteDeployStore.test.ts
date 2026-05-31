@@ -5,7 +5,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useViteDeployStore } from '@/stores/viteDeployStore'
-import * as api from '@/api'
+import { request } from '@/api'
+
+function mockRequestResolved(value: any) {
+  vi.mocked(request.get).mockResolvedValue(value)
+  vi.mocked(request.post).mockResolvedValue(value)
+  vi.mocked(request.put).mockResolvedValue(value)
+  vi.mocked(request.delete).mockResolvedValue(value)
+}
+
+function mockRequestRejected(error: Error) {
+  vi.mocked(request.get).mockRejectedValue(error)
+  vi.mocked(request.post).mockRejectedValue(error)
+  vi.mocked(request.put).mockRejectedValue(error)
+  vi.mocked(request.delete).mockRejectedValue(error)
+}
 
 describe('Vite Deploy Store', () => {
   beforeEach(() => {
@@ -61,7 +75,8 @@ describe('Vite Deploy Store', () => {
       const callback = vi.fn()
       store.setLogCallback(callback)
 
-      expect((store as any).logCallback).toBe(callback)
+      store.pipeToTerminal('test log')
+      expect(callback).toHaveBeenCalledWith('test log')
     })
   })
 
@@ -93,7 +108,7 @@ describe('Vite Deploy Store', () => {
         framework: { type: 'vue' },
         all_ready: true,
       }
-      vi.spyOn(api, 'request').mockResolvedValue(mockResult as any)
+      mockRequestResolved(mockResult)
 
       const store = useViteDeployStore()
       const result = await store.checkEnvironment('test', '/path')
@@ -104,18 +119,18 @@ describe('Vite Deploy Store', () => {
     })
 
     it('应该调用正确的 API 端点', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({})
 
       const store = useViteDeployStore()
       await store.checkEnvironment('myaccount', '/my/path')
 
-      expect(api.request.get).toHaveBeenCalledWith('/deploy/vite/check', {
+      expect(request.get).toHaveBeenCalledWith('/deploy/vite/check', {
         params: { account_alias: 'myaccount', project_path: '/my/path' },
       })
     })
 
     it('node 为 null 时应该设置 nodeStatus 为 null', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ node: null, nginx: null } as any)
+      mockRequestResolved({ node: null, nginx: null })
 
       const store = useViteDeployStore()
       await store.checkEnvironment('test', '/path')
@@ -127,7 +142,7 @@ describe('Vite Deploy Store', () => {
 
   describe('startDeploy', () => {
     it('应该设置 deployStatus 为 running', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' })
 
       const store = useViteDeployStore()
       await store.startDeploy({
@@ -145,7 +160,7 @@ describe('Vite Deploy Store', () => {
       store.progress = 50
       store.currentStep = 'build'
 
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' })
       await store.startDeploy({
         account_alias: 'test',
         project_alias: 'myproj',
@@ -159,7 +174,7 @@ describe('Vite Deploy Store', () => {
     })
 
     it('应该设置 currentTaskId', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' })
 
       const store = useViteDeployStore()
       await store.startDeploy({
@@ -172,7 +187,7 @@ describe('Vite Deploy Store', () => {
     })
 
     it('应该使用默认值', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' })
 
       const store = useViteDeployStore()
       await store.startDeploy({
@@ -181,7 +196,7 @@ describe('Vite Deploy Store', () => {
         project_path: '/path',
       })
 
-      expect(api.request.post).toHaveBeenCalledWith('/deploy/vite/deploy', {
+      expect(request.post).toHaveBeenCalledWith('/deploy/vite/deploy', {
         account_alias: 'test',
         project_alias: 'myproj',
         project_path: '/path',
@@ -193,7 +208,7 @@ describe('Vite Deploy Store', () => {
     })
 
     it('失败时应该设置 deployStatus 为 failed', async () => {
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Deploy failed'))
+      mockRequestRejected(new Error('Deploy failed'))
 
       const store = useViteDeployStore()
       await expect(store.startDeploy({
@@ -208,7 +223,7 @@ describe('Vite Deploy Store', () => {
 
   describe('startStep', () => {
     it('setup 步骤应该调用 /deploy/vite/setup', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' })
 
       const store = useViteDeployStore()
       await store.startStep('setup', {
@@ -217,7 +232,7 @@ describe('Vite Deploy Store', () => {
         node_version: '20',
       })
 
-      expect(api.request.post).toHaveBeenCalledWith('/deploy/vite/setup', {
+      expect(request.post).toHaveBeenCalledWith('/deploy/vite/setup', {
         account_alias: 'test',
         project_path: '/path',
         node_version: '20',
@@ -225,7 +240,7 @@ describe('Vite Deploy Store', () => {
     })
 
     it('install-deps 步骤应该调用 /deploy/vite/install-deps', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' })
 
       const store = useViteDeployStore()
       await store.startStep('install-deps', {
@@ -234,7 +249,7 @@ describe('Vite Deploy Store', () => {
         force: true,
       })
 
-      expect(api.request.post).toHaveBeenCalledWith('/deploy/vite/install-deps', {
+      expect(request.post).toHaveBeenCalledWith('/deploy/vite/install-deps', {
         account_alias: 'test',
         project_path: '/path',
         force: true,
@@ -242,7 +257,7 @@ describe('Vite Deploy Store', () => {
     })
 
     it('build 步骤应该调用 /deploy/vite/build', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' })
 
       const store = useViteDeployStore()
       await store.startStep('build', {
@@ -251,7 +266,7 @@ describe('Vite Deploy Store', () => {
         build_command: 'npm run build',
       })
 
-      expect(api.request.post).toHaveBeenCalledWith('/deploy/vite/build', {
+      expect(request.post).toHaveBeenCalledWith('/deploy/vite/build', {
         account_alias: 'test',
         project_path: '/path',
         build_command: 'npm run build',
@@ -259,7 +274,7 @@ describe('Vite Deploy Store', () => {
     })
 
     it('nginx 步骤应该调用 /deploy/vite/nginx', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' })
 
       const store = useViteDeployStore()
       await store.startStep('nginx', {
@@ -269,7 +284,7 @@ describe('Vite Deploy Store', () => {
         port: 8080,
       })
 
-      expect(api.request.post).toHaveBeenCalledWith('/deploy/vite/nginx', {
+      expect(request.post).toHaveBeenCalledWith('/deploy/vite/nginx', {
         account_alias: 'test',
         project_path: '/path',
         project_alias: 'myproj',
@@ -278,7 +293,7 @@ describe('Vite Deploy Store', () => {
     })
 
     it('应该设置 currentStep', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({ task_id: 'task-123' } as any)
+      mockRequestResolved({ task_id: 'task-123' })
 
       const store = useViteDeployStore()
       await store.startStep('build', {
@@ -290,7 +305,7 @@ describe('Vite Deploy Store', () => {
     })
 
     it('失败时应该设置 deployStatus 为 failed', async () => {
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Step failed'))
+      mockRequestRejected(new Error('Step failed'))
 
       const store = useViteDeployStore()
       await expect(store.startStep('build', {
@@ -304,17 +319,17 @@ describe('Vite Deploy Store', () => {
 
   describe('stopDeploy', () => {
     it('应该调用停止 API', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({})
 
       const store = useViteDeployStore()
       store.currentTaskId = 'task-123'
       await store.stopDeploy()
 
-      expect(api.request.post).toHaveBeenCalledWith('/deploy/vite/stop', { task_id: 'task-123' })
+      expect(request.post).toHaveBeenCalledWith('/deploy/vite/stop', { task_id: 'task-123' })
     })
 
     it('应该设置 deployStatus 为 stopped', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({})
 
       const store = useViteDeployStore()
       store.deployStatus = 'running'
@@ -325,7 +340,7 @@ describe('Vite Deploy Store', () => {
     })
 
     it('应该清空状态', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({})
 
       const store = useViteDeployStore()
       store.currentTaskId = 'task-123'
@@ -339,7 +354,7 @@ describe('Vite Deploy Store', () => {
     })
 
     it('API 失败时不应该抛出异常', async () => {
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Stop failed'))
+      mockRequestRejected(new Error('Stop failed'))
 
       const store = useViteDeployStore()
       store.currentTaskId = 'task-123'
@@ -352,7 +367,7 @@ describe('Vite Deploy Store', () => {
       await store.stopDeploy()
 
       expect(store.deployStatus).toBe('stopped')
-      expect(api.request.post).not.toHaveBeenCalled()
+      expect(request.post).not.toHaveBeenCalled()
     })
   })
 
@@ -367,9 +382,14 @@ describe('Vite Deploy Store', () => {
         onerror: null,
         close: vi.fn(),
         send: vi.fn(),
-        readyState: WebSocket.OPEN,
+        readyState: 1,
       }
-      vi.stubGlobal('WebSocket', vi.fn(() => mockWebSocket))
+      const MockWebSocket = vi.fn(() => mockWebSocket)
+      ;(MockWebSocket as any).CONNECTING = 0
+      ;(MockWebSocket as any).OPEN = 1
+      ;(MockWebSocket as any).CLOSING = 2
+      ;(MockWebSocket as any).CLOSED = 3
+      vi.stubGlobal('WebSocket', MockWebSocket)
     })
 
     afterEach(() => {
@@ -380,8 +400,9 @@ describe('Vite Deploy Store', () => {
       const store = useViteDeployStore()
       store.connectWebSocket('task-123')
 
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
       expect(WebSocket).toHaveBeenCalledWith(
-        `${location.protocol}//${location.host}/api/deploy/vite/ws/logs/task-123`
+        `${protocol}//${location.host}/api/deploy/vite/ws/logs/task-123`
       )
     })
 
@@ -503,7 +524,7 @@ describe('Vite Deploy Store', () => {
         log: 'building...',
         status: 'running',
       }
-      vi.spyOn(api, 'request').mockResolvedValue(mockStatus as any)
+      mockRequestResolved(mockStatus)
 
       const store = useViteDeployStore()
       const result = await store.fetchStatus('task-123')
@@ -520,7 +541,7 @@ describe('Vite Deploy Store', () => {
     })
 
     it('请求失败时应该返回 null', async () => {
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Not found'))
+      mockRequestRejected(new Error('Not found'))
 
       const store = useViteDeployStore()
       const result = await store.fetchStatus('nonexistent')

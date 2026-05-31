@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'linuxserver/tautulli:latest'
+    container_name: panel-tautulli
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${TAUTULLI_PORT}:8181'
+    volumes:
+      - /www/server/apps/tautulli/data:/config

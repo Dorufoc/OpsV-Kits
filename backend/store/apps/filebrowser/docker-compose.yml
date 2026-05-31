@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    image: 'filebrowser/filebrowser:latest'
+    container_name: panel-filebrowser
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${FILEBROWSER_PORT}:80'
+    volumes:
+      - /www/server/apps/filebrowser/data:/data
+      - /www/server/apps/filebrowser/files:/srv

@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'nextcloud:latest'
+    container_name: panel-nextcloud
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${NEXTCLOUD_PORT}:80'
+    volumes:
+      - /www/server/apps/nextcloud/data:/var/www/html

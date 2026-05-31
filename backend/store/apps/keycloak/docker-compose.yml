@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: panel-keycloak
+    restart: unless-stopped
+    command: start-dev
+    ports:
+      - "${KEYCLOAK_PORT}:8080"
+    volumes:
+      - /www/server/apps/keycloak/data:/opt/keycloak/data
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+    labels:
+      managed-by: "opsv-kits-store"

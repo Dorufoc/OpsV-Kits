@@ -38,7 +38,9 @@
       </div>
     </template>
     <DbLoginDialog
-      db-type="mysql"
+      deploy-mode="docker"
+      :account-alias="accountAlias"
+      :container-id="containerId"
       :visible="showLoginDialog"
       @close="showLoginDialog = false"
       @submit="handleLoginSubmit"
@@ -94,10 +96,11 @@ async function handleConnect() {
   }
 }
 
-function handleLoginSubmit(params: MySqlConnectionParams) {
+function handleLoginSubmit(params: any) {
   showLoginDialog.value = false
-  store.connectMysql(params)
-  mysqlConnection.value = params
+  const conn = params.connection as MySqlConnectionParams
+  store.connectMysql(conn)
+  mysqlConnection.value = conn
   isConnected.value = true
   connectWebSocket()
 }

@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  app:
+    image: 'langgenius/dify-api:latest'
+    container_name: panel-dify
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${DIFY_PORT}:5001'
+    volumes:
+      - /www/server/apps/dify/data:/app/api/storage
+    environment:
+      - SECRET_KEY=${DIFY_DB_PASSWORD}

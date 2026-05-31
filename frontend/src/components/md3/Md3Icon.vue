@@ -39,10 +39,10 @@ const svgColor = computed(() => props.color || 'currentColor')
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all var(--md3-motion-duration-short2, 200ms) var(--md3-motion-easing-emphasized, cubic-bezier(0.2, 0, 0, 1));
+  transition: all var(--md3-motion-duration-short) var(--md3-motion-easing-emphasized);
 }
 
-.md3-icon[style*="spin"] {
+.md3-icon--spin {
   animation: md3-spin 1s linear infinite;
 }
 

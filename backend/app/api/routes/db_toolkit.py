@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query, WebSocket
 
@@ -51,7 +51,7 @@ def _handle_toolkit_error(e: DbToolkitError) -> None:
 @router.get("/detect/mysql")
 async def detect_mysql_client(
     account_alias: str = Query(..., description="SSH 账户别名"),
-    container_id: str = Query(..., description="容器 ID"),
+    container_id: Optional[str] = Query(None, description="容器 ID，为空表示主机模式"),
 ) -> DetectResult:
     _verify_account(account_alias)
     return db_toolkit_service.detect_mysql_client(account_alias, container_id)
@@ -60,7 +60,7 @@ async def detect_mysql_client(
 @router.get("/detect/redis")
 async def detect_redis_client(
     account_alias: str = Query(..., description="SSH 账户别名"),
-    container_id: str = Query(..., description="容器 ID"),
+    container_id: Optional[str] = Query(None, description="容器 ID，为空表示主机模式"),
 ) -> DetectResult:
     _verify_account(account_alias)
     return db_toolkit_service.detect_redis_client(account_alias, container_id)
@@ -146,7 +146,7 @@ async def get_redis_db_stats(data: MysqlTablesRequest) -> RedisDbStats:
 @router.delete("/redis/key")
 async def delete_redis_key(
     account_alias: str = Query(..., description="SSH 账户别名"),
-    container_id: str = Query(..., description="容器 ID"),
+    container_id: Optional[str] = Query(None, description="容器 ID，为空表示主机模式"),
     key: str = Query(..., description="Key 名称"),
     host: str = Query("localhost", description="Redis 主机"),
     port: int = Query(6379, description="Redis 端口"),
@@ -226,6 +226,46 @@ async def mysql_cli_ws(websocket: WebSocket, container_id: str):
             pass
 
 
+@router.websocket("/ws/mysql-cli")
+async def mysql_cli_host_ws(websocket: WebSocket):
+    from app.core.db_toolkit_ws import db_toolkit_ws_handler
+    from app.models.db_toolkit import MySqlConnectionParams
+    import asyncio
+    import json as _json
+
+    try:
+        await websocket.accept()
+        init_raw = await asyncio.wait_for(
+            websocket.receive_text(), timeout=10.0
+        )
+        init_msg = _json.loads(init_raw)
+        account_alias = init_msg.get("account_alias", "")
+        conn_data = init_msg.get("connection", {})
+        container_id = init_msg.get("container_id") or None
+
+        if not account_alias:
+            await websocket.send_json({
+                "type": "error",
+                "message": "缺少 account_alias 参数",
+            })
+            await websocket.close()
+            return
+
+        connection = MySqlConnectionParams(**conn_data)
+        await db_toolkit_ws_handler._handle_cli_direct(
+            websocket, account_alias, container_id, connection, "mysql"
+        )
+    except Exception as e:
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except Exception:
+            pass
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+
+
 @router.websocket("/ws/redis-cli/{container_id}")
 async def redis_cli_ws(websocket: WebSocket, container_id: str):
     from app.core.db_toolkit_ws import db_toolkit_ws_handler
@@ -241,6 +281,46 @@ async def redis_cli_ws(websocket: WebSocket, container_id: str):
         init_msg = _json.loads(init_raw)
         account_alias = init_msg.get("account_alias", "")
         conn_data = init_msg.get("connection", {})
+
+        if not account_alias:
+            await websocket.send_json({
+                "type": "error",
+                "message": "缺少 account_alias 参数",
+            })
+            await websocket.close()
+            return
+
+        connection = RedisConnectionParams(**conn_data)
+        await db_toolkit_ws_handler._handle_cli_direct(
+            websocket, account_alias, container_id, connection, "redis"
+        )
+    except Exception as e:
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except Exception:
+            pass
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+
+
+@router.websocket("/ws/redis-cli")
+async def redis_cli_host_ws(websocket: WebSocket):
+    from app.core.db_toolkit_ws import db_toolkit_ws_handler
+    from app.models.db_toolkit import RedisConnectionParams
+    import asyncio
+    import json as _json
+
+    try:
+        await websocket.accept()
+        init_raw = await asyncio.wait_for(
+            websocket.receive_text(), timeout=10.0
+        )
+        init_msg = _json.loads(init_raw)
+        account_alias = init_msg.get("account_alias", "")
+        conn_data = init_msg.get("connection", {})
+        container_id = init_msg.get("container_id") or None
 
         if not account_alias:
             await websocket.send_json({

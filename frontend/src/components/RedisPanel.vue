@@ -65,7 +65,9 @@
       </div>
     </template>
     <DbLoginDialog
-      db-type="redis"
+      deploy-mode="docker"
+      :account-alias="accountAlias"
+      :container-id="containerId"
       :visible="showLoginDialog"
       @close="showLoginDialog = false"
       @submit="handleLoginSubmit"
@@ -118,10 +120,11 @@ async function handleConnect() {
   }
 }
 
-function handleLoginSubmit(params: RedisConnectionParams) {
+function handleLoginSubmit(params: any) {
   showLoginDialog.value = false
-  store.connectRedis(params)
-  redisConnection.value = params
+  const conn = params.connection as RedisConnectionParams
+  store.connectRedis(conn)
+  redisConnection.value = conn
   isConnected.value = true
   connectWebSocket()
   loadStats()

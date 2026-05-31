@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  app:
+    image: 'clickhouse/clickhouse-server:latest'
+    container_name: panel-clickhouse
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${CLICKHOUSE_HTTP_PORT}:8123'
+      - '${CLICKHOUSE_NATIVE_PORT}:9000'
+    volumes:
+      - /www/server/apps/clickhouse/data:/var/lib/clickhouse
+      - /www/server/apps/clickhouse/logs:/var/log/clickhouse-server

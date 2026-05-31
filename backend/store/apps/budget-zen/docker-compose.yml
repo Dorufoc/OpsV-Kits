@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  app:
+    image: brunobernardino/budget-zen:latest
+    container_name: panel-budget-zen
+    restart: unless-stopped
+    ports:
+      - "${BUDGETZEN_PORT}:8080"
+    volumes:
+      - /www/server/apps/budget-zen/data:/app/data
+    labels:
+      - managed-by=opsv-kits-store

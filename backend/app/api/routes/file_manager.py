@@ -349,9 +349,17 @@ async def search_files(
 
 @router.post("/command/exec")
 async def exec_command(data: ExecCommandRequest):
+    is_dangerous, reason = file_manager_service._is_dangerous_command(data.command)
+    if is_dangerous:
+        file_manager_service._record_operation(
+            data.alias, "exec_command", "", "blocked", f"危险命令: {reason}"
+        )
+        raise HTTPException(status_code=400, detail=f"危险命令被拒绝: {reason}")
     try:
         result = file_manager_service.exec_command(data.alias, data.command, timeout=data.timeout)
         return result
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except TimeoutError as e:
@@ -362,9 +370,18 @@ async def exec_command(data: ExecCommandRequest):
 
 @router.post("/command/exec/batch")
 async def exec_batch_commands(data: ExecBatchRequest):
+    for cmd in data.commands:
+        is_dangerous, reason = file_manager_service._is_dangerous_command(cmd)
+        if is_dangerous:
+            file_manager_service._record_operation(
+                data.alias, "exec_batch", "", "blocked", f"危险命令: {reason}"
+            )
+            raise HTTPException(status_code=400, detail=f"危险命令被拒绝: {reason}")
     try:
         results = file_manager_service.exec_batch(data.alias, data.commands, timeout=data.timeout)
         return {"results": results}
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except TimeoutError as e:

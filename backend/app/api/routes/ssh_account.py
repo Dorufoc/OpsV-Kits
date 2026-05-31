@@ -29,7 +29,10 @@ async def list_accounts(
 @router.post("", response_model=SSHAccount, status_code=201)
 async def create_account(data: SSHAccountCreate):
     try:
-        return ssh_account_service.create_account(data)
+        account = ssh_account_service.create_account(data)
+        from app.services.performance_collector import performance_collector
+        await performance_collector.on_account_created(account.alias)
+        return account
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -170,6 +173,8 @@ async def update_account(alias: str, data: SSHAccountUpdate):
 @router.delete("/{alias}", status_code=204)
 async def delete_account(alias: str):
     try:
+        from app.services.performance_collector import performance_collector
+        await performance_collector.on_account_deleted(alias)
         ssh_account_service.delete_account(alias)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  app:
+    image: 'florider89/joplin-server:latest'
+    container_name: panel-joplin
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${JOPLIN_PORT}:22300'
+    volumes:
+      - /www/server/apps/joplin/data:/home/joplin
+    environment:
+      APP_PORT: '22300'

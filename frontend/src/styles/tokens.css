@@ -149,6 +149,10 @@
   --md3-gradient-card: linear-gradient(135deg, rgba(42, 41, 44, 0.9) 0%, rgba(28, 27, 30, 0.6) 100%);
   --md3-gradient-dark-card: linear-gradient(135deg, rgba(14, 13, 16, 0.8) 0%, rgba(28, 27, 30, 0.6) 100%);
 
+  /* ===== iOS-Style Card Borders (Dark) ===== */
+  --md3-card-border: rgba(204, 194, 255, 0.15);
+  --md3-card-border-hover: rgba(204, 194, 255, 0.28);
+
   /* ===== Chart Colors ===== */
   --md3-chart-primary: #5B8DEF;
   --md3-chart-success: #4CAF50;
@@ -173,15 +177,15 @@
   --md3-font-body: 'Plus Jakarta Sans', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
   --md3-font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
 
-  --md3-type-display-large: 700 2.25rem/2.75rem var(--md3-font-display);
-  --md3-type-display-medium: 700 2rem/2.5rem var(--md3-font-display);
-  --md3-type-display-small: 700 1.75rem/2.25rem var(--md3-font-display);
+  --md3-type-display-large: 700 3.5625rem/4rem var(--md3-font-display);
+  --md3-type-display-medium: 700 2.8125rem/3.25rem var(--md3-font-display);
+  --md3-type-display-small: 700 2.25rem/2.75rem var(--md3-font-display);
 
-  --md3-type-headline-large: 600 1.5rem/2rem var(--md3-font-display);
-  --md3-type-headline-medium: 600 1.25rem/1.75rem var(--md3-font-display);
-  --md3-type-headline-small: 600 1.125rem/1.5rem var(--md3-font-display);
+  --md3-type-headline-large: 600 2rem/2.5rem var(--md3-font-display);
+  --md3-type-headline-medium: 600 1.75rem/2.25rem var(--md3-font-display);
+  --md3-type-headline-small: 600 1.5rem/2rem var(--md3-font-display);
 
-  --md3-type-title-large: 500 1.125rem/1.5rem var(--md3-font-body);
+  --md3-type-title-large: 500 1.375rem/1.75rem var(--md3-font-body);
   --md3-type-title-medium: 500 1rem/1.5rem var(--md3-font-body);
   --md3-type-title-small: 500 0.875rem/1.25rem var(--md3-font-body);
 
@@ -191,7 +195,7 @@
 
   --md3-type-label-large: 500 0.875rem/1.25rem var(--md3-font-body);
   --md3-type-label-medium: 500 0.75rem/1rem var(--md3-font-body);
-  --md3-type-label-small: 500 0.625rem/0.875rem var(--md3-font-body);
+  --md3-type-label-small: 500 0.6875rem/1rem var(--md3-font-body);
 
   /* ===== MD3 Shape (Border Radius) ===== */
   --md3-shape-none: 0;
@@ -199,16 +203,26 @@
   --md3-shape-sm: 8px;
   --md3-shape-md: 12px;
   --md3-shape-lg: 16px;
-  --md3-shape-xl: 20px;
+  --md3-shape-xl: 28px;
   --md3-shape-full: 9999px;
 
-  /* ===== MD3 Elevation (Shadows) ===== */
+  /* ===== MD3 Elevation (No Shadows - iOS Frost Style) ===== */
   --md3-elevation-level0: none;
-  --md3-elevation-level1: 0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px 0 rgba(0,0,0,0.04);
-  --md3-elevation-level2: 0 2px 6px 0 rgba(0,0,0,0.10), 0 1px 3px 0 rgba(0,0,0,0.06);
-  --md3-elevation-level3: 0 4px 12px 0 rgba(0,0,0,0.12), 0 2px 5px 0 rgba(0,0,0,0.08);
-  --md3-elevation-level4: 0 6px 20px 0 rgba(0,0,0,0.14), 0 3px 8px 0 rgba(0,0,0,0.10);
-  --md3-elevation-level5: 0 8px 30px 0 rgba(0,0,0,0.16), 0 4px 12px 0 rgba(0,0,0,0.12);
+  --md3-elevation-level1: none;
+  --md3-elevation-level2: none;
+  --md3-elevation-level3: none;
+  --md3-elevation-level4: none;
+  --md3-elevation-level5: none;
+
+  /* ===== iOS-Style Card Borders (Light) ===== */
+  --md3-card-border: rgba(79, 70, 229, 0.12);
+  --md3-card-border-hover: rgba(79, 70, 229, 0.24);
+
+  /* ===== Legacy Aliases ===== */
+  --md3-card-border-light: rgba(79, 70, 229, 0.12);
+  --md3-card-border-dark: rgba(204, 194, 255, 0.15);
+  --md3-card-border-hover-light: rgba(79, 70, 229, 0.24);
+  --md3-card-border-hover-dark: rgba(204, 194, 255, 0.28);
 
   /* ===== MD3 Space ===== */
   --md3-space-xs: 4px;

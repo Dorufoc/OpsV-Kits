@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'ghcr.io/umami-software/umami:postgresql-latest'
+    container_name: panel-umami
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${UMAMI_PORT}:3000'
+    environment:
+      - DATABASE_URL=${UMAMI_DB_PASSWORD}

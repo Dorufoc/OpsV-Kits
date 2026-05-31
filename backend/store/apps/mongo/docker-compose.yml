@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  db:
+  app:
     image: 'mongo:latest'
     container_name: panel-mongo
     restart: unless-stopped

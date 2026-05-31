@@ -5,7 +5,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useProcessStore } from '@/stores/processStore'
-import * as api from '@/api'
+import { request } from '@/api'
+
+vi.mock('@/api')
+
+function mockRequestResolved(value: any) {
+  vi.mocked(request.get).mockResolvedValue(value)
+  vi.mocked(request.post).mockResolvedValue(value)
+  vi.mocked(request.put).mockResolvedValue(value)
+  vi.mocked(request.delete).mockResolvedValue(value)
+}
+
+function mockRequestRejected(error: Error) {
+  vi.mocked(request.get).mockRejectedValue(error)
+  vi.mocked(request.post).mockRejectedValue(error)
+  vi.mocked(request.put).mockRejectedValue(error)
+  vi.mocked(request.delete).mockRejectedValue(error)
+}
 
 describe('Process Store', () => {
   beforeEach(() => {
@@ -212,7 +228,7 @@ describe('Process Store', () => {
         count: 1,
         timestamp: 1234567890,
       }
-      vi.spyOn(api, 'request').mockResolvedValue(mockResponse as any)
+      mockRequestResolved(mockResponse)
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
@@ -224,11 +240,15 @@ describe('Process Store', () => {
     })
 
     it('请求期间 loading 应该为 true', async () => {
-      vi.spyOn(api, 'request').mockImplementation(async () => {
+      const impl = async () => {
         const store = useProcessStore()
         expect(store.loading).toBe(true)
         return { processes: [], count: 0, timestamp: Date.now() }
-      })
+      }
+      vi.mocked(request.get).mockImplementation(impl)
+      vi.mocked(request.post).mockImplementation(impl)
+      vi.mocked(request.put).mockImplementation(impl)
+      vi.mocked(request.delete).mockImplementation(impl)
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
@@ -237,7 +257,7 @@ describe('Process Store', () => {
     })
 
     it('请求失败时 loading 应该恢复为 false', async () => {
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Network error'))
+      mockRequestRejected(new Error('Network error'))
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
@@ -254,13 +274,13 @@ describe('Process Store', () => {
 
   describe('killProcess', () => {
     it('应该调用终止进程 API', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({})
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
       await store.killProcess(1234, 'SIGTERM')
 
-      expect(api.request.post).toHaveBeenCalledWith('/process/kill', {
+      expect(request.post).toHaveBeenCalledWith('/process/kill', {
         alias: 'test-server',
         pid: 1234,
         signal: 'SIGTERM',
@@ -269,7 +289,7 @@ describe('Process Store', () => {
 
     it('请求失败时应该抛出错误', async () => {
       const error = new Error('Permission denied')
-      vi.spyOn(api, 'request').mockRejectedValue(error)
+      mockRequestRejected(error)
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
@@ -285,13 +305,13 @@ describe('Process Store', () => {
 
   describe('setNice', () => {
     it('应该调用设置 nice 值 API', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({})
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
       await store.setNice(1234, -10)
 
-      expect(api.request.post).toHaveBeenCalledWith('/process/nice', {
+      expect(request.post).toHaveBeenCalledWith('/process/nice', {
         alias: 'test-server',
         pid: 1234,
         nice_value: -10,
@@ -300,7 +320,7 @@ describe('Process Store', () => {
 
     it('请求失败时应该抛出错误', async () => {
       const error = new Error('Permission denied')
-      vi.spyOn(api, 'request').mockRejectedValue(error)
+      mockRequestRejected(error)
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
@@ -310,13 +330,13 @@ describe('Process Store', () => {
 
   describe('batchKill', () => {
     it('应该调用批量终止进程 API', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({})
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
       await store.batchKill([1, 2, 3], 'SIGTERM')
 
-      expect(api.request.post).toHaveBeenCalledWith('/process/batch/kill', {
+      expect(request.post).toHaveBeenCalledWith('/process/batch/kill', {
         alias: 'test-server',
         pids: [1, 2, 3],
         signal: 'SIGTERM',
@@ -324,7 +344,7 @@ describe('Process Store', () => {
     })
 
     it('请求失败时应该抛出错误', async () => {
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Batch kill failed'))
+      mockRequestRejected(new Error('Batch kill failed'))
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
@@ -334,13 +354,13 @@ describe('Process Store', () => {
 
   describe('serviceControl', () => {
     it('应该调用服务控制 API', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({})
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
       await store.serviceControl('nginx', 'restart')
 
-      expect(api.request.post).toHaveBeenCalledWith('/process/service/control', {
+      expect(request.post).toHaveBeenCalledWith('/process/service/control', {
         alias: 'test-server',
         service_name: 'nginx',
         action: 'restart',
@@ -348,7 +368,7 @@ describe('Process Store', () => {
     })
 
     it('请求失败时应该抛出错误', async () => {
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Service not found'))
+      mockRequestRejected(new Error('Service not found'))
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
@@ -359,7 +379,7 @@ describe('Process Store', () => {
   describe('Alert Config', () => {
     it('fetchAlertConfig 应该获取告警配置', async () => {
       const mockConfig = { cpu_threshold: 80, mem_threshold: 70, duration_seconds: 10 }
-      vi.spyOn(api, 'request').mockResolvedValue(mockConfig as any)
+      mockRequestResolved(mockConfig)
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
@@ -369,14 +389,14 @@ describe('Process Store', () => {
     })
 
     it('saveAlertConfig 应该保存告警配置', async () => {
-      vi.spyOn(api, 'request').mockResolvedValue({} as any)
+      mockRequestResolved({})
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
       const newConfig = { cpu_threshold: 95, mem_threshold: 85, duration_seconds: 30 }
       await store.saveAlertConfig(newConfig)
 
-      expect(api.request.put).toHaveBeenCalledWith('/process/alert-config', {
+      expect(request.put).toHaveBeenCalledWith('/process/alert-config', {
         alias: 'test-server',
         ...newConfig,
       })
@@ -392,7 +412,7 @@ describe('Process Store', () => {
         high_mem: [{ pid: 400, mem_percent: 90, duration: 30 }],
         total_anomalies: 4,
       }
-      vi.spyOn(api, 'request').mockResolvedValue(mockAnomalies as any)
+      mockRequestResolved(mockAnomalies)
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
@@ -498,17 +518,17 @@ describe('Process Store', () => {
   })
 
   describe('Refresh Control', () => {
-    it('startAutoRefresh 应该启动定时刷新', () => {
-      vi.useFakeTimers()
+    it('startAutoRefresh 应该启动定时刷新', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
       const store = useProcessStore()
       store.currentAlias = 'test-server'
       store.refreshInterval = 3000
 
-      const fetchSpy = vi.spyOn(store, 'fetchProcessList').mockResolvedValue(undefined as any)
+      mockRequestResolved({ processes: [], count: 0, timestamp: Date.now() })
       store.startAutoRefresh()
 
-      vi.advanceTimersByTime(3000)
-      expect(fetchSpy).toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(3000)
+      expect(request.get).toHaveBeenCalled()
 
       store.stopAutoRefresh()
       vi.useRealTimers()
@@ -528,15 +548,16 @@ describe('Process Store', () => {
       vi.useRealTimers()
     })
 
-    it('setRefreshInterval 应该更新间隔并启动刷新', () => {
-      vi.useFakeTimers()
+    it('setRefreshInterval 应该更新间隔并启动刷新', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
       const store = useProcessStore()
       store.currentAlias = 'test-server'
-      const fetchSpy = vi.spyOn(store, 'fetchProcessList').mockResolvedValue(undefined as any)
+
+      mockRequestResolved({ processes: [], count: 0, timestamp: Date.now() })
 
       store.setRefreshInterval(1000)
-      vi.advanceTimersByTime(1000)
-      expect(fetchSpy).toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(request.get).toHaveBeenCalled()
 
       store.stopAutoRefresh()
       vi.useRealTimers()
@@ -557,7 +578,7 @@ describe('Process Store', () => {
   describe('fetchProcessDetail', () => {
     it('应该获取进程详情', async () => {
       const mockDetail = { pid: 1234, name: 'nginx', environ: [], fd_count: 10, net_connections: 5, cgroup: '', status_file: {} }
-      vi.spyOn(api, 'request').mockResolvedValue(mockDetail as any)
+      mockRequestResolved(mockDetail)
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'
@@ -567,7 +588,7 @@ describe('Process Store', () => {
     })
 
     it('请求失败时应该返回 null', async () => {
-      vi.spyOn(api, 'request').mockRejectedValue(new Error('Not found'))
+      mockRequestRejected(new Error('Not found'))
 
       const store = useProcessStore()
       store.currentAlias = 'test-server'

@@ -121,7 +121,7 @@ class TestMysqlPasswordFlagInWebSocket:
         """直接检查源码文件中 -p 后面是否紧跟空格(不紧跟密码)"""
         import inspect
         source = inspect.getsource(self.handler._handle_cli_direct)
-        buggy_pattern = re.search(r'"-p\s*\{', source) or re.search(r"f\"-p\s+\{", source)
+        buggy_pattern = re.search(r'"-p\s+\{', source) or re.search(r"f\"-p\s+\{", source)
         assert buggy_pattern is None, (
             "源码中发现 `-p {password}` 模式(有空格), 这是导致 Enter password 提示的 bug.\n"
             "修复方法: 将 `f\"-p {conn.password}\"` 改为 `f\"-p{conn.password}\"`"

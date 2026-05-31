@@ -125,24 +125,26 @@ watch(() => props.visible, (val) => {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  padding: var(--md3-space-lg);
+  padding: var(--md3-space-xl);
 }
 
 .md3-dialog {
   background: var(--md3-surface-container-high);
   border-radius: var(--md3-shape-xl);
-  box-shadow: var(--md3-elevation-level3);
+  border: 1px solid var(--md3-outline-variant);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 96px);
+  max-height: calc(100vh - var(--md3-space-3xl));
 }
 
 .md3-dialog--fullscreen {
-  width: calc(100vw - 48px);
-  height: calc(100vh - 96px);
+  width: calc(100vw - var(--md3-space-3xl));
+  height: calc(100vh - var(--md3-space-3xl));
   max-width: 1200px;
-  max-height: calc(100vh - 96px);
+  max-height: calc(100vh - var(--md3-space-3xl));
   border-radius: var(--md3-shape-xl);
 }
 
@@ -157,10 +159,8 @@ watch(() => props.visible, (val) => {
 
 .md3-dialog-title {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
+  font: var(--md3-type-headline-small);
   color: var(--md3-on-surface);
-  line-height: 1.75rem;
 }
 
 /* ===== Close Button ===== */
@@ -188,8 +188,7 @@ watch(() => props.visible, (val) => {
   overflow-y: auto;
   flex: 1;
   color: var(--md3-on-surface-variant);
-  font-size: 0.875rem;
-  line-height: 1.5rem;
+  font: var(--md3-type-body-medium);
 }
 
 /* ===== Footer ===== */

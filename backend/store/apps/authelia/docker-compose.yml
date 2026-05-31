@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  app:
+    image: authelia/authelia:latest
+    container_name: panel-authelia
+    restart: unless-stopped
+    ports:
+      - "${AUTHELIA_PORT}:9091"
+    volumes:
+      - /www/server/apps/authelia/data:/config
+    labels:
+      managed-by: "opsv-kits-store"

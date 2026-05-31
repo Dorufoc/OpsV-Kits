@@ -84,8 +84,7 @@ function toggle() {
 
 /* ===== Track Text ===== */
 .md3-switch-track-text {
-  font-size: 0.625rem;
-  font-weight: 500;
+  font: var(--md3-type-label-small);
   color: var(--md3-on-surface-variant);
   user-select: none;
   transition: color var(--md3-motion-duration-medium) var(--md3-motion-easing-standard);

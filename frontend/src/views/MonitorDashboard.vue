@@ -453,7 +453,7 @@ onMounted(async () => {
   if (alias) {
     selectedAlias.value = alias
     store.currentAlias = alias
-    await store.fetchSnapshot()
+    await store.initWithHistory()
     startPolling()
   }
 })
@@ -670,11 +670,11 @@ onBeforeUnmount(() => {
   background: var(--md3-surface-container-low);
   border: 1px solid var(--md3-outline-variant);
   border-radius: var(--md3-shape-md);
-  transition: box-shadow var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+  transition: border-color var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
 }
 
 .mw-card:hover {
-  box-shadow: var(--md3-elevation-level1);
+  border-color: var(--md3-card-border-hover);
 }
 
 .mw-card.alive {

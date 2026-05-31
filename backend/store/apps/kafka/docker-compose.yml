@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app:
+    image: confluentinc/cp-kafka:latest
+    container_name: panel-kafka
+    restart: unless-stopped
+    ports:
+      - "${KAFKA_PORT}:9092"
+    volumes:
+      - /www/server/apps/kafka/data:/var/lib/kafka/data
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=${KAFKA_ZOOKEEPER_CONNECT:-zookeeper:2181}
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:${KAFKA_PORT}
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+    labels:
+      managed-by: "opsv-kits-store"

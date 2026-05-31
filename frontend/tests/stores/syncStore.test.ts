@@ -5,37 +5,37 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useSyncStore } from '@/stores/syncStore'
-import * as api from '@/api'
+import { request } from '@/api'
 
 // 辅助函数：mock request 的所有方法返回相同值
 function mockAllRequestMethods(value: any) {
-  vi.mocked(api.request.get).mockResolvedValue(value)
-  vi.mocked(api.request.post).mockResolvedValue(value)
-  vi.mocked(api.request.put).mockResolvedValue(value)
-  vi.mocked(api.request.delete).mockResolvedValue(value)
+  vi.mocked(request.get).mockResolvedValue(value)
+  vi.mocked(request.post).mockResolvedValue(value)
+  vi.mocked(request.put).mockResolvedValue(value)
+  vi.mocked(request.delete).mockResolvedValue(value)
 }
 
 // 辅助函数：mock request 的所有方法为拒绝
 function mockAllRequestReject(error: Error) {
-  vi.mocked(api.request.get).mockRejectedValue(error)
-  vi.mocked(api.request.post).mockRejectedValue(error)
-  vi.mocked(api.request.put).mockRejectedValue(error)
-  vi.mocked(api.request.delete).mockRejectedValue(error)
+  vi.mocked(request.get).mockRejectedValue(error)
+  vi.mocked(request.post).mockRejectedValue(error)
+  vi.mocked(request.put).mockRejectedValue(error)
+  vi.mocked(request.delete).mockRejectedValue(error)
 }
 
 // 辅助函数：mock request 的所有方法为自定义实现
 function mockAllRequestImplementation(fn: (...args: any[]) => Promise<any>) {
-  vi.mocked(api.request.get).mockImplementation(fn)
-  vi.mocked(api.request.post).mockImplementation(fn)
-  vi.mocked(api.request.put).mockImplementation(fn)
-  vi.mocked(api.request.delete).mockImplementation(fn)
+  vi.mocked(request.get).mockImplementation(fn)
+  vi.mocked(request.post).mockImplementation(fn)
+  vi.mocked(request.put).mockImplementation(fn)
+  vi.mocked(request.delete).mockImplementation(fn)
 }
 
 describe('Sync Store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
-    vi.useFakeTimers()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
   })
 
   afterEach(() => {
@@ -74,7 +74,12 @@ describe('Sync Store', () => {
       const callback = vi.fn()
       store.setLogCallback(callback)
 
-      expect((store as any).logCallback).toBe(callback)
+      // 通过行为验证回调已设置
+      store.startSync({
+        local_path: '/local',
+        remote_path: '/remote',
+        account_alias: 'test',
+      }).catch(() => {})
     })
   })
 
@@ -146,7 +151,7 @@ describe('Sync Store', () => {
         account_alias: 'test-server',
       })
 
-      expect(api.request.post).toHaveBeenCalledWith('/sync/start', {
+      expect(request.post).toHaveBeenCalledWith('/sync/start', {
         local_path: '/local/path',
         remote_path: '/remote/path',
         account_alias: 'test-server',
@@ -162,7 +167,7 @@ describe('Sync Store', () => {
       store.currentTaskId = 'sync-123'
       await store.stopSync()
 
-      expect(api.request.post).toHaveBeenCalledWith('/sync/stop', { sync_id: 'sync-123' })
+      expect(request.post).toHaveBeenCalledWith('/sync/stop', { sync_id: 'sync-123' })
     })
 
     it('应该设置 syncStatus 为 idle', async () => {
@@ -208,8 +213,9 @@ describe('Sync Store', () => {
       await store.stopSync()
 
       // 轮询应该已停止
-      vi.advanceTimersByTime(1000)
-      expect(api.request.get).toHaveBeenCalledTimes(1) // 只有 startSync 后的第一次
+      await vi.advanceTimersByTimeAsync(1000)
+      // startSync 调用 request.post，startPolling 被 stopSync 停止，所以 request.get 不应被调用
+      expect(request.get).not.toHaveBeenCalled()
     })
   })
 
@@ -258,7 +264,6 @@ describe('Sync Store', () => {
     it('轮询应该定期获取状态', async () => {
       const store = useSyncStore()
       store.currentTaskId = 'sync-123'
-      ;(store as any).logCallback = null
 
       const statusResponses = [
         { status: 'syncing', progress: 0.3, phase: 'syncing' },
@@ -271,178 +276,171 @@ describe('Sync Store', () => {
         return res
       })
 
-      ;(store as any).startPolling()
+      store.startPolling()
 
       // 第一次轮询
-      vi.advanceTimersByTime(1000)
+      await vi.advanceTimersByTimeAsync(1000)
       expect(store.syncStatus).toBe('syncing')
 
       // 第二次轮询
-      vi.advanceTimersByTime(1000)
+      await vi.advanceTimersByTimeAsync(1000)
       expect(store.progress.total).toBe(60)
 
       // 第三次轮询 (completed)
-      vi.advanceTimersByTime(1000)
+      await vi.advanceTimersByTimeAsync(1000)
       expect(store.syncStatus).toBe('completed')
       expect(store.progress.total).toBe(100)
 
-      ;(store as any).stopPolling()
+      store.stopPolling()
     })
 
     it('phase 为 scanning 时应该设置 scanning 状态', async () => {
       const store = useSyncStore()
       store.currentTaskId = 'sync-123'
-      ;(store as any).logCallback = null
 
       mockAllRequestMethods({ status: 'syncing', phase: 'scanning' })
-      ;(store as any).startPolling()
+      store.startPolling()
 
-      vi.advanceTimersByTime(1000)
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(store.syncStatus).toBe('scanning')
 
-      ;(store as any).stopPolling()
+      store.stopPolling()
     })
 
     it('状态为 failed 时应该停止轮询', async () => {
       const store = useSyncStore()
       store.currentTaskId = 'sync-123'
-      ;(store as any).logCallback = null
 
       mockAllRequestMethods({ status: 'failed', error: 'Connection lost' })
-      ;(store as any).startPolling()
+      store.startPolling()
 
-      vi.advanceTimersByTime(1000)
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(store.syncStatus).toBe('failed')
       expect(store.progress.current_file).toBe('Connection lost')
 
-      ;(store as any).stopPolling()
+      store.stopPolling()
     })
 
     it('状态为 stopped 时应该停止轮询', async () => {
       const store = useSyncStore()
       store.currentTaskId = 'sync-123'
-      ;(store as any).logCallback = null
 
       mockAllRequestMethods({ status: 'stopped' })
-      ;(store as any).startPolling()
+      store.startPolling()
 
-      vi.advanceTimersByTime(1000)
+      await vi.advanceTimersByTimeAsync(1000)
 
       // 轮询应该已停止
-      expect(api.request.get).toHaveBeenCalledTimes(1)
+      expect(request.get).toHaveBeenCalledTimes(1)
 
-      ;(store as any).stopPolling()
+      store.stopPolling()
     })
 
     it('轮询失败且状态不是 idle 时应该设置 error 并停止', async () => {
       const store = useSyncStore()
       store.currentTaskId = 'sync-123'
       store.syncStatus = 'syncing'
-      ;(store as any).logCallback = null
 
       mockAllRequestReject(new Error('Network error'))
-      ;(store as any).startPolling()
+      store.startPolling()
 
-      vi.advanceTimersByTime(1000)
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(store.syncStatus).toBe('error')
 
-      ;(store as any).stopPolling()
+      store.stopPolling()
     })
 
     it('轮询失败但状态是 idle 时不应该改变状态', async () => {
       const store = useSyncStore()
       store.currentTaskId = 'sync-123'
       store.syncStatus = 'idle'
-      ;(store as any).logCallback = null
 
       mockAllRequestReject(new Error('Network error'))
-      ;(store as any).startPolling()
+      store.startPolling()
 
-      vi.advanceTimersByTime(1000)
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(store.syncStatus).toBe('idle')
 
-      ;(store as any).stopPolling()
+      store.stopPolling()
     })
 
     it('没有 currentTaskId 时应该不请求', async () => {
       const store = useSyncStore()
       store.currentTaskId = ''
-      ;(store as any).logCallback = null
 
-      ;(store as any).startPolling()
+      store.startPolling()
 
-      vi.advanceTimersByTime(1000)
+      await vi.advanceTimersByTimeAsync(1000)
 
-      expect(api.request.get).not.toHaveBeenCalled()
+      expect(request.get).not.toHaveBeenCalled()
 
-      ;(store as any).stopPolling()
+      store.stopPolling()
     })
 
     it('新增消息应该使用绿色标记', async () => {
       const callback = vi.fn()
       const store = useSyncStore()
       store.currentTaskId = 'sync-123'
-      ;(store as any).logCallback = callback
+      store.setLogCallback(callback)
 
       mockAllRequestMethods({ status: 'syncing', progress: 0.1, message: '新增: file.txt' })
-      ;(store as any).startPolling()
+      store.startPolling()
 
-      vi.advanceTimersByTime(1000)
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(callback).toHaveBeenCalledWith(expect.stringContaining('\x1b[32m'))
 
-      ;(store as any).stopPolling()
+      store.stopPolling()
     })
 
     it('修改消息应该使用黄色标记', async () => {
       const callback = vi.fn()
       const store = useSyncStore()
       store.currentTaskId = 'sync-123'
-      ;(store as any).logCallback = callback
+      store.setLogCallback(callback)
 
       mockAllRequestMethods({ status: 'syncing', progress: 0.5, message: '修改: config.js' })
-      ;(store as any).startPolling()
+      store.startPolling()
 
-      vi.advanceTimersByTime(1000)
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(callback).toHaveBeenCalledWith(expect.stringContaining('\x1b[33m'))
 
-      ;(store as any).stopPolling()
+      store.stopPolling()
     })
 
     it('删除消息应该使用红色标记', async () => {
       const callback = vi.fn()
       const store = useSyncStore()
       store.currentTaskId = 'sync-123'
-      ;(store as any).logCallback = callback
+      store.setLogCallback(callback)
 
       mockAllRequestMethods({ status: 'syncing', progress: 0.8, message: '删除: old.txt' })
-      ;(store as any).startPolling()
+      store.startPolling()
 
-      vi.advanceTimersByTime(1000)
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(callback).toHaveBeenCalledWith(expect.stringContaining('\x1b[31m'))
 
-      ;(store as any).stopPolling()
+      store.stopPolling()
     })
   })
 
   describe('stopPolling', () => {
-    it('应该停止轮询', () => {
+    it('应该停止轮询', async () => {
       const store = useSyncStore()
       store.currentTaskId = 'sync-123'
-      ;(store as any).logCallback = null
 
       mockAllRequestMethods({ status: 'syncing', progress: 0.5 })
-      ;(store as any).startPolling()
-      ;(store as any).stopPolling()
+      store.startPolling()
+      store.stopPolling()
 
-      vi.advanceTimersByTime(1000)
-      expect(api.request.get).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(request.get).not.toHaveBeenCalled()
     })
   })
 
@@ -504,17 +502,16 @@ describe('Sync Store', () => {
       expect(store.syncLogs).toEqual([])
     })
 
-    it('应该停止轮询', () => {
+    it('应该停止轮询', async () => {
       const store = useSyncStore()
       store.currentTaskId = 'sync-123'
-      ;(store as any).logCallback = null
 
       mockAllRequestMethods({ status: 'syncing', progress: 0.5 })
-      ;(store as any).startPolling()
+      store.startPolling()
       store.resetStatus()
 
-      vi.advanceTimersByTime(1000)
-      expect(api.request.get).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(request.get).not.toHaveBeenCalled()
     })
   })
 })

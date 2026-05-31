@@ -88,7 +88,7 @@ function handleTabClick(value: string | number) {
   display: inline-flex;
   align-items: center;
   gap: var(--md3-space-sm);
-  padding: 8px 16px;
+  padding: var(--md3-space-sm) var(--md3-space-lg);
   border: none;
   background: transparent;
   border-radius: var(--md3-shape-sm);
@@ -127,7 +127,7 @@ function handleTabClick(value: string | number) {
 
 .md3-tabs__indicator {
   position: absolute;
-  height: 2px;
+  height: 3px;
   bottom: 0;
   background: var(--md3-primary);
   border-radius: var(--md3-shape-full);
@@ -135,7 +135,7 @@ function handleTabClick(value: string | number) {
 }
 
 .md3-tabs__content {
-  padding-top: var(--md3-space-lg);
+  padding-top: var(--md3-space-xl);
 }
 
 /* ===== Dark Mode ===== */

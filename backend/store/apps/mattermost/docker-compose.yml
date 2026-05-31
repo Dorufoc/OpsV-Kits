@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'mattermost/mattermost-team-edition:latest'
+    container_name: panel-mattermost
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${MATTERMOST_PORT}:8065'
+    volumes:
+      - /www/server/apps/mattermost/data:/mattermost/data

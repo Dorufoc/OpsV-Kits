@@ -9,7 +9,6 @@ from typing import Any, Callable, Optional
 
 import paramiko
 from webssh.handler import SSHClient as WebSSHClient, PrivateKey
-from webssh.policy import AutoAddPolicy
 from webssh.utils import to_str
 
 logger = logging.getLogger(__name__)
@@ -28,7 +27,7 @@ def create_webssh_client(
     timeout: float = 15.0,
 ) -> tuple[paramiko.SSHClient, paramiko.Channel, str]:
     ssh = WebSSHClient()
-    ssh.set_missing_host_key_policy(AutoAddPolicy())
+    ssh.set_missing_host_key_policy(paramiko.WarningPolicy())
     ssh.load_system_host_keys()
 
     pkey = None
@@ -99,7 +98,7 @@ class WebSSHSession:
     def connect(self, timeout: float = 15.0) -> None:
         logger.info(f"[{self.session_id}] connecting to {self.host}:{self.port} as {self.username}")
         ssh = WebSSHClient()
-        ssh.set_missing_host_key_policy(AutoAddPolicy())
+        ssh.set_missing_host_key_policy(paramiko.WarningPolicy())
         ssh.load_system_host_keys()
 
         pkey = None

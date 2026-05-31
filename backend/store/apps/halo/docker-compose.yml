@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  app:
+    image: 'halohub/halo:latest'
+    container_name: panel-halo
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    ports:
+      - '${HALO_PORT}:8090'
+    volumes:
+      - /www/server/apps/halo/data:/root/.halo2

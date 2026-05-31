@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  app:
+    image: 'linuxserver/wireguard:latest'
+    container_name: panel-wireguard
+    restart: unless-stopped
+    labels:
+      managed-by: "opsv-kits-store"
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - SERVERURL=${WIREGUARD_SERVER_URL}
+      - SERVERPORT=${WIREGUARD_SERVER_PORT}
+      - PEERS=${WIREGUARD_PEERS}
+    ports:
+      - '${WIREGUARD_PORT}:51820/udp'
+    volumes:
+      - /www/server/apps/wireguard/data:/config
+      - /lib/modules:/lib/modules

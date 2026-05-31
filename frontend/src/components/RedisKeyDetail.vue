@@ -66,7 +66,7 @@ import { ref, computed } from 'vue'
 import type { RedisKeyInfo } from '@/types/db-toolkit'
 import { useDbToolkitStore } from '@/stores/dbToolkitStore'
 import Md3Button from '@/components/Md3Button.vue'
-import { Md3Tag, Md3Dialog } from '@/components/md3'
+import { Md3Tag, Md3Dialog, Md3Message } from '@/components/md3'
 
 const props = defineProps<{
   keyInfo: RedisKeyInfo | null
@@ -104,7 +104,8 @@ async function confirmDelete() {
   try {
     await store.deleteRedisKey(props.accountAlias, props.containerId, props.keyInfo.key)
     emit('deleted')
-  } catch {
+  } catch (e: any) {
+    Md3Message.error(e?.response?.data?.detail || e?.message || '删除 Key 失败')
   }
 }
 </script>
