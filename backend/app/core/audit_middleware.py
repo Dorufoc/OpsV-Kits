@@ -278,6 +278,6 @@ class AuditMiddleware:
                 }
 
                 from app.services.audit_log_service import audit_log_service
-                asyncio.ensure_future(audit_log_service.enqueue_log(entry))
+                audit_log_service.enqueue_log(entry)
             except Exception:
                 logger.exception("Failed to enqueue audit log entry")

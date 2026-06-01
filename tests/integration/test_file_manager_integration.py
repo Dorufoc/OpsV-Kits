@@ -20,7 +20,7 @@ class TestDirectoryListing:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.get(
-            "/files/list",
+            "/api/files/list",
             params={"alias": alias, "path": "/"},
         )
         assert resp.status_code == 200
@@ -35,7 +35,7 @@ class TestDirectoryListing:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.get(
-            "/files/list",
+            "/api/files/list",
             params={"alias": alias, "path": "~"},
         )
         assert resp.status_code == 200
@@ -51,7 +51,7 @@ class TestFileUploadDownload:
         yield
         try:
             self._api_client.post(
-                "/files/delete",
+                "/api/files/delete",
                 json={"alias": self._alias, "path": TEST_BASE_DIR},
             )
         except Exception:
@@ -59,7 +59,7 @@ class TestFileUploadDownload:
 
     def test_upload_and_download_file(self) -> None:
         self._api_client.post(
-            "/files/mkdir",
+            "/api/files/mkdir",
             json={"alias": self._alias, "path": self._remote_test_dir},
         )
 
@@ -67,7 +67,7 @@ class TestFileUploadDownload:
         remote_file = f"{self._remote_test_dir}/test_upload.txt"
 
         save_resp = self._api_client.post(
-            "/files/content",
+            "/api/files/content",
             json={
                 "alias": self._alias,
                 "path": remote_file,
@@ -78,7 +78,7 @@ class TestFileUploadDownload:
         assert save_resp.json()["status"] == "saved"
 
         read_resp = self._api_client.get(
-            "/files/content",
+            "/api/files/content",
             params={"alias": self._alias, "path": remote_file},
         )
         assert read_resp.status_code == 200
@@ -96,7 +96,7 @@ class TestFileDeleteAndDirectoryCreate:
         yield
         try:
             self._api_client.post(
-                "/files/delete",
+                "/api/files/delete",
                 json={"alias": self._alias, "path": TEST_BASE_DIR},
             )
         except Exception:
@@ -105,14 +105,14 @@ class TestFileDeleteAndDirectoryCreate:
     def test_create_directory_and_delete(self) -> None:
         test_dir = f"{TEST_BASE_DIR}/mkdir_test"
         mkdir_resp = self._api_client.post(
-            "/files/mkdir",
+            "/api/files/mkdir",
             json={"alias": self._alias, "path": test_dir},
         )
         assert mkdir_resp.status_code == 200
         assert mkdir_resp.json()["status"] == "created"
 
         list_resp = self._api_client.get(
-            "/files/list",
+            "/api/files/list",
             params={"alias": self._alias, "path": TEST_BASE_DIR},
         )
         assert list_resp.status_code == 200
@@ -121,7 +121,7 @@ class TestFileDeleteAndDirectoryCreate:
         assert "mkdir_test" in dir_names
 
         delete_resp = self._api_client.post(
-            "/files/delete",
+            "/api/files/delete",
             json={"alias": self._alias, "path": test_dir},
         )
         assert delete_resp.status_code == 200
@@ -130,12 +130,12 @@ class TestFileDeleteAndDirectoryCreate:
     def test_create_file_and_delete(self) -> None:
         test_file = f"{TEST_BASE_DIR}/test_file.txt"
         self._api_client.post(
-            "/files/mkdir",
+            "/api/files/mkdir",
             json={"alias": self._alias, "path": TEST_BASE_DIR},
         )
 
         save_resp = self._api_client.post(
-            "/files/content",
+            "/api/files/content",
             json={
                 "alias": self._alias,
                 "path": test_file,
@@ -145,7 +145,7 @@ class TestFileDeleteAndDirectoryCreate:
         assert save_resp.status_code == 200
 
         delete_resp = self._api_client.post(
-            "/files/delete",
+            "/api/files/delete",
             json={"alias": self._alias, "path": test_file},
         )
         assert delete_resp.status_code == 200
@@ -160,7 +160,7 @@ class TestPermissionsAndEncoding:
         yield
         try:
             self._api_client.post(
-                "/files/delete",
+                "/api/files/delete",
                 json={"alias": self._alias, "path": TEST_BASE_DIR},
             )
         except Exception:
@@ -168,12 +168,12 @@ class TestPermissionsAndEncoding:
 
     def test_check_permission(self) -> None:
         self._api_client.post(
-            "/files/mkdir",
+            "/api/files/mkdir",
             json={"alias": self._alias, "path": TEST_BASE_DIR},
         )
 
         perm_resp = self._api_client.get(
-            "/permission/check",
+            "/api/permission/check",
             params={"alias": self._alias, "path": TEST_BASE_DIR},
         )
         assert perm_resp.status_code == 200
@@ -184,13 +184,13 @@ class TestPermissionsAndEncoding:
 
     def test_chmod_file(self) -> None:
         self._api_client.post(
-            "/files/mkdir",
+            "/api/files/mkdir",
             json={"alias": self._alias, "path": TEST_BASE_DIR},
         )
 
         test_file = f"{TEST_BASE_DIR}/chmod_test.txt"
         self._api_client.post(
-            "/files/content",
+            "/api/files/content",
             json={
                 "alias": self._alias,
                 "path": test_file,
@@ -199,7 +199,7 @@ class TestPermissionsAndEncoding:
         )
 
         chmod_resp = self._api_client.post(
-            "/files/chmod",
+            "/api/files/chmod",
             json={
                 "alias": self._alias,
                 "path": test_file,
@@ -211,7 +211,7 @@ class TestPermissionsAndEncoding:
 
     def test_unicode_content(self) -> None:
         self._api_client.post(
-            "/files/mkdir",
+            "/api/files/mkdir",
             json={"alias": self._alias, "path": TEST_BASE_DIR},
         )
 
@@ -219,7 +219,7 @@ class TestPermissionsAndEncoding:
         test_file = f"{TEST_BASE_DIR}/unicode_test.txt"
 
         save_resp = self._api_client.post(
-            "/files/content",
+            "/api/files/content",
             json={
                 "alias": self._alias,
                 "path": test_file,
@@ -229,7 +229,7 @@ class TestPermissionsAndEncoding:
         assert save_resp.status_code == 200
 
         read_resp = self._api_client.get(
-            "/files/content",
+            "/api/files/content",
             params={"alias": self._alias, "path": test_file},
         )
         assert read_resp.status_code == 200

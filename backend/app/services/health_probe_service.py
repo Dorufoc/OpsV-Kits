@@ -520,7 +520,7 @@ class HealthProbeService:
             args=[target.id],
             replace_existing=True,
         )
-        _logger.info(f"Scheduled probe job for target '{target.name}' every {target.interval_seconds}s")
+        _logger.debug(f"Scheduled probe job for target '{target.name}' every {target.interval_seconds}s")
 
     def _remove_probe_job(self, target_id: str) -> None:
         if self._scheduler is None:

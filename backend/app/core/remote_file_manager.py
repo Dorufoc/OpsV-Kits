@@ -289,6 +289,15 @@ class RemoteFileManager:
             self._is_chinese = False
         return self._is_chinese
 
+    @staticmethod
+    def _shell_path(path: str) -> str:
+        if path.startswith("~"):
+            remainder = path[1:]
+            if remainder:
+                return f"$HOME{shlex.quote(remainder)}"
+            return "$HOME"
+        return shlex.quote(path)
+
     def _exec(self, command: str, timeout: float = 30.0) -> tuple[int, str, str]:
         code, stdout, stderr = self._manager.exec_command(command, timeout=timeout)
         if isinstance(stdout, bytes):
@@ -302,7 +311,7 @@ class RemoteFileManager:
 
     def list_directory(self, path: str) -> list[FileEntry]:
         path = path.rstrip("/") or "/"
-        cmd = f"ls -la {shlex.quote(path)}"
+        cmd = f"ls -la {self._shell_path(path)}"
         code, stdout, stderr = self._exec(cmd)
         if code != 0:
             if not stderr:
@@ -318,30 +327,42 @@ class RemoteFileManager:
         return entries
 
     def get_file_info(self, path: str) -> FileDetail:
-        cmd = f"stat {shlex.quote(path)} 2>/dev/null || stat -x {shlex.quote(path)} 2>/dev/null"
+        is_link = False
+        link_target = None
+
+        lk_code, _, _ = self._exec(f"test -L {self._shell_path(path)}")
+        is_link = lk_code == 0
+        if is_link:
+            _, rl_out, _ = self._exec(f"readlink {self._shell_path(path)}")
+            link_target = rl_out.strip() or None
+
+        stat_fmt = "%F|%a|%A|%s|%U|%G|%Y|%X|%Z"
+        cmd = f"stat -c '{stat_fmt}' {self._shell_path(path)} 2>/dev/null"
         code, stdout, stderr = self._exec(cmd)
         if code != 0:
-            ls_code, ls_stdout, ls_stderr = self._exec(f"ls -la {shlex.quote(path)}")
+            ls_code, ls_stdout, ls_stderr = self._exec(f"ls -la -d {self._shell_path(path)}")
             if ls_code == 0:
                 for line in ls_stdout.split("\n"):
                     line = line.strip()
                     if line and not line.startswith("total"):
                         parts = line.split()
                         if len(parts) >= 9:
-                            name = " ".join(parts[8:])
-                            if name == path.split("/")[-1]:
+                            raw_name = " ".join(parts[8:])
+                            display_name = raw_name.split(" -> ")[0] if " -> " in raw_name else raw_name
+                            basename = path.rstrip("/").split("/")[-1]
+                            if display_name == basename:
                                 is_dir = parts[0].startswith("d")
-                                size = int(parts[4])
+                                ls_is_link = parts[0].startswith("l")
                                 return FileDetail(
                                     path=path,
                                     is_dir=is_dir,
-                                    is_file=not is_dir,
-                                    is_link=parts[0].startswith("l"),
+                                    is_file=not is_dir and not is_link and not ls_is_link,
+                                    is_link=is_link or ls_is_link,
                                     is_socket=False,
                                     is_fifo=False,
                                     is_block_device=False,
                                     is_char_device=False,
-                                    size=size,
+                                    size=int(parts[4]) if parts[4].isdigit() else 0,
                                     blocks=0,
                                     permissions=parts[0],
                                     permission_mode=0,
@@ -353,13 +374,82 @@ class RemoteFileManager:
                                     change_timestamp=0.0,
                                     owner=parts[2],
                                     group=parts[3],
-                                    link_target=None,
+                                    link_target=link_target,
                                 )
             raise RuntimeError((stderr or ls_stderr or "无法获取文件信息").strip())
+
+        parts = stdout.strip().split("|")
+        if len(parts) >= 9:
+            file_type = parts[0].strip()
+            perm_mode_str = parts[1].strip()
+            perm_str = parts[2].strip()
+            size = int(parts[3].strip() or "0")
+            owner = parts[4].strip()
+            group = parts[5].strip()
+            modify_ts = float(parts[6].strip() or "0")
+            access_ts = float(parts[7].strip() or "0")
+            change_ts = float(parts[8].strip() or "0")
+
+            is_dir = file_type == "directory"
+            is_socket = file_type == "socket"
+            is_fifo = file_type == "fifo"
+            is_block = file_type == "block special file"
+            is_char = file_type == "character special file"
+
+            if not is_link:
+                is_link = perm_str.startswith("l")
+
+            is_file = not (is_dir or is_link or is_socket or is_fifo or is_block or is_char)
+
+            perm_mode = int(perm_mode_str, 8) if perm_mode_str.isdigit() else 0
+
+            modify_time = ""
+            access_time = ""
+            change_time = ""
+            if modify_ts:
+                try:
+                    modify_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(modify_ts))
+                except Exception:
+                    pass
+            if access_ts:
+                try:
+                    access_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(access_ts))
+                except Exception:
+                    pass
+            if change_ts:
+                try:
+                    change_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(change_ts))
+                except Exception:
+                    pass
+
+            return FileDetail(
+                path=path,
+                is_dir=is_dir,
+                is_file=is_file,
+                is_link=is_link,
+                is_socket=is_socket,
+                is_fifo=is_fifo,
+                is_block_device=is_block,
+                is_char_device=is_char,
+                size=size,
+                blocks=0,
+                permissions=perm_str,
+                permission_mode=perm_mode,
+                modify_time=modify_time,
+                modify_timestamp=modify_ts,
+                access_time=access_time,
+                access_timestamp=access_ts,
+                change_time=change_time,
+                change_timestamp=change_ts,
+                owner=owner,
+                group=group,
+                link_target=link_target,
+            )
+
         return _parse_stat_output(stdout, path)
 
     def read_file(self, path: str, encoding: str = "utf-8") -> str:
-        code, stdout, stderr = self._exec(f"cat {shlex.quote(path)}")
+        code, stdout, stderr = self._exec(f"cat {self._shell_path(path)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法读取文件: {path}")
         return stdout
@@ -373,32 +463,32 @@ class RemoteFileManager:
             raise RuntimeError(f"无法写入文件: {e}")
 
     def create_file(self, path: str) -> None:
-        code, stdout, stderr = self._exec(f"touch {shlex.quote(path)}")
+        code, stdout, stderr = self._exec(f"touch {self._shell_path(path)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法创建文件: {path}")
 
     def create_directory(self, path: str) -> None:
-        code, stdout, stderr = self._exec(f"mkdir -p {shlex.quote(path)}")
+        code, stdout, stderr = self._exec(f"mkdir -p {self._shell_path(path)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法创建目录: {path}")
 
     def delete(self, path: str) -> None:
-        code, stdout, stderr = self._exec(f"rm -rf {shlex.quote(path)}")
+        code, stdout, stderr = self._exec(f"rm -rf {self._shell_path(path)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法删除: {path}")
 
     def rename(self, src: str, dst: str) -> None:
-        code, stdout, stderr = self._exec(f"mv {shlex.quote(src)} {shlex.quote(dst)}")
+        code, stdout, stderr = self._exec(f"mv {self._shell_path(src)} {self._shell_path(dst)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法重命名: {src} -> {dst}")
 
     def copy(self, src: str, dst: str) -> None:
-        code, stdout, stderr = self._exec(f"cp -r {shlex.quote(src)} {shlex.quote(dst)}")
+        code, stdout, stderr = self._exec(f"cp -r {self._shell_path(src)} {self._shell_path(dst)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法复制: {src} -> {dst}")
 
     def chmod(self, path: str, mode: str) -> None:
-        code, stdout, stderr = self._exec(f"chmod {mode} {shlex.quote(path)}")
+        code, stdout, stderr = self._exec(f"chmod {mode} {self._shell_path(path)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法修改权限: {path}")
 
@@ -406,7 +496,7 @@ class RemoteFileManager:
         owner = f"{user or ''}:{group or ''}" if group else (user or "")
         if not owner:
             raise ValueError("必须指定 user 或 group")
-        code, stdout, stderr = self._exec(f"sudo chown {owner} {shlex.quote(path)}")
+        code, stdout, stderr = self._exec(f"sudo chown {owner} {self._shell_path(path)}")
         if code != 0:
             raise RuntimeError(stderr.strip() or f"无法修改所有者: {path}")
 
@@ -481,7 +571,7 @@ class RemoteFileManager:
             type_arg = "-type d"
 
         cmd = (
-            f"find {shlex.quote(path)} {depth_arg} {type_arg} "
+            f"find {self._shell_path(path)} {depth_arg} {type_arg} "
             f"-name {shlex.quote(pattern)} "
             f"-printf '%y\\t%s\\t%M\\t%TY-%Tm-%Td %TH:%TM\\t%p\\n' "
             f"2>/dev/null"
@@ -489,7 +579,7 @@ class RemoteFileManager:
         code, stdout, stderr = self._exec(cmd)
         if code != 0 and not stdout.strip():
             fallback_cmd = (
-                f"find {shlex.quote(path)} {depth_arg} {type_arg} "
+                f"find {self._shell_path(path)} {depth_arg} {type_arg} "
                 f"-name {shlex.quote(pattern)} -ls 2>/dev/null"
             )
             code, stdout, stderr = self._exec(fallback_cmd)

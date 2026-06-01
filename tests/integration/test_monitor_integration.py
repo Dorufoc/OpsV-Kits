@@ -14,7 +14,7 @@ class TestMonitorCPU:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/monitor/cpu", params={"alias": alias})
+        resp = api_client.get("/api/monitor/cpu", params={"alias": alias})
         assert resp.status_code == 200
         data = resp.json()
         assert "percent" in data or "cpu_percent" in data or isinstance(data, dict)
@@ -25,7 +25,7 @@ class TestMonitorCPU:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/monitor/cpu/cores", params={"alias": alias})
+        resp = api_client.get("/api/monitor/cpu/cores", params={"alias": alias})
         assert resp.status_code == 200
         data = resp.json()
         assert "cores" in data
@@ -39,7 +39,7 @@ class TestMonitorMemory:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/monitor/memory", params={"alias": alias})
+        resp = api_client.get("/api/monitor/memory", params={"alias": alias})
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data, dict)
@@ -53,7 +53,7 @@ class TestMonitorDisk:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/monitor/disks", params={"alias": alias})
+        resp = api_client.get("/api/monitor/disks", params={"alias": alias})
         assert resp.status_code == 200
         data = resp.json()
         assert "disks" in data
@@ -64,7 +64,7 @@ class TestMonitorDisk:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/monitor/disk-io", params={"alias": alias})
+        resp = api_client.get("/api/monitor/disk-io", params={"alias": alias})
         assert resp.status_code == 200
         data = resp.json()
         assert "devices" in data
@@ -78,7 +78,7 @@ class TestMonitorNetwork:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/monitor/network", params={"alias": alias})
+        resp = api_client.get("/api/monitor/network", params={"alias": alias})
         assert resp.status_code == 200
         data = resp.json()
         assert "interfaces" in data
@@ -89,7 +89,7 @@ class TestMonitorNetwork:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/monitor/connections", params={"alias": alias})
+        resp = api_client.get("/api/monitor/connections", params={"alias": alias})
         assert resp.status_code == 200
 
 
@@ -101,7 +101,7 @@ class TestMonitorLoad:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/monitor/load", params={"alias": alias})
+        resp = api_client.get("/api/monitor/load", params={"alias": alias})
         assert resp.status_code == 200
 
 
@@ -113,7 +113,7 @@ class TestMonitorDockerStats:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/monitor/docker", params={"alias": alias})
+        resp = api_client.get("/api/monitor/docker", params={"alias": alias})
         assert resp.status_code == 200
         data = resp.json()
         assert "containers" in data
@@ -127,7 +127,7 @@ class TestMonitorSnapshot:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/monitor/snapshot", params={"alias": alias})
+        resp = api_client.get("/api/monitor/snapshot", params={"alias": alias})
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data, dict)

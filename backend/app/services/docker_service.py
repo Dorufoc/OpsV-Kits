@@ -326,7 +326,7 @@ class DockerService:
     ) -> dict[str, Any]:
         result = self._exec_docker_json(
             account_alias,
-            ["container", "inspect", container_id],
+            ["container", "inspect", "--format", "'{{json .}}'", container_id],
         )
         if not result:
             raise DockerCommandError(f"容器 '{container_id}' 未找到", -1)
@@ -505,7 +505,7 @@ class DockerService:
         self, account_alias: str, network_id: str
     ) -> dict[str, Any]:
         result = self._exec_docker_json(
-            account_alias, ["network", "inspect", network_id]
+            account_alias, ["network", "inspect", "--format", "'{{json .}}'", network_id]
         )
         if not result:
             raise DockerCommandError(f"网络 '{network_id}' 未找到", -1)
@@ -537,7 +537,7 @@ class DockerService:
         self, account_alias: str, volume_name: str
     ) -> dict[str, Any]:
         result = self._exec_docker_json(
-            account_alias, ["volume", "inspect", volume_name]
+            account_alias, ["volume", "inspect", "--format", "'{{json .}}'", volume_name]
         )
         if not result:
             raise DockerCommandError(f"卷 '{volume_name}' 未找到", -1)

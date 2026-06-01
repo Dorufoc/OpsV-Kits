@@ -588,7 +588,7 @@ class SecurityService:
         port_list = self._parse_port_range(ports)
         results = self.port_scan(alias, host, port_list)
         output_lines = [f"{r['port']}/tcp {r['status']}" for r in results]
-        return {"code": 0, "output": "\n".join(output_lines), "error": ""}
+        return {"code": 0, "output": "\n".join(output_lines), "error": "", "ports": results}
 
     def _parse_port_range(self, ports: str) -> list[int]:
         result: list[int] = []

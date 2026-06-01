@@ -142,7 +142,7 @@ class FileManagerService:
             (r"(?i)dd\s+.*if=/dev/zero.*of=/dev/[a-zA-Z]+", "检测到直接操作块设备的危险命令"),
             (r"(?i)dd\s+.*of=/dev/[a-zA-Z]+", "检测到直接操作块设备的危险命令"),
             (r"(?i):\s*\(\)\s*\{\s*:\s*\|:\s*&\s*\}\s*;\s*:", "检测到 fork 炸弹"),
-            (r"(?i)>\s*/dev/[a-zA-Z0-9]+", "检测到重定向到块设备的危险命令"),
+            (r"(?i)>\s*/dev/(?!null|zero)[a-zA-Z0-9]+", "检测到重定向到块设备的危险命令"),
             (r"(?i)chmod\s+-[a-zA-Z]*R[a-zA-Z]*\s+.*(/|~|\.\.|\$HOME|\$PWD|\${?HOME}?|\${?PWD}?)", "检测到修改根目录权限的危险命令"),
             (r"(?i)mv\s+.*(/|~|\.\.|\$HOME|\$PWD|\${?HOME}?|\${?PWD}?)\s+/dev/null", "检测到移动关键目录到 /dev/null 的危险命令"),
             (r"(?i)mv\s+.*(/|~|\.\.|\$HOME|\$PWD|\${?HOME}?|\${?PWD}?)\s+/dev/zero", "检测到移动关键目录到 /dev/zero 的危险命令"),
@@ -196,6 +196,8 @@ class FileManagerService:
     def get_file_info(self, alias: str, path: str) -> FileDetail:
         conn, mgr, perm = self._with_manager(alias)
         try:
+            if not perm.check_exists(path):
+                raise ValueError(f"路径不存在: {path}")
             if not perm.check_read_access(path):
                 raise PermissionError(f"无读取权限: {path}")
             result = mgr.get_file_info(path)
@@ -225,7 +227,9 @@ class FileManagerService:
         conn, mgr, perm = self._with_manager(alias)
         try:
             if not perm.check_write_access(path):
-                raise PermissionError(f"无写入权限: {path}")
+                parent = str(Path(path).parent).replace("\\", "/")
+                if not perm.check_write_access(parent):
+                    raise PermissionError(f"无写入权限: {path}")
             mgr.write_file(path, content)
             self._record_operation(alias, "write_file", path, "success")
         except Exception:
@@ -252,7 +256,7 @@ class FileManagerService:
         conn, mgr, perm = self._with_manager(alias)
         try:
             parent = str(Path(path).parent).replace("\\", "/")
-            if not perm.check_write_access(parent):
+            if perm.check_execute_access(parent) and not perm.check_write_access(parent):
                 raise PermissionError(f"无写入权限: {parent}")
             mgr.create_directory(path)
             self._record_operation(alias, "create_directory", path, "success")

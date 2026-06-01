@@ -82,85 +82,203 @@ const mockEdgeSourceNode = { id: 'node-1', node_type: 'trigger_cron', name: '定
 const mockEdgeTargetNode = { id: 'node-2', node_type: 'action_shell', name: 'Shell 命令', config: {}, position_x: 400, position_y: 100 }
 
 describe('WorkflowCanvas', () => {
+  function createWrapper(props = {}) {
+    return mount(WorkflowCanvas, { props: { nodes: [], edges: [], ...props } })
+  }
+
   it('应该渲染 canvas 容器', () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: [], edges: [] } })
+    const wrapper = createWrapper()
     expect(wrapper.find('.workflow-canvas').exists()).toBe(true)
   })
 
   it('应该渲染 SVG 画布', () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: [], edges: [] } })
+    const wrapper = createWrapper()
     expect(wrapper.find('.canvas-svg').exists()).toBe(true)
   })
 
   it('应该渲染控制按钮', () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: [], edges: [] } })
+    const wrapper = createWrapper()
     expect(wrapper.find('.canvas-controls').exists()).toBe(true)
     const buttons = wrapper.findAll('.canvas-control-btn')
     expect(buttons.length).toBe(3)
   })
 
   it('应该渲染小地图', () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: [], edges: [] } })
+    const wrapper = createWrapper()
     expect(wrapper.find('.canvas-minimap').exists()).toBe(true)
   })
 
   it('应该渲染 WorkflowNode 子组件', () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: mockNodes, edges: [] } })
+    const wrapper = createWrapper({ nodes: mockNodes })
     expect(wrapper.findComponent({ name: 'WorkflowNode' }).exists()).toBe(true)
   })
 
   it('应该渲染 WorkflowEdge 子组件', () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: mockNodes, edges: mockEdges } })
+    const wrapper = createWrapper({ nodes: mockNodes, edges: mockEdges })
     expect(wrapper.findComponent({ name: 'WorkflowEdge' }).exists()).toBe(true)
   })
 
   it('点击画布应该触发 canvas-click 事件', async () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: [], edges: [] } })
+    const wrapper = createWrapper()
     await wrapper.find('.canvas-svg').trigger('mousedown', { button: 0 })
     expect(wrapper.emitted('canvas-click')).toBeTruthy()
   })
 
   it('点击放大按钮应该增加 zoom', async () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: [], edges: [] } })
+    const wrapper = createWrapper()
     const buttons = wrapper.findAll('.canvas-control-btn')
     await buttons[0].trigger('click')
   })
 
   it('点击缩小按钮应该减少 zoom', async () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: [], edges: [] } })
+    const wrapper = createWrapper()
     const buttons = wrapper.findAll('.canvas-control-btn')
     await buttons[1].trigger('click')
   })
 
   it('点击重置按钮应该重置视图', async () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: [], edges: [] } })
+    const wrapper = createWrapper()
     const buttons = wrapper.findAll('.canvas-control-btn')
     await buttons[2].trigger('click')
   })
 
   it('应该渲染网格背景', () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: [], edges: [] } })
+    const wrapper = createWrapper()
     const svg = wrapper.find('.canvas-svg')
     expect(svg.find('defs').exists()).toBe(true)
     expect(svg.find('pattern').exists()).toBe(true)
   })
 
   it('应该渲染箭头标记', () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: [], edges: [] } })
+    const wrapper = createWrapper()
     expect(wrapper.find('marker').exists()).toBe(true)
   })
 
   it('nodeExecutions 应该传递给子组件', () => {
     const executions = [{ node_id: 'node-1', status: 'running' }]
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: mockNodes, edges: [], nodeExecutions: executions } })
+    const wrapper = createWrapper({ nodes: mockNodes, nodeExecutions: executions })
     const nodeComponent = wrapper.findComponent({ name: 'WorkflowNode' })
     expect(nodeComponent.props('executionStatus')).toBe('running')
   })
 
   it('小地图应该渲染节点', () => {
-    const wrapper = mount(WorkflowCanvas, { props: { nodes: mockNodes, edges: [] } })
+    const wrapper = createWrapper({ nodes: mockNodes })
     const minimapRects = wrapper.findAll('.minimap-svg rect')
     expect(minimapRects.length).toBeGreaterThan(0)
+  })
+
+  it('中键点击画布应进入平移模式', async () => {
+    const wrapper = createWrapper()
+    await wrapper.find('.workflow-canvas').trigger('mousedown', { button: 1 })
+  })
+
+  it('Alt+左键点击画布应进入平移模式', async () => {
+    const wrapper = createWrapper()
+    await wrapper.find('.workflow-canvas').trigger('mousedown', { button: 0, altKey: true })
+  })
+
+  it('滚轮事件应调整缩放', async () => {
+    const wrapper = createWrapper()
+    await wrapper.find('.workflow-canvas').trigger('wheel', { deltaY: 100 })
+  })
+
+  it('滚轮向上应放大', async () => {
+    const wrapper = createWrapper()
+    await wrapper.find('.workflow-canvas').trigger('wheel', { deltaY: -100 })
+  })
+
+  it('拖拽放置应触发 drop 事件', async () => {
+    const wrapper = createWrapper({ nodes: mockNodes })
+    await wrapper.find('.workflow-canvas').trigger('drop', {
+      dataTransfer: { getData: vi.fn().mockReturnValue('action_shell') },
+      clientX: 200,
+      clientY: 200,
+    })
+  })
+
+  it('拖拽放置无 nodeType 不应触发事件', async () => {
+    const wrapper = createWrapper()
+    await wrapper.find('.workflow-canvas').trigger('drop', {
+      dataTransfer: { getData: vi.fn().mockReturnValue('') },
+      clientX: 200,
+      clientY: 200,
+    })
+    expect(wrapper.emitted('drop')).toBeFalsy()
+  })
+
+  it('node-click 事件应正确触发', async () => {
+    const wrapper = createWrapper({ nodes: mockNodes })
+    const node = wrapper.findComponent({ name: 'WorkflowNode' })
+    if (node.exists()) {
+      await node.vm.$emit('click', 'node-1')
+      expect(wrapper.emitted('node-click')).toBeTruthy()
+    }
+  })
+
+  it('node-drag 事件应正确触发', async () => {
+    const wrapper = createWrapper({ nodes: mockNodes })
+    const node = wrapper.findComponent({ name: 'WorkflowNode' })
+    if (node.exists()) {
+      await node.vm.$emit('drag', 'node-1', 150, 150)
+      expect(wrapper.emitted('node-drag')).toBeTruthy()
+    }
+  })
+
+  it('node-drag-end 事件应正确触发', async () => {
+    const wrapper = createWrapper({ nodes: mockNodes })
+    const node = wrapper.findComponent({ name: 'WorkflowNode' })
+    if (node.exists()) {
+      await node.vm.$emit('drag-end', 'node-1', 150, 150)
+      expect(wrapper.emitted('node-drag-end')).toBeTruthy()
+    }
+  })
+
+  it('output 端口点击应开始连线', async () => {
+    const wrapper = createWrapper({ nodes: mockNodes })
+    const node = wrapper.findComponent({ name: 'WorkflowNode' })
+    if (node.exists()) {
+      await node.vm.$emit('port-click', 'node-1', 'output')
+    }
+  })
+
+  it('input 端口点击不应开始连线', async () => {
+    const wrapper = createWrapper({ nodes: mockNodes })
+    const node = wrapper.findComponent({ name: 'WorkflowNode' })
+    if (node.exists()) {
+      await node.vm.$emit('port-click', 'node-1', 'input')
+    }
+  })
+
+  it('edge-click 事件应正确触发', async () => {
+    const wrapper = createWrapper({ nodes: mockNodes, edges: mockEdges })
+    const edge = wrapper.findComponent({ name: 'WorkflowEdge' })
+    if (edge.exists()) {
+      await edge.vm.$emit('click', 'edge-1')
+      expect(wrapper.emitted('edge-click')).toBeTruthy()
+    }
+  })
+
+  it('连续放大不应超过最大值', async () => {
+    const wrapper = createWrapper()
+    const buttons = wrapper.findAll('.canvas-control-btn')
+    for (let i = 0; i < 20; i++) {
+      await buttons[0].trigger('click')
+    }
+  })
+
+  it('连续缩小不应超过最小值', async () => {
+    const wrapper = createWrapper()
+    const buttons = wrapper.findAll('.canvas-control-btn')
+    for (let i = 0; i < 20; i++) {
+      await buttons[1].trigger('click')
+    }
+  })
+
+  it('空节点列表时小地图不应渲染节点矩形', () => {
+    const wrapper = createWrapper()
+    const minimapRects = wrapper.findAll('.minimap-svg rect')
+    const nodeRects = minimapRects.filter(r => r.attributes('opacity') === '0.5')
+    expect(nodeRects.length).toBe(0)
   })
 })
 

@@ -37,6 +37,34 @@ class TestAddSource:
         assert source["status"] == "stopped"
         assert source["labels"] == {}
 
+    def test_add_tcp_source(self, service):
+        source_id = service.add_source({"type": "tcp", "host": "127.0.0.1", "port": 514})
+        source = service.get_source(source_id)
+        assert source["type"] == "tcp"
+        assert source["host"] == "127.0.0.1"
+        assert source["port"] == 514
+
+    def test_add_udp_source(self, service):
+        source_id = service.add_source({"type": "udp", "host": "0.0.0.0", "port": 514})
+        source = service.get_source(source_id)
+        assert source["type"] == "udp"
+
+    def test_add_file_source(self, service):
+        source_id = service.add_source({"type": "file", "path": "/var/log/app.log"})
+        source = service.get_source(source_id)
+        assert source["type"] == "file"
+        assert source["path"] == "/var/log/app.log"
+
+    def test_add_source_with_labels(self, service):
+        source_id = service.add_source({"type": "system", "alias": "s1", "labels": {"env": "prod"}})
+        source = service.get_source(source_id)
+        assert source["labels"] == {"env": "prod"}
+
+    def test_add_source_none_labels(self, service):
+        source_id = service.add_source({"type": "system", "labels": None})
+        source = service.get_source(source_id)
+        assert source["labels"] == {}
+
 
 class TestDeleteSource:
     @pytest.mark.asyncio
@@ -49,6 +77,22 @@ class TestDeleteSource:
     async def test_delete_source_not_found(self, service):
         with pytest.raises(ValueError, match="不存在"):
             await service.delete_source("nonexistent")
+
+    @pytest.mark.asyncio
+    async def test_delete_source_cleans_file_offsets(self, service):
+        source_id = service.add_source({"type": "system", "alias": "s1"})
+        service._file_offsets[source_id] = (123, 456)
+        await service.delete_source(source_id)
+        assert source_id not in service._file_offsets
+
+    @pytest.mark.asyncio
+    async def test_delete_source_cleans_watchdog_handler(self, service):
+        source_id = service.add_source({"type": "file", "alias": "s1", "path": "/tmp/test.log"})
+        handler = MagicMock()
+        service._watchdog_handlers[source_id] = handler
+        service._watchdog_observer = MagicMock()
+        await service.delete_source(source_id)
+        assert source_id not in service._watchdog_handlers
 
 
 class TestGetSources:
@@ -84,6 +128,24 @@ class TestUpdateSource:
         assert "invalid_key" not in source
         assert source["alias"] == "s2"
 
+    def test_update_source_enabled(self, service):
+        source_id = service.add_source({"type": "system", "alias": "s1"})
+        service.update_source(source_id, {"enabled": False})
+        source = service.get_source(source_id)
+        assert source["enabled"] is False
+
+    def test_update_source_port(self, service):
+        source_id = service.add_source({"type": "tcp", "alias": "s1"})
+        service.update_source(source_id, {"port": 514})
+        source = service.get_source(source_id)
+        assert source["port"] == 514
+
+    def test_update_source_labels(self, service):
+        source_id = service.add_source({"type": "system", "alias": "s1"})
+        service.update_source(source_id, {"labels": {"env": "staging"}})
+        source = service.get_source(source_id)
+        assert source["labels"] == {"env": "staging"}
+
 
 class TestSubscribe:
     def test_subscribe(self, service):
@@ -112,6 +174,13 @@ class TestSubscribe:
         service.update_filters(ws, {"level": "WARN", "keyword": "error"})
         assert service._subscribers[0]["filters"]["level"] == "WARN"
         assert service._subscribers[0]["filters"]["keyword"] == "error"
+
+    def test_update_filters_no_match(self, service):
+        ws = MagicMock()
+        service.subscribe(ws)
+        other_ws = MagicMock()
+        service.update_filters(other_ws, {"level": "WARN"})
+        assert service._subscribers[0]["filters"] == {}
 
 
 class TestNotifySubscribers:
@@ -158,6 +227,30 @@ class TestNotifySubscribers:
         await service._notify_subscribers({"content": "test"})
         ws.send_json.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_notify_keyword_not_matching(self, service):
+        ws = AsyncMock()
+        service.subscribe(ws, {"keyword": "error"})
+        await service._notify_subscribers({"level": "INFO", "content": "all is well"})
+        ws.send_json.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_notify_source_not_matching(self, service):
+        ws = AsyncMock()
+        service.subscribe(ws, {"source": "src1"})
+        await service._notify_subscribers({"source": "src2", "content": "test"})
+        ws.send_json.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_notify_multiple_subscribers(self, service):
+        ws1 = AsyncMock()
+        ws2 = AsyncMock()
+        service.subscribe(ws1)
+        service.subscribe(ws2, {"level": "ERROR"})
+        await service._notify_subscribers({"level": "INFO", "content": "test"})
+        ws1.send_json.assert_called_once()
+        ws2.send_json.assert_not_called()
+
 
 class TestProcessLogLine:
     @pytest.mark.asyncio
@@ -193,6 +286,55 @@ class TestProcessLogLine:
             assert call_args["labels"]["env"] == "prod"
             assert call_args["labels"]["host"] == "web1"
 
+    @pytest.mark.asyncio
+    async def test_process_log_line_with_host(self, service):
+        with patch("app.services.log_collector_service.log_parser_service") as mock_parser, \
+             patch("app.services.log_collector_service.log_storage_service") as mock_storage, \
+             patch("app.services.log_collector_service.log_alert_service") as mock_alert:
+            mock_parser.parse.return_value = {"level": "INFO", "message": "test", "timestamp": 123}
+            mock_storage.write_log = AsyncMock()
+            mock_alert.check_alert = AsyncMock()
+            await service._process_log_line("test", "src1", {"host": "192.168.1.1"})
+            call_args = mock_storage.write_log.call_args[0][0]
+            assert call_args["host"] == "192.168.1.1"
+
+    @pytest.mark.asyncio
+    async def test_process_log_line_with_container(self, service):
+        with patch("app.services.log_collector_service.log_parser_service") as mock_parser, \
+             patch("app.services.log_collector_service.log_storage_service") as mock_storage, \
+             patch("app.services.log_collector_service.log_alert_service") as mock_alert:
+            mock_parser.parse.return_value = {"level": "INFO", "message": "test", "timestamp": 123}
+            mock_storage.write_log = AsyncMock()
+            mock_alert.check_alert = AsyncMock()
+            await service._process_log_line("test", "src1", {"container_name": "nginx", "container_id": "abc123"})
+            call_args = mock_storage.write_log.call_args[0][0]
+            assert call_args["container_name"] == "nginx"
+            assert call_args["container_id"] == "abc123"
+
+    @pytest.mark.asyncio
+    async def test_process_log_line_no_timestamp(self, service):
+        with patch("app.services.log_collector_service.log_parser_service") as mock_parser, \
+             patch("app.services.log_collector_service.log_storage_service") as mock_storage, \
+             patch("app.services.log_collector_service.log_alert_service") as mock_alert:
+            mock_parser.parse.return_value = {"level": "INFO", "message": "test"}
+            mock_storage.write_log = AsyncMock()
+            mock_alert.check_alert = AsyncMock()
+            await service._process_log_line("test", "src1")
+            call_args = mock_storage.write_log.call_args[0][0]
+            assert isinstance(call_args["timestamp"], float)
+
+    @pytest.mark.asyncio
+    async def test_process_log_line_no_labels(self, service):
+        with patch("app.services.log_collector_service.log_parser_service") as mock_parser, \
+             patch("app.services.log_collector_service.log_storage_service") as mock_storage, \
+             patch("app.services.log_collector_service.log_alert_service") as mock_alert:
+            mock_parser.parse.return_value = {"level": "INFO", "message": "test", "timestamp": 123}
+            mock_storage.write_log = AsyncMock()
+            mock_alert.check_alert = AsyncMock()
+            await service._process_log_line("test", "nonexistent_source")
+            call_args = mock_storage.write_log.call_args[0][0]
+            assert call_args["labels"] is None
+
 
 class TestReadChannelData:
     def test_read_channel_data_ready(self, service):
@@ -213,6 +355,168 @@ class TestReadChannelData:
         chan.recv_ready.side_effect = Exception("error")
         result = service._read_channel_data(chan)
         assert result is None
+
+
+class TestStartSystemLogCollection:
+    @pytest.mark.asyncio
+    async def test_account_not_found(self, service):
+        source_id = service.add_source({"type": "system", "alias": "s1", "path": "/var/log/syslog"})
+        with patch("app.services.log_collector_service.ssh_account_service") as mock_svc:
+            mock_svc.get_account.return_value = None
+            await service.start_system_log_collection(source_id, "s1", "/var/log/syslog")
+            source = service.get_source(source_id)
+            assert source["status"] == "error"
+
+    @pytest.mark.asyncio
+    async def test_transport_none(self, service):
+        source_id = service.add_source({"type": "system", "alias": "s1", "path": "/var/log/syslog"})
+        mock_account = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.manager.client.get_transport.return_value = None
+        mock_conn.manager.encoding = "utf-8"
+        with patch("app.services.log_collector_service.ssh_account_service") as mock_svc:
+            mock_svc.get_account.return_value = mock_account
+            mock_svc.pool.get_connection.return_value = mock_conn
+            mock_svc.pool.release_connection = MagicMock()
+            await service.start_system_log_collection(source_id, "s1", "/var/log/syslog")
+            source = service.get_source(source_id)
+            assert source["status"] == "error"
+
+    @pytest.mark.asyncio
+    async def test_cancelled(self, service):
+        source_id = service.add_source({"type": "system", "alias": "s1", "path": "/var/log/syslog"})
+        mock_account = MagicMock()
+        mock_conn = MagicMock()
+        mock_transport = MagicMock()
+        mock_chan = MagicMock()
+        mock_chan.recv_ready.return_value = False
+        mock_chan.exit_status_ready.return_value = True
+        mock_conn.manager.client.get_transport.return_value = mock_transport
+        mock_transport.open_session.return_value = mock_chan
+        mock_conn.manager.encoding = "utf-8"
+
+        call_count = 0
+        async def fake_exec_in_executor(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise asyncio.CancelledError()
+            return b""
+
+        with patch("app.services.log_collector_service.ssh_account_service") as mock_svc:
+            mock_svc.get_account.return_value = mock_account
+            mock_svc.pool.get_connection.return_value = mock_conn
+            mock_svc.pool.release_connection = MagicMock()
+            with patch.object(service, "_read_channel_data", return_value=b""):
+                with patch("asyncio.get_event_loop") as mock_loop:
+                    mock_loop_obj = MagicMock()
+                    mock_loop.return_value = mock_loop_obj
+                    mock_loop_obj.run_in_executor = fake_exec_in_executor
+                    await service.start_system_log_collection(source_id, "s1", "/var/log/syslog")
+        source = service.get_source(source_id)
+        assert source["status"] == "stopped"
+
+
+class TestStartDockerLogCollection:
+    @pytest.mark.asyncio
+    async def test_account_not_found(self, service):
+        source_id = service.add_source({"type": "docker", "alias": "s1", "container": "nginx"})
+        with patch("app.services.log_collector_service.ssh_account_service") as mock_svc:
+            mock_svc.get_account.return_value = None
+            await service.start_docker_log_collection(source_id, "s1", "nginx")
+            source = service.get_source(source_id)
+            assert source["status"] == "error"
+
+    @pytest.mark.asyncio
+    async def test_transport_none(self, service):
+        source_id = service.add_source({"type": "docker", "alias": "s1", "container": "nginx"})
+        mock_account = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.manager.client.get_transport.return_value = None
+        mock_conn.manager.encoding = "utf-8"
+        with patch("app.services.log_collector_service.ssh_account_service") as mock_svc:
+            mock_svc.get_account.return_value = mock_account
+            mock_svc.pool.get_connection.return_value = mock_conn
+            mock_svc.pool.release_connection = MagicMock()
+            await service.start_docker_log_collection(source_id, "s1", "nginx")
+            source = service.get_source(source_id)
+            assert source["status"] == "error"
+
+    @pytest.mark.asyncio
+    async def test_cancelled(self, service):
+        source_id = service.add_source({"type": "docker", "alias": "s1", "container": "nginx"})
+        mock_account = MagicMock()
+        mock_conn = MagicMock()
+        mock_transport = MagicMock()
+        mock_chan = MagicMock()
+        mock_conn.manager.client.get_transport.return_value = mock_transport
+        mock_transport.open_session.return_value = mock_chan
+        mock_conn.manager.encoding = "utf-8"
+
+        call_count = 0
+        async def fake_exec_in_executor(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise asyncio.CancelledError()
+            return b""
+
+        with patch("app.services.log_collector_service.ssh_account_service") as mock_svc:
+            mock_svc.get_account.return_value = mock_account
+            mock_svc.pool.get_connection.return_value = mock_conn
+            mock_svc.pool.release_connection = MagicMock()
+            with patch.object(service, "_read_channel_data", return_value=b""):
+                with patch("asyncio.get_event_loop") as mock_loop:
+                    mock_loop_obj = MagicMock()
+                    mock_loop.return_value = mock_loop_obj
+                    mock_loop_obj.run_in_executor = fake_exec_in_executor
+                    await service.start_docker_log_collection(source_id, "s1", "nginx")
+        source = service.get_source(source_id)
+        assert source["status"] == "stopped"
+
+    @pytest.mark.asyncio
+    async def test_nonexistent_source(self, service):
+        await service.start_docker_log_collection("nonexistent", "s1", "nginx")
+
+
+class TestStartTcpServer:
+    @pytest.mark.asyncio
+    async def test_start_tcp_server(self, service):
+        with patch("asyncio.start_server", new_callable=AsyncMock) as mock_start:
+            mock_server = MagicMock()
+            mock_start.return_value = mock_server
+            await service.start_tcp_server("127.0.0.1", 9514)
+            mock_start.assert_called_once()
+            assert service._tcp_server is mock_server
+
+
+class TestStartUdpServer:
+    @pytest.mark.asyncio
+    async def test_start_udp_server(self, service):
+        with patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop_obj = MagicMock()
+            mock_loop.return_value = mock_loop_obj
+            mock_transport = MagicMock()
+            mock_loop_obj.create_datagram_endpoint = AsyncMock(return_value=(mock_transport, MagicMock()))
+            await service.start_udp_server("0.0.0.0", 9514)
+            assert service._udp_transport is mock_transport
+
+
+class TestStartFileWatcher:
+    @pytest.mark.asyncio
+    async def test_nonexistent_source(self, service):
+        await service.start_file_watcher("nonexistent", "/tmp/test.log")
+
+    @pytest.mark.asyncio
+    async def test_file_not_exists(self, service):
+        source_id = service.add_source({"type": "file", "alias": "s1", "path": "/nonexistent/file.log"})
+        with patch("app.services.log_collector_service.Path") as mock_path_cls:
+            mock_path = MagicMock()
+            mock_path.exists.return_value = False
+            mock_path_cls.return_value = mock_path
+            await service.start_file_watcher(source_id, "/nonexistent/file.log")
+            source = service.get_source(source_id)
+            assert source["status"] == "error"
 
 
 class TestStartSource:
@@ -241,6 +545,13 @@ class TestStartSource:
     async def test_start_udp_source(self, service):
         source_id = service.add_source({"type": "udp", "host": "0.0.0.0", "port": 9514})
         with patch.object(service, "start_udp_server", new_callable=AsyncMock):
+            await service.start_source(source_id)
+            assert source_id in service._tasks
+
+    @pytest.mark.asyncio
+    async def test_start_file_source(self, service):
+        source_id = service.add_source({"type": "file", "alias": "s1", "path": "/var/log/app.log"})
+        with patch.object(service, "start_file_watcher", new_callable=AsyncMock):
             await service.start_source(source_id)
             assert source_id in service._tasks
 
@@ -279,6 +590,10 @@ class TestStopSource:
         source = service.get_source(source_id)
         assert source["status"] == "stopped"
 
+    @pytest.mark.asyncio
+    async def test_stop_source_no_source(self, service):
+        await service.stop_source("nonexistent")
+
 
 class TestStartAll:
     @pytest.mark.asyncio
@@ -314,6 +629,29 @@ class TestShutdown:
             assert service._udp_transport is None
             assert len(service._subscribers) == 0
 
+    @pytest.mark.asyncio
+    async def test_shutdown_with_watchdog(self, service):
+        with patch.object(service, "stop_all", new_callable=AsyncMock):
+            service._tcp_server = None
+            service._udp_transport = None
+            mock_observer = MagicMock()
+            service._watchdog_observer = mock_observer
+            service._watchdog_handlers["s1"] = MagicMock()
+            await service.shutdown()
+            mock_observer.stop.assert_called_once()
+            assert service._watchdog_observer is None
+            assert len(service._watchdog_handlers) == 0
+            assert len(service._file_offsets) == 0
+
+    @pytest.mark.asyncio
+    async def test_shutdown_no_servers(self, service):
+        with patch.object(service, "stop_all", new_callable=AsyncMock):
+            service._tcp_server = None
+            service._udp_transport = None
+            await service.shutdown()
+            assert service._tcp_server is None
+            assert service._udp_transport is None
+
 
 class TestUdpLogProtocol:
     def test_connection_made(self, service):
@@ -347,3 +685,11 @@ class TestUdpLogProtocol:
     def test_connection_lost(self, service):
         protocol = _UdpLogProtocol(service)
         protocol.connection_lost(Exception("test"))
+
+    def test_datagram_received_exception(self, service):
+        protocol = _UdpLogProtocol(service)
+        transport = MagicMock()
+        protocol.connection_made(transport)
+        with patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.call_soon_threadsafe = MagicMock()
+            protocol.datagram_received(b"\xff\xfe", ("127.0.0.1", 12345))

@@ -45,6 +45,7 @@ class EventBusService:
         self._lock = threading.RLock()
         self._init_db()
         self._bg_tasks: list[asyncio.Task] = []
+        self._error_counts: dict[str, int] = {}
         self._start_background_sources()
 
     def _init_db(self) -> None:
@@ -781,7 +782,13 @@ class EventBusService:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error("File watcher error for source %s: %s", source.id, e)
+                err_key = f"file_watch:{source.id}"
+                self._error_counts[err_key] = self._error_counts.get(err_key, 0) + 1
+                err_count = self._error_counts[err_key]
+                if err_count <= 3:
+                    logger.error("File watcher error for source %s: %s", source.id, e)
+                elif err_count == 4:
+                    logger.warning("File watcher errors for source %s will be suppressed", source.id)
                 await asyncio.sleep(interval)
 
     def _detect_file_changes(

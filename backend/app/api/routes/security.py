@@ -30,7 +30,7 @@ async def list_firewall_rules(
     alias: str = Query(..., description="SSH 账户别名"),
 ):
     try:
-        return security_service.list_all_rules(alias)
+        return {"rules": security_service.list_all_rules(alias)}
     except ValueError as e:
         raise HTTPException(404, str(e))
     except Exception as e:

@@ -4,12 +4,34 @@ import { useDockerStoreStore } from '@/stores/dockerStoreStore'
 import { useDockerStore } from '@/stores/dockerStore'
 import * as api from '@/api'
 
+const wsInstances: any[] = []
+
+function createMockWebSocket() {
+  return vi.fn().mockImplementation(function(this: any, url: string) {
+    this.onopen = null
+    this.onmessage = null
+    this.onclose = null
+    this.onerror = null
+    this.close = vi.fn()
+    this.send = vi.fn()
+    this.readyState = 1
+    this.url = url
+    const self = this
+    wsInstances.push(this)
+    Promise.resolve().then(() => {
+      if (self.onopen) self.onopen()
+    })
+  })
+}
+
 describe('DockerStore Store', () => {
   let dockerStore: ReturnType<typeof useDockerStore>
 
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    wsInstances.length = 0
+    vi.stubGlobal('WebSocket', createMockWebSocket())
     dockerStore = useDockerStore()
     dockerStore.setAccountAlias('test-server')
   })
@@ -447,6 +469,181 @@ describe('DockerStore Store', () => {
       const store = useDockerStoreStore()
       const result = await store.configureRegistryMirror('https://mirror.com')
       expect(result).toBeUndefined()
+    })
+  })
+
+  describe('installAppWithProgress', () => {
+    function getLastWs(): any {
+      return wsInstances.length > 0 ? wsInstances[wsInstances.length - 1] : null
+    }
+
+    it('当没有 alias 时应该 reject', async () => {
+      dockerStore.setAccountAlias('')
+      const store = useDockerStoreStore()
+      await expect(store.installAppWithProgress('app1', {})).rejects.toThrow('未选择 SSH 服务器')
+    })
+
+    it('应该设置 installing 为 true 并初始化进度', async () => {
+      const store = useDockerStoreStore()
+      const promise = store.installAppWithProgress('app1', { port: 8080 })
+
+      expect(store.installing).toBe(true)
+      expect(store.installProgress['app1']).toBeDefined()
+      expect(store.installProgressPercent['app1']).toBe(0)
+      expect(store.appStatuses['app1'].state).toBe('installing')
+
+      await new Promise(r => setTimeout(r, 20))
+      const ws = getLastWs()
+      if (ws?.onmessage) {
+        ws.onmessage({ data: JSON.stringify({ type: 'complete', message: '安装完成', success: true }) })
+      }
+      try { await promise } catch {}
+    })
+
+    it('WebSocket onopen 应该发送安装参数', async () => {
+      const store = useDockerStoreStore()
+      const promise = store.installAppWithProgress('app1', { port: 8080 })
+
+      await new Promise(r => setTimeout(r, 20))
+      const ws = getLastWs()
+      expect(ws).not.toBeNull()
+      expect(ws.send).toHaveBeenCalled()
+      const sentData = JSON.parse(ws.send.mock.calls[0][0])
+      expect(sentData.account_alias).toBe('test-server')
+      expect(sentData.user_config).toEqual({ port: 8080 })
+
+      if (ws?.onmessage) {
+        ws.onmessage({ data: JSON.stringify({ type: 'complete', message: '安装完成', success: true }) })
+      }
+      try { await promise } catch {}
+    })
+
+    it('stage prepare 消息应设置进度为 5%', async () => {
+      const store = useDockerStoreStore()
+      const promise = store.installAppWithProgress('app1', {})
+
+      await new Promise(r => setTimeout(r, 20))
+      const ws = getLastWs()
+      ws.onmessage({ data: JSON.stringify({ type: 'stage', stage: 'prepare', message: '准备中...' }) })
+
+      expect(store.installProgressPercent['app1']).toBe(5)
+      expect(store.installProgressMessage['app1']).toBe('准备中...')
+
+      ws.onmessage({ data: JSON.stringify({ type: 'complete', message: '安装完成', success: true }) })
+      try { await promise } catch {}
+    })
+
+    it('stage download 消息应设置进度为 10%', async () => {
+      const store = useDockerStoreStore()
+      const promise = store.installAppWithProgress('app1', {})
+
+      await new Promise(r => setTimeout(r, 20))
+      const ws = getLastWs()
+      ws.onmessage({ data: JSON.stringify({ type: 'stage', stage: 'download', message: '下载中...' }) })
+
+      expect(store.installProgressPercent['app1']).toBe(10)
+
+      ws.onmessage({ data: JSON.stringify({ type: 'complete', message: '安装完成', success: true }) })
+      try { await promise } catch {}
+    })
+
+    it('stage start 消息应设置进度为 90%', async () => {
+      const store = useDockerStoreStore()
+      const promise = store.installAppWithProgress('app1', {})
+
+      await new Promise(r => setTimeout(r, 20))
+      const ws = getLastWs()
+      ws.onmessage({ data: JSON.stringify({ type: 'stage', stage: 'start', message: '启动中...' }) })
+
+      expect(store.installProgressPercent['app1']).toBe(90)
+
+      ws.onmessage({ data: JSON.stringify({ type: 'complete', message: '安装完成', success: true }) })
+      try { await promise } catch {}
+    })
+
+    it('pull_progress 消息应更新下载进度', async () => {
+      const store = useDockerStoreStore()
+      const promise = store.installAppWithProgress('app1', {})
+
+      await new Promise(r => setTimeout(r, 20))
+      const ws = getLastWs()
+      ws.onmessage({ data: JSON.stringify({ type: 'pull_progress', progress_percent: 50, message: '下载镜像中...' }) })
+
+      expect(store.installProgressPercent['app1']).toBeGreaterThan(10)
+      expect(store.installProgressMessage['app1']).toBe('下载镜像中...')
+
+      ws.onmessage({ data: JSON.stringify({ type: 'complete', message: '安装完成', success: true }) })
+      try { await promise } catch {}
+    })
+
+    it('pull_complete 消息应设置进度为 80%', async () => {
+      const store = useDockerStoreStore()
+      const promise = store.installAppWithProgress('app1', {})
+
+      await new Promise(r => setTimeout(r, 20))
+      const ws = getLastWs()
+      ws.onmessage({ data: JSON.stringify({ type: 'pull_complete', message: '镜像下载完成' }) })
+
+      expect(store.installProgressPercent['app1']).toBe(80)
+      expect(store.installProgressMessage['app1']).toBe('镜像下载完成')
+
+      ws.onmessage({ data: JSON.stringify({ type: 'complete', message: '安装完成', success: true }) })
+      try { await promise } catch {}
+    })
+
+    it('complete 消息应 resolve 并设置状态为 running', async () => {
+      const store = useDockerStoreStore()
+      const promise = store.installAppWithProgress('app1', {})
+
+      await new Promise(r => setTimeout(r, 20))
+      const ws = getLastWs()
+      ws.onmessage({ data: JSON.stringify({ type: 'complete', message: '安装完成', success: true }) })
+
+      const result = await promise
+      expect(result.success).toBe(true)
+      expect(store.appStatuses['app1'].state).toBe('running')
+      expect(store.installProgressPercent['app1']).toBe(100)
+      expect(store.installing).toBe(false)
+    })
+
+    it('error 消息应 reject 并设置状态为 not_installed', async () => {
+      const store = useDockerStoreStore()
+      const promise = store.installAppWithProgress('app1', {})
+
+      await new Promise(r => setTimeout(r, 20))
+      const ws = getLastWs()
+      ws.onmessage({ data: JSON.stringify({ type: 'error', message: '安装出错' }) })
+
+      await expect(promise).rejects.toThrow('安装出错')
+      expect(store.appStatuses['app1'].state).toBe('not_installed')
+      expect(store.installing).toBe(false)
+    })
+
+    it('WebSocket onerror 应 reject', async () => {
+      const store = useDockerStoreStore()
+      const promise = store.installAppWithProgress('app1', {})
+
+      await new Promise(r => setTimeout(r, 20))
+      const ws = getLastWs()
+      ws.onerror(new Event('error'))
+
+      await expect(promise).rejects.toThrow('WebSocket 连接失败')
+      expect(store.installing).toBe(false)
+    })
+
+    it('非 JSON 消息应被忽略', async () => {
+      const store = useDockerStoreStore()
+      const promise = store.installAppWithProgress('app1', {})
+
+      await new Promise(r => setTimeout(r, 20))
+      const ws = getLastWs()
+      ws.onmessage({ data: 'not json' })
+
+      expect(store.installing).toBe(true)
+
+      ws.onmessage({ data: JSON.stringify({ type: 'complete', message: '安装完成', success: true }) })
+
+      await promise
     })
   })
 })

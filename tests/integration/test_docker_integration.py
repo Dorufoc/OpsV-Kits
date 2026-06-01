@@ -21,7 +21,7 @@ class TestDockerInfo:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/docker/info", params={"account_alias": alias})
+        resp = api_client.get("/api/docker/info", params={"account_alias": alias})
         assert resp.status_code == 200
         data = resp.json()
         assert "installed" in data
@@ -38,7 +38,7 @@ class TestDockerContainerList:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.get(
-            "/docker/containers",
+            "/api/docker/containers",
             params={"account_alias": alias, "all": True},
         )
         assert resp.status_code == 200
@@ -51,7 +51,7 @@ class TestDockerContainerList:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/docker/images", params={"account_alias": alias})
+        resp = api_client.get("/api/docker/images", params={"account_alias": alias})
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data, list)
@@ -69,7 +69,7 @@ class TestDockerContainerLifecycle:
         for cid in self._container_ids:
             try:
                 self._api_client.delete(
-                    f"/docker/containers/{cid}",
+                    f"/api/docker/containers/{cid}",
                     params={"account_alias": self._alias, "force": True},
                 )
             except Exception:
@@ -77,7 +77,7 @@ class TestDockerContainerLifecycle:
 
     def test_pull_image(self) -> None:
         resp = self._api_client.post(
-            "/docker/images/pull",
+            "/api/docker/images/pull",
             json={
                 "account_alias": self._alias,
                 "image_name": TEST_IMAGE,
@@ -89,7 +89,7 @@ class TestDockerContainerLifecycle:
 
     def test_container_create_start_stop_remove(self) -> None:
         pull_resp = self._api_client.post(
-            "/docker/images/pull",
+            "/api/docker/images/pull",
             json={
                 "account_alias": self._alias,
                 "image_name": TEST_IMAGE,
@@ -99,7 +99,7 @@ class TestDockerContainerLifecycle:
 
         container_name = f"{TEST_CONTAINER_PREFIX}{int(time.time())}"
         create_resp = self._api_client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": self._alias,
                 "command": f"docker create --name {container_name} {TEST_IMAGE}",
@@ -114,7 +114,7 @@ class TestDockerContainerLifecycle:
         self._container_ids.append(container_id)
 
         start_resp = self._api_client.post(
-            f"/docker/containers/{container_id}/start",
+            f"/api/docker/containers/{container_id}/start",
             params={"account_alias": self._alias},
         )
         assert start_resp.status_code == 200
@@ -122,13 +122,13 @@ class TestDockerContainerLifecycle:
         time.sleep(2)
 
         stop_resp = self._api_client.post(
-            f"/docker/containers/{container_id}/stop",
+            f"/api/docker/containers/{container_id}/stop",
             json={"account_alias": self._alias, "timeout": 10},
         )
         assert stop_resp.status_code == 200
 
         remove_resp = self._api_client.delete(
-            f"/docker/containers/{container_id}",
+            f"/api/docker/containers/{container_id}",
             params={"account_alias": self._alias, "force": True},
         )
         assert remove_resp.status_code == 200
@@ -145,7 +145,7 @@ class TestDockerContainerLogs:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.get(
-            "/docker/containers",
+            "/api/docker/containers",
             params={"account_alias": alias},
         )
         assert resp.status_code == 200
@@ -158,7 +158,7 @@ class TestDockerContainerLogs:
             pytest.skip("无法获取容器 ID")
 
         logs_resp = api_client.get(
-            f"/docker/containers/{container_id}/logs",
+            f"/api/docker/containers/{container_id}/logs",
             params={"account_alias": alias, "tail": 10},
         )
         assert logs_resp.status_code in (200, 404)
@@ -174,7 +174,7 @@ class TestDockerComposeProjects:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.get(
-            "/docker/compose/projects",
+            "/api/docker/compose/projects",
             params={"account_alias": alias, "search_path": "/opt"},
         )
         assert resp.status_code == 200

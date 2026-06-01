@@ -18,7 +18,7 @@ class TestFirewallRules:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.get(
-            "/security/firewall/backend",
+            "/api/security/firewall/backend",
             params={"alias": alias},
         )
         assert resp.status_code == 200
@@ -32,7 +32,7 @@ class TestFirewallRules:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.get(
-            "/security/firewall/rules",
+            "/api/security/firewall/rules",
             params={"alias": alias},
         )
         assert resp.status_code == 200
@@ -48,7 +48,7 @@ class TestFirewallPortRule:
         yield
         try:
             self._api_client.delete(
-                "/security/firewall/port",
+                "/api/security/firewall/port",
                 params={
                     "alias": self._alias,
                     "port": TEST_FIREWALL_PORT,
@@ -61,7 +61,7 @@ class TestFirewallPortRule:
 
     def test_add_and_remove_port_rule(self) -> None:
         add_resp = self._api_client.post(
-            "/security/firewall/port",
+            "/api/security/firewall/port",
             params={
                 "alias": self._alias,
                 "port": TEST_FIREWALL_PORT,
@@ -74,7 +74,7 @@ class TestFirewallPortRule:
         assert "message" in add_data
 
         remove_resp = self._api_client.delete(
-            "/security/firewall/port",
+            "/api/security/firewall/port",
             params={
                 "alias": self._alias,
                 "port": TEST_FIREWALL_PORT,
@@ -97,7 +97,7 @@ class TestSSHConfig:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.get(
-            "/security/ssh/config",
+            "/api/security/ssh/config",
             params={"alias": alias},
         )
         assert resp.status_code == 200
@@ -111,7 +111,7 @@ class TestSSHConfig:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.get(
-            "/security/ssh/keys",
+            "/api/security/ssh/keys",
             params={"alias": alias},
         )
         assert resp.status_code == 200
@@ -129,7 +129,7 @@ class TestNetworkDiagnostics:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.post(
-            "/security/network/ping",
+            "/api/security/network/ping",
             params={"alias": alias, "host": "127.0.0.1", "count": 2},
         )
         assert resp.status_code == 200
@@ -143,7 +143,7 @@ class TestNetworkDiagnostics:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.post(
-            "/security/network/traceroute",
+            "/api/security/network/traceroute",
             params={"alias": alias, "host": "127.0.0.1", "max_hops": 5},
         )
         assert resp.status_code == 200
@@ -157,7 +157,7 @@ class TestNetworkDiagnostics:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.post(
-            "/security/network/portscan",
+            "/api/security/network/portscan",
             params={"alias": alias, "host": "127.0.0.1", "ports": "22"},
         )
         assert resp.status_code == 200

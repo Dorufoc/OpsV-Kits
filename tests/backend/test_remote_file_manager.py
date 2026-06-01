@@ -175,6 +175,8 @@ class TestRemoteFileManager:
         def mock_exec(cmd, timeout=30.0):
             call_count[0] += 1
             if call_count[0] == 1:
+                return (1, "", "")
+            if call_count[0] == 2:
                 return stat_fail
             return (0, ls_output, "")
 

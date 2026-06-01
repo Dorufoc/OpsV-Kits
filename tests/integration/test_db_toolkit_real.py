@@ -100,7 +100,7 @@ class TestMySQLCRUD:
         self._mysql = _get_mysql_config()
         yield
         self._api_client.post(
-            "/db-toolkit/mysql/query",
+            "/api/db-toolkit/mysql/query",
             json={
                 "account_alias": self._alias,
                 "container_id": None,
@@ -117,7 +117,7 @@ class TestMySQLCRUD:
 
     def _exec_sql(self, sql: str, database: str = "") -> dict[str, Any]:
         resp = self._api_client.post(
-            "/db-toolkit/mysql/query",
+            "/api/db-toolkit/mysql/query",
             json={
                 "account_alias": self._alias,
                 "container_id": None,
@@ -272,7 +272,7 @@ class TestRedisConnection:
         assert "OK" in set_resp.json().get("stdout", ""), "Redis SET 命令失败"
 
         get_resp = self._api_client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": self._alias,
                 "command": f"{self._build_redis_cli_prefix()} GET {test_key}",
@@ -330,7 +330,7 @@ class TestRedisDataTypes:
 
     def _redis_cli(self, command: str) -> str:
         resp = self._api_client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": self._alias,
                 "command": f"{self._build_redis_cli_prefix()} {command}",
@@ -356,7 +356,7 @@ class TestRedisDataTypes:
         ]
         for key in keys:
             self._api_client.delete(
-                "/db-toolkit/redis/key",
+                "/api/db-toolkit/redis/key",
                 params={
                     "account_alias": self._alias,
                     "key": key,
@@ -392,7 +392,7 @@ class TestRedisDataTypes:
     def test_hash_operations(self) -> None:
         key = f"{TEST_KEY_PREFIX}hash"
         resp = self._api_client.post(
-            "/db-toolkit/redis/key-info",
+            "/api/db-toolkit/redis/key-info",
             json={
                 "account_alias": self._alias,
                 "container_id": None,
@@ -416,7 +416,7 @@ class TestRedisDataTypes:
     def test_set_operations(self) -> None:
         key = f"{TEST_KEY_PREFIX}set"
         resp = self._api_client.post(
-            "/db-toolkit/redis/key-info",
+            "/api/db-toolkit/redis/key-info",
             json={
                 "account_alias": self._alias,
                 "container_id": None,

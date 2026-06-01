@@ -17,15 +17,15 @@ skip_if_no_ssh = pytest.mark.skipif(
 
 @pytest.mark.integration
 @skip_if_no_ssh
-class TestSSHPasswordConnection:
-    def test_password_auth_connect(self, ssh_config: dict[str, Any]) -> None:
+class TestSSHKeyConnection:
+    def test_key_auth_connect(self, ssh_config: dict[str, Any]) -> None:
         account = SSHAccount(
             alias=ssh_config["alias"],
             host=ssh_config["host"],
             port=ssh_config["port"],
             username=ssh_config["username"],
-            auth_type="password",
-            password=ssh_config["password"],
+            auth_type="key",
+            private_key=ssh_config["key_file"],
         )
         manager = SSHClientManager(account)
         try:
@@ -34,14 +34,14 @@ class TestSSHPasswordConnection:
         finally:
             manager.close()
 
-    def test_password_auth_test_connection(self, ssh_config: dict[str, Any]) -> None:
+    def test_key_auth_test_connection(self, ssh_config: dict[str, Any]) -> None:
         account = SSHAccount(
             alias=ssh_config["alias"],
             host=ssh_config["host"],
             port=ssh_config["port"],
             username=ssh_config["username"],
-            auth_type="password",
-            password=ssh_config["password"],
+            auth_type="key",
+            private_key=ssh_config["key_file"],
         )
         manager = SSHClientManager(account)
         success, message = manager.test_connection(timeout=10.0)
@@ -57,8 +57,8 @@ class TestSSHCommandExecution:
             host=ssh_config["host"],
             port=ssh_config["port"],
             username=ssh_config["username"],
-            auth_type="password",
-            password=ssh_config["password"],
+            auth_type="key",
+            private_key=ssh_config["key_file"],
         )
         manager = SSHClientManager(account)
         try:
@@ -75,8 +75,8 @@ class TestSSHCommandExecution:
             host=ssh_config["host"],
             port=ssh_config["port"],
             username=ssh_config["username"],
-            auth_type="password",
-            password=ssh_config["password"],
+            auth_type="key",
+            private_key=ssh_config["key_file"],
         )
         manager = SSHClientManager(account)
         try:
@@ -97,8 +97,8 @@ class TestSSHConnectionPoolReuse:
             host=ssh_config["host"],
             port=ssh_config["port"],
             username=ssh_config["username"],
-            auth_type="password",
-            password=ssh_config["password"],
+            auth_type="key",
+            private_key=ssh_config["key_file"],
         )
         pool = SSHConnectionPool(max_connections=5, idle_timeout=60)
         try:
@@ -128,8 +128,8 @@ class TestSSHConnectionPoolReuse:
             host=ssh_config["host"],
             port=ssh_config["port"],
             username=ssh_config["username"],
-            auth_type="password",
-            password=ssh_config["password"],
+            auth_type="key",
+            private_key=ssh_config["key_file"],
         )
         pool = SSHConnectionPool(max_connections=5, idle_timeout=60)
         try:

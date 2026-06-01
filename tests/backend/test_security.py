@@ -70,8 +70,8 @@ class TestFirewallRules:
         response = client.get("/api/security/firewall/rules?alias=test-server")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 2
-        assert data[0]["port"] == "22"
+        assert len(data["rules"]) == 2
+        assert data["rules"][0]["port"] == "22"
 
     @patch("app.api.routes.security.security_service")
     def test_list_firewall_rules_empty(self, mock_service, client):
@@ -79,7 +79,7 @@ class TestFirewallRules:
         response = client.get("/api/security/firewall/rules?alias=test-server")
         assert response.status_code == 200
         data = response.json()
-        assert data == []
+        assert data["rules"] == []
 
     @patch("app.api.routes.security.security_service")
     def test_list_firewall_rules_account_not_found(self, mock_service, client):

@@ -276,7 +276,10 @@ def verify_totp(totp_secret: str, code: str) -> bool:
 
 def _read_channel(stream: io.IOBase) -> str:
     try:
-        return stream.read()
+        data = stream.read()
+        if isinstance(data, bytes):
+            return data.decode("utf-8", errors="replace")
+        return data if isinstance(data, str) else str(data)
     except Exception:
         return ""
 

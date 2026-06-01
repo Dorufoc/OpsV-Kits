@@ -860,9 +860,10 @@ class BuildService:
         cmd_parts.append(f"{java_home_setup} && {java_version_check}")
 
         # 获取实际生效的 Java 主版本号，用于决定是否添加编译器版本参数
+        _java_home_prefix = 'JAVA_HOME=""; '
         java_ver_check_cmd = (
-            f"JAVA_HOME=\"\"; "
-            f"{self._build_java_home_setup(jdk_version).replace('JAVA_HOME=\"\"; ', '')} "
+            f'JAVA_HOME=""; '
+            f"{self._build_java_home_setup(jdk_version).replace(_java_home_prefix, '')} "
             f"java -version 2>&1"
         )
         java_ver_result = executor.exec_command(java_ver_check_cmd, timeout=10.0)

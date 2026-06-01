@@ -31,7 +31,7 @@ def _wait_for_task_completion(
 ) -> dict[str, Any]:
     start = time.time()
     while time.time() - start < timeout:
-        resp = api_client.get(f"/deploy/vite/status/{task_id}")
+        resp = api_client.get(f"/api/deploy/vite/status/{task_id}")
         if resp.status_code != 200:
             time.sleep(poll_interval)
             continue
@@ -54,7 +54,7 @@ class TestViteEnvironmentCheck:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.get(
-            "/deploy/vite/check",
+            "/api/deploy/vite/check",
             params={
                 "account_alias": alias,
                 "project_path": "/tmp",
@@ -87,7 +87,7 @@ class TestViteProjectBuild:
         self._alias = ensure_ssh_account.alias
         yield
         self._api_client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": self._alias,
                 "command": f"rm -rf {TEST_PROJECT_DIR}",
@@ -99,7 +99,7 @@ class TestViteProjectBuild:
         alias = self._alias
 
         create_resp = self._api_client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": alias,
                 "command": (
@@ -118,7 +118,7 @@ class TestViteProjectBuild:
         )
 
         index_resp = self._api_client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": alias,
                 "command": (
@@ -133,7 +133,7 @@ class TestViteProjectBuild:
         assert index_resp.status_code == 200
 
         build_resp = self._api_client.post(
-            "/deploy/vite/build",
+            "/api/deploy/vite/build",
             json={
                 "account_alias": alias,
                 "project_path": TEST_PROJECT_DIR,
@@ -151,7 +151,7 @@ class TestViteProjectBuild:
         )
 
         verify_resp = self._api_client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": alias,
                 "command": f"test -d {TEST_PROJECT_DIR}/dist && echo 'dist_exists'",
@@ -178,7 +178,7 @@ class TestViteNginxConfig:
         self._alias = ensure_ssh_account.alias
         yield
         self._api_client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": self._alias,
                 "command": (
@@ -193,7 +193,7 @@ class TestViteNginxConfig:
         alias = self._alias
 
         self._api_client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": alias,
                 "command": f"mkdir -p {TEST_PROJECT_DIR}/dist && echo 'test' > {TEST_PROJECT_DIR}/dist/index.html",
@@ -202,7 +202,7 @@ class TestViteNginxConfig:
         )
 
         nginx_resp = self._api_client.post(
-            "/deploy/vite/nginx",
+            "/api/deploy/vite/nginx",
             json={
                 "account_alias": alias,
                 "project_alias": TEST_PROJECT_ALIAS,
@@ -222,7 +222,7 @@ class TestViteNginxConfig:
 
         if result.get("status") == "completed":
             verify_resp = self._api_client.post(
-                "/command/exec",
+                "/api/command/exec",
                 json={
                     "alias": alias,
                     "command": f"test -f /etc/nginx/conf.d/{TEST_PROJECT_ALIAS}.conf && echo 'config_exists'",
@@ -233,7 +233,7 @@ class TestViteNginxConfig:
                 stdout = verify_resp.json().get("stdout", "")
                 if "config_exists" in stdout:
                     syntax_resp = self._api_client.post(
-                        "/command/exec",
+                        "/api/command/exec",
                         json={
                             "alias": alias,
                             "command": "nginx -t 2>&1",
@@ -261,7 +261,7 @@ class TestViteFullDeploy:
         self._alias = ensure_ssh_account.alias
         yield
         self._api_client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": self._alias,
                 "command": (
@@ -276,7 +276,7 @@ class TestViteFullDeploy:
         alias = self._alias
 
         self._api_client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": alias,
                 "command": (
@@ -293,7 +293,7 @@ class TestViteFullDeploy:
         )
 
         deploy_resp = self._api_client.post(
-            "/deploy/vite/deploy",
+            "/api/deploy/vite/deploy",
             json={
                 "account_alias": alias,
                 "project_alias": TEST_PROJECT_ALIAS,
@@ -315,7 +315,7 @@ class TestViteFullDeploy:
         )
 
         dist_resp = self._api_client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": alias,
                 "command": f"test -d {TEST_PROJECT_DIR}/dist && echo 'dist_ok'",

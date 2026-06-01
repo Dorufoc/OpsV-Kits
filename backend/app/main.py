@@ -57,6 +57,10 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
+# 抑制 APScheduler 的频繁成功日志，避免控制台刷屏
+logging.getLogger("apscheduler.executors.default").setLevel(logging.WARNING)
+logging.getLogger("apscheduler.scheduler").setLevel(logging.WARNING)
+
 app = FastAPI(
     title="OpsV-Kits API",
     description="OpsV-Kits Backend API",
@@ -211,13 +215,11 @@ async def startup_event():
 
     from app.services.audit_log_service import audit_log_service
     await audit_log_service.initialize()
-    await audit_log_service.start_queue_consumer()
 
     from app.services.task_scheduler_service import task_scheduler_service
     task_scheduler_service.start()
 
     from app.services.event_bus_service import event_bus_service
-    await event_bus_service.start_watchers()
 
     from app.services.log_storage_service import log_storage_service
     from app.services.log_alert_service import log_alert_service

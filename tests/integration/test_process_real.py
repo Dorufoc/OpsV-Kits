@@ -21,7 +21,7 @@ class TestProcessRealOps:
         for pid in self._started_pids:
             try:
                 self._client.post(
-                    "/process/kill",
+                    "/api/process/kill",
                     json={
                         "alias": self._alias,
                         "pid": pid,
@@ -33,7 +33,7 @@ class TestProcessRealOps:
 
     def _find_process_by_name(self, name: str) -> dict | None:
         resp = self._client.get(
-            "/process/list",
+            "/api/process/list",
             params={"alias": self._alias},
         )
         if resp.status_code != 200:
@@ -48,7 +48,7 @@ class TestProcessRealOps:
     @pytest.mark.timeout(60)
     def test_start_find_nice_terminate_process(self) -> None:
         start_resp = self._client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": self._alias,
                 "command": "nohup sleep 300 > /dev/null 2>&1 & echo $!",
@@ -73,7 +73,7 @@ class TestProcessRealOps:
             found_pid = int(found_pid)
 
         nice_resp = self._client.post(
-            "/process/nice",
+            "/api/process/nice",
             json={
                 "alias": self._alias,
                 "pid": found_pid if found_pid else pid,
@@ -85,7 +85,7 @@ class TestProcessRealOps:
         assert nice_data.get("success") is True, f"修改 nice 值失败: {nice_data}"
 
         kill_resp = self._client.post(
-            "/process/kill",
+            "/api/process/kill",
             json={
                 "alias": self._alias,
                 "pid": found_pid if found_pid else pid,
@@ -113,7 +113,7 @@ class TestProcessListReal:
         ensure_ssh_account: SSHAccount,
     ) -> None:
         alias = ensure_ssh_account.alias
-        resp = api_client.get("/process/list", params={"alias": alias})
+        resp = api_client.get("/api/process/list", params={"alias": alias})
         assert resp.status_code == 200
         data = resp.json()
         processes = data.get("processes", [])
@@ -137,7 +137,7 @@ class TestServiceRealOps:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.post(
-            "/process/service/control",
+            "/api/process/service/control",
             json={
                 "alias": alias,
                 "service_name": "docker",

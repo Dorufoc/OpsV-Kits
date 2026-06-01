@@ -24,7 +24,7 @@ class TestFileOpsReal:
         yield
         try:
             self._client.post(
-                "/files/delete",
+                "/api/files/delete",
                 json={"alias": self._alias, "path": TEST_BASE_DIR},
             )
         except Exception:
@@ -32,7 +32,7 @@ class TestFileOpsReal:
 
     def test_create_dir_upload_chmod_download_delete(self) -> None:
         mkdir_resp = self._client.post(
-            "/files/mkdir",
+            "/api/files/mkdir",
             json={"alias": self._alias, "path": self._test_dir},
         )
         assert mkdir_resp.status_code == 200
@@ -42,7 +42,7 @@ class TestFileOpsReal:
         remote_file = f"{self._test_dir}/test_upload.txt"
 
         save_resp = self._client.post(
-            "/files/content",
+            "/api/files/content",
             json={
                 "alias": self._alias,
                 "path": remote_file,
@@ -53,14 +53,14 @@ class TestFileOpsReal:
         assert save_resp.json()["status"] == "saved"
 
         read_resp = self._client.get(
-            "/files/content",
+            "/api/files/content",
             params={"alias": self._alias, "path": remote_file},
         )
         assert read_resp.status_code == 200
         assert test_content in read_resp.json()["content"]
 
         chmod_resp = self._client.post(
-            "/files/chmod",
+            "/api/files/chmod",
             json={
                 "alias": self._alias,
                 "path": remote_file,
@@ -71,20 +71,22 @@ class TestFileOpsReal:
         assert chmod_resp.json()["status"] == "changed"
 
         stat_resp = self._client.get(
-            "/files/stat",
+            "/api/files/stat",
             params={"alias": self._alias, "path": remote_file},
         )
         assert stat_resp.status_code == 200
         stat_data = stat_resp.json()
-        assert stat_data.get("permission_mode") == "755" or "755" in str(
-            stat_data.get("permissions", "")
+        perm_mode = stat_data.get("permission_mode", 0)
+        perm_str = stat_data.get("permissions", "")
+        assert perm_mode == 0o755 or oct(perm_mode) == "0o755" or "755" in str(perm_str), (
+            f"权限不匹配: permission_mode={perm_mode}, permissions={perm_str}"
         )
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp:
             tmp_path = tmp.name
         try:
             dl_resp = self._client.get(
-                "/files/download",
+                "/api/files/download",
                 params={
                     "alias": self._alias,
                     "remote_path": remote_file,
@@ -99,14 +101,14 @@ class TestFileOpsReal:
             os.unlink(tmp_path)
 
         delete_resp = self._client.post(
-            "/files/delete",
+            "/api/files/delete",
             json={"alias": self._alias, "path": remote_file},
         )
         assert delete_resp.status_code == 200
         assert delete_resp.json()["status"] == "deleted"
 
         verify_resp = self._client.get(
-            "/files/stat",
+            "/api/files/stat",
             params={"alias": self._alias, "path": remote_file},
         )
         assert verify_resp.status_code in (404, 500)
@@ -123,7 +125,7 @@ class TestUnicodeFileName:
         yield
         try:
             self._client.post(
-                "/files/delete",
+                "/api/files/delete",
                 json={"alias": self._alias, "path": TEST_BASE_DIR},
             )
         except Exception:
@@ -131,7 +133,7 @@ class TestUnicodeFileName:
 
     def test_chinese_filename_create_list_delete(self) -> None:
         self._client.post(
-            "/files/mkdir",
+            "/api/files/mkdir",
             json={"alias": self._alias, "path": self._test_dir},
         )
 
@@ -140,7 +142,7 @@ class TestUnicodeFileName:
         content = "这是一个中文文件名测试"
 
         save_resp = self._client.post(
-            "/files/content",
+            "/api/files/content",
             json={
                 "alias": self._alias,
                 "path": remote_file,
@@ -150,14 +152,14 @@ class TestUnicodeFileName:
         assert save_resp.status_code == 200
 
         read_resp = self._client.get(
-            "/files/content",
+            "/api/files/content",
             params={"alias": self._alias, "path": remote_file},
         )
         assert read_resp.status_code == 200
         assert content in read_resp.json()["content"]
 
         list_resp = self._client.get(
-            "/files/list",
+            "/api/files/list",
             params={"alias": self._alias, "path": self._test_dir},
         )
         assert list_resp.status_code == 200
@@ -166,7 +168,7 @@ class TestUnicodeFileName:
         assert chinese_name in names, f"中文文件名未在目录列表中找到: {names}"
 
         delete_resp = self._client.post(
-            "/files/delete",
+            "/api/files/delete",
             json={"alias": self._alias, "path": remote_file},
         )
         assert delete_resp.status_code == 200
@@ -184,7 +186,7 @@ class TestLargeFileTransfer:
         yield
         try:
             self._client.post(
-                "/files/delete",
+                "/api/files/delete",
                 json={"alias": self._alias, "path": TEST_BASE_DIR},
             )
         except Exception:
@@ -195,7 +197,7 @@ class TestLargeFileTransfer:
     @pytest.mark.timeout(120)
     def test_upload_download_10mb_file(self) -> None:
         self._client.post(
-            "/files/mkdir",
+            "/api/files/mkdir",
             json={"alias": self._alias, "path": self._test_dir},
         )
 
@@ -210,8 +212,8 @@ class TestLargeFileTransfer:
 
         remote_file = f"{self._test_dir}/large_test_10mb.bin"
 
-        upload_resp = self._client.get(
-            "/files/upload",
+        upload_resp = self._client.post(
+            "/api/files/upload",
             params={
                 "alias": self._alias,
                 "remote_path": remote_file,
@@ -222,7 +224,7 @@ class TestLargeFileTransfer:
         assert upload_resp.json()["status"] == "uploaded"
 
         stat_resp = self._client.get(
-            "/files/stat",
+            "/api/files/stat",
             params={"alias": self._alias, "path": remote_file},
         )
         assert stat_resp.status_code == 200
@@ -235,7 +237,7 @@ class TestLargeFileTransfer:
             dl_path = tmp_dl.name
         try:
             dl_resp = self._client.get(
-                "/files/download",
+                "/api/files/download",
                 params={
                     "alias": self._alias,
                     "remote_path": remote_file,
@@ -251,7 +253,7 @@ class TestLargeFileTransfer:
             os.unlink(dl_path)
 
         delete_resp = self._client.post(
-            "/files/delete",
+            "/api/files/delete",
             json={"alias": self._alias, "path": remote_file},
         )
         assert delete_resp.status_code == 200
@@ -268,7 +270,7 @@ class TestSymlink:
         yield
         try:
             self._client.post(
-                "/files/delete",
+                "/api/files/delete",
                 json={"alias": self._alias, "path": TEST_BASE_DIR},
             )
         except Exception:
@@ -276,13 +278,13 @@ class TestSymlink:
 
     def test_create_symlink_and_navigate(self) -> None:
         self._client.post(
-            "/files/mkdir",
+            "/api/files/mkdir",
             json={"alias": self._alias, "path": self._test_dir},
         )
 
         target_file = f"{self._test_dir}/target.txt"
         self._client.post(
-            "/files/content",
+            "/api/files/content",
             json={
                 "alias": self._alias,
                 "path": target_file,
@@ -292,7 +294,7 @@ class TestSymlink:
 
         link_path = f"{self._test_dir}/link_to_target"
         self._client.post(
-            "/command/exec",
+            "/api/command/exec",
             json={
                 "alias": self._alias,
                 "command": f"ln -s {target_file} {link_path}",
@@ -301,7 +303,7 @@ class TestSymlink:
         )
 
         stat_resp = self._client.get(
-            "/files/stat",
+            "/api/files/stat",
             params={"alias": self._alias, "path": link_path},
         )
         assert stat_resp.status_code == 200
@@ -312,7 +314,7 @@ class TestSymlink:
         )
 
         list_resp = self._client.get(
-            "/files/list",
+            "/api/files/list",
             params={"alias": self._alias, "path": self._test_dir},
         )
         assert list_resp.status_code == 200
@@ -321,13 +323,13 @@ class TestSymlink:
         assert "link_to_target" in names
 
         read_resp = self._client.get(
-            "/files/content",
+            "/api/files/content",
             params={"alias": self._alias, "path": link_path},
         )
         assert read_resp.status_code == 200
         assert "symlink target" in read_resp.json()["content"]
 
         self._client.post(
-            "/files/delete",
+            "/api/files/delete",
             json={"alias": self._alias, "path": link_path},
         )

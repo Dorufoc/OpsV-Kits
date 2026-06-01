@@ -19,7 +19,7 @@ class TestCronJobManagement:
         for job_id in self._created_job_ids:
             try:
                 self._api_client.delete(
-                    f"/cron-backup/cron-jobs/{job_id}",
+                    f"/api/cron-backup/cron-jobs/{job_id}",
                     params={"alias": self._alias},
                 )
             except Exception:
@@ -27,7 +27,7 @@ class TestCronJobManagement:
 
     def test_list_cron_jobs(self) -> None:
         resp = self._api_client.get(
-            "/cron-backup/cron-jobs",
+            "/api/cron-backup/cron-jobs",
             params={"alias": self._alias},
         )
         assert resp.status_code == 200
@@ -36,7 +36,7 @@ class TestCronJobManagement:
 
     def test_create_and_delete_cron_job(self) -> None:
         create_resp = self._api_client.post(
-            "/cron-backup/cron-jobs",
+            "/api/cron-backup/cron-jobs",
             json={
                 "alias": self._alias,
                 "data": {
@@ -56,7 +56,7 @@ class TestCronJobManagement:
         self._created_job_ids.append(job_id)
 
         delete_resp = self._api_client.delete(
-            f"/cron-backup/cron-jobs/{job_id}",
+            f"/api/cron-backup/cron-jobs/{job_id}",
             params={"alias": self._alias},
         )
         assert delete_resp.status_code == 200
@@ -74,7 +74,7 @@ class TestBackupPolicyManagement:
         for policy_id in self._created_policy_ids:
             try:
                 self._api_client.delete(
-                    f"/cron-backup/backup-policies/{policy_id}",
+                    f"/api/cron-backup/backup-policies/{policy_id}",
                     params={"alias": self._alias},
                 )
             except Exception:
@@ -82,7 +82,7 @@ class TestBackupPolicyManagement:
 
     def test_list_backup_policies(self) -> None:
         resp = self._api_client.get(
-            "/cron-backup/backup-policies",
+            "/api/cron-backup/backup-policies",
             params={"alias": self._alias},
         )
         assert resp.status_code == 200
@@ -91,7 +91,7 @@ class TestBackupPolicyManagement:
 
     def test_create_and_delete_backup_policy(self) -> None:
         create_resp = self._api_client.post(
-            "/cron-backup/backup-policies",
+            "/api/cron-backup/backup-policies",
             json={
                 "alias": self._alias,
                 "data": {
@@ -115,7 +115,7 @@ class TestBackupPolicyManagement:
         self._created_policy_ids.append(policy_id)
 
         delete_resp = self._api_client.delete(
-            f"/cron-backup/backup-policies/{policy_id}",
+            f"/api/cron-backup/backup-policies/{policy_id}",
             params={"alias": self._alias},
         )
         assert delete_resp.status_code == 200
@@ -131,7 +131,7 @@ class TestBackupHistory:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.get(
-            "/cron-backup/backup-history",
+            "/api/cron-backup/backup-history",
             params={"alias": alias, "limit": 10},
         )
         assert resp.status_code == 200
@@ -148,7 +148,7 @@ class TestDiskAlert:
     ) -> None:
         alias = ensure_ssh_account.alias
         resp = api_client.get(
-            "/cron-backup/disk-alert",
+            "/api/cron-backup/disk-alert",
             params={"alias": alias},
         )
         assert resp.status_code == 200

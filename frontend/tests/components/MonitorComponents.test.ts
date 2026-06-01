@@ -1,15 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { nextTick } from 'vue'
 
-vi.mock('echarts', () => ({
-  init: vi.fn().mockReturnValue({
-    setOption: vi.fn(),
-    dispose: vi.fn(),
-    resize: vi.fn(),
+const { mockSetOption, mockDispose, mockResize, mockInit } = vi.hoisted(() => {
+  const mockSetOption = vi.fn()
+  const mockDispose = vi.fn()
+  const mockResize = vi.fn()
+  const mockInit = vi.fn().mockReturnValue({
+    setOption: mockSetOption,
+    dispose: mockDispose,
+    resize: mockResize,
     on: vi.fn(),
     off: vi.fn(),
-  }),
+  })
+  return { mockSetOption, mockDispose, mockResize, mockInit }
+})
+
+vi.mock('echarts', () => ({
+  init: mockInit,
 }))
 
 vi.mock('@/components/md3', () => ({
@@ -19,6 +28,13 @@ vi.mock('@/components/md3', () => ({
 beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
+  mockInit.mockReturnValue({
+    setOption: mockSetOption,
+    dispose: mockDispose,
+    resize: mockResize,
+    on: vi.fn(),
+    off: vi.fn(),
+  })
 })
 
 import MonitorGaugeChart from '@/components/MonitorGaugeChart.vue'
@@ -139,6 +155,155 @@ describe('MonitorHeatmap', () => {
   it('空数据时应该正常渲染', () => {
     const wrapper = createWrapper({ data: [] })
     expect(wrapper.find('.monitor-heatmap').exists()).toBe(true)
+  })
+
+  it('数据变化时应重新渲染', async () => {
+    const wrapper = createWrapper()
+    await wrapper.setProps({ data: [{ name: 'C0', value: 90 }] })
+    expect(wrapper.find('.monitor-heatmap').exists()).toBe(true)
+  })
+
+  it('高值数据应正常渲染', () => {
+    const wrapper = createWrapper({ data: [{ name: 'Hot', value: 95 }] })
+    expect(wrapper.find('.monitor-heatmap').exists()).toBe(true)
+  })
+
+  it('低值数据应正常渲染', () => {
+    const wrapper = createWrapper({ data: [{ name: 'Cool', value: 10 }] })
+    expect(wrapper.find('.monitor-heatmap').exists()).toBe(true)
+  })
+
+  it('有 title 时应正常渲染', () => {
+    const wrapper = createWrapper({ title: '测试热力图' })
+    expect(wrapper.find('.monitor-heatmap').exists()).toBe(true)
+  })
+
+  it('大量数据项应正常渲染', () => {
+    const data = Array.from({ length: 24 }, (_, i) => ({ name: `C${i}`, value: Math.floor(Math.random() * 100) }))
+    const wrapper = createWrapper({ data })
+    expect(wrapper.find('.monitor-heatmap').exists()).toBe(true)
+  })
+
+  it('value 为 0 时应正常渲染', () => {
+    const wrapper = createWrapper({ data: [{ name: 'Zero', value: 0 }] })
+    expect(wrapper.find('.monitor-heatmap').exists()).toBe(true)
+  })
+
+  it('value 为 100 时应正常渲染', () => {
+    const wrapper = createWrapper({ data: [{ name: 'Full', value: 100 }] })
+    expect(wrapper.find('.monitor-heatmap').exists()).toBe(true)
+  })
+
+  it('容器高度应正确设置', () => {
+    const wrapper = createWrapper({ height: '400px' })
+    const el = wrapper.find('.monitor-heatmap').element as HTMLElement
+    expect(el.style.height).toBe('400px')
+  })
+
+  it('colorFor v>=90 应返回 danger', () => {
+    const wrapper = createWrapper()
+    const colors = wrapper.vm.getChartColors()
+    expect(wrapper.vm.colorFor(95, colors)).toBe(colors.danger)
+  })
+
+  it('colorFor v>=70 应返回 warning', () => {
+    const wrapper = createWrapper()
+    const colors = wrapper.vm.getChartColors()
+    expect(wrapper.vm.colorFor(75, colors)).toBe(colors.warning)
+  })
+
+  it('colorFor v>=50 应返回 info', () => {
+    const wrapper = createWrapper()
+    const colors = wrapper.vm.getChartColors()
+    expect(wrapper.vm.colorFor(55, colors)).toBe(colors.info)
+  })
+
+  it('colorFor v>=30 应返回 success', () => {
+    const wrapper = createWrapper()
+    const colors = wrapper.vm.getChartColors()
+    expect(wrapper.vm.colorFor(35, colors)).toBe(colors.success)
+  })
+
+  it('colorFor v<30 应返回 primary', () => {
+    const wrapper = createWrapper()
+    const colors = wrapper.vm.getChartColors()
+    expect(wrapper.vm.colorFor(10, colors)).toBe(colors.primary)
+  })
+
+  it('getChartColors 应返回包含所有颜色键的对象', () => {
+    const wrapper = createWrapper()
+    const colors = wrapper.vm.getChartColors()
+    expect(colors).toHaveProperty('primary')
+    expect(colors).toHaveProperty('success')
+    expect(colors).toHaveProperty('warning')
+    expect(colors).toHaveProperty('danger')
+    expect(colors).toHaveProperty('info')
+    expect(colors).toHaveProperty('text')
+  })
+
+  it('getChartColors 应在无 CSS 变量时使用默认值', () => {
+    const wrapper = createWrapper()
+    const colors = wrapper.vm.getChartColors()
+    expect(colors.primary).toBeTruthy()
+    expect(colors.text).toBeTruthy()
+  })
+
+  it('render 应调用 echarts.setOption', async () => {
+    mockSetOption.mockClear()
+    mockInit.mockClear()
+    const wrapper = createWrapper()
+    await nextTick()
+    expect(mockInit).toHaveBeenCalled()
+    expect(mockSetOption).toHaveBeenCalled()
+  })
+
+  it('数据变化时应重新调用 setOption', async () => {
+    mockSetOption.mockClear()
+    const wrapper = createWrapper()
+    await wrapper.setProps({ data: [{ name: 'C0', value: 99 }] })
+    expect(mockSetOption).toHaveBeenCalled()
+  })
+
+  it('有 title 时应正常渲染', async () => {
+    mockSetOption.mockClear()
+    const wrapper = createWrapper({ title: '测试' })
+    await nextTick()
+    expect(mockSetOption).toHaveBeenCalled()
+    const lastCallArgs = mockSetOption.mock.calls[mockSetOption.mock.calls.length - 1][0]
+    expect(lastCallArgs.title).toBeDefined()
+    expect(lastCallArgs.title.text).toBe('测试')
+  })
+
+  it('无 title 时 title 应为 undefined', async () => {
+    mockSetOption.mockClear()
+    const wrapper = createWrapper()
+    await nextTick()
+    expect(mockSetOption).toHaveBeenCalled()
+    const lastCallArgs = mockSetOption.mock.calls[mockSetOption.mock.calls.length - 1][0]
+    expect(lastCallArgs.title).toBeUndefined()
+  })
+
+  it('setupThemeObserver 应创建 MutationObserver', () => {
+    const wrapper = createWrapper()
+    wrapper.vm.setupThemeObserver()
+    expect(wrapper.vm.themeObserver).toBeTruthy()
+  })
+
+  it('setupThemeObserver 重复调用不应创建多个 observer', () => {
+    const wrapper = createWrapper()
+    wrapper.vm.setupThemeObserver()
+    const first = wrapper.vm.themeObserver
+    wrapper.vm.setupThemeObserver()
+    expect(wrapper.vm.themeObserver).toBe(first)
+  })
+
+  it('onBeforeUnmount 应清理 chart 和 observer', async () => {
+    mockDispose.mockClear()
+    const wrapper = createWrapper()
+    await nextTick()
+    wrapper.vm.setupThemeObserver()
+    wrapper.unmount()
+    expect(mockDispose).toHaveBeenCalled()
   })
 })
 

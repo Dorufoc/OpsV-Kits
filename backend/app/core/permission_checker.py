@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -44,16 +45,29 @@ class PermissionChecker:
             stderr = stderr.decode("utf-8", errors="replace")
         return code, stdout, stderr
 
+    @staticmethod
+    def _shell_path(path: str) -> str:
+        if path.startswith("~"):
+            remainder = path[1:]
+            if remainder:
+                return f"$HOME{shlex.quote(remainder)}"
+            return "$HOME"
+        return shlex.quote(path)
+
     def check_read_access(self, path: str) -> bool:
-        code, _, _ = self._exec(f"test -r '{path}'")
+        code, _, _ = self._exec(f"test -r {self._shell_path(path)}")
+        return code == 0
+
+    def check_exists(self, path: str) -> bool:
+        code, _, _ = self._exec(f"test -e {self._shell_path(path)}")
         return code == 0
 
     def check_write_access(self, path: str) -> bool:
-        code, _, _ = self._exec(f"test -w '{path}'")
+        code, _, _ = self._exec(f"test -w {self._shell_path(path)}")
         return code == 0
 
     def check_execute_access(self, path: str) -> bool:
-        code, _, _ = self._exec(f"test -x '{path}'")
+        code, _, _ = self._exec(f"test -x {self._shell_path(path)}")
         return code == 0
 
     def check_sudo_access(self) -> bool:
@@ -80,7 +94,7 @@ class PermissionChecker:
     def get_file_permissions(self, path: str) -> FilePermissions:
         exists = False
 
-        code, _, _ = self._exec(f"test -e '{path}'")
+        code, _, _ = self._exec(f"test -e {self._shell_path(path)}")
         exists = code == 0
 
         readable = False
@@ -88,13 +102,13 @@ class PermissionChecker:
         executable = False
 
         if exists:
-            code, _, _ = self._exec(f"test -r '{path}'")
+            code, _, _ = self._exec(f"test -r {self._shell_path(path)}")
             readable = code == 0
 
-            code, _, _ = self._exec(f"test -w '{path}'")
+            code, _, _ = self._exec(f"test -w {self._shell_path(path)}")
             writable = code == 0
 
-            code, _, _ = self._exec(f"test -x '{path}'")
+            code, _, _ = self._exec(f"test -x {self._shell_path(path)}")
             executable = code == 0
 
         perm_str = ""
@@ -105,8 +119,8 @@ class PermissionChecker:
 
         if exists:
             code, stdout, _ = self._exec(
-                f"stat -c '%a %A %U %G' '{path}' 2>/dev/null || "
-                f"stat -f '%Sp %u %g' '{path}' 2>/dev/null"
+                f"stat -c '%a %A %U %G' {self._shell_path(path)} 2>/dev/null || "
+                f"stat -f '%Sp %u %g' {self._shell_path(path)} 2>/dev/null"
             )
             if code == 0:
                 parts = stdout.strip().split()
@@ -120,7 +134,7 @@ class PermissionChecker:
                     owner = parts[1]
                     group = parts[2]
             else:
-                code, stdout, _ = self._exec(f"ls -la -d '{path}' 2>/dev/null")
+                code, stdout, _ = self._exec(f"ls -la -d {self._shell_path(path)} 2>/dev/null")
                 if code == 0 and stdout.strip():
                     parts = stdout.strip().split()
                     if len(parts) >= 8:
