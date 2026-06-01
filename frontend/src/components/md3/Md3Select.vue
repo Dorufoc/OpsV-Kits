@@ -24,7 +24,7 @@
 
       <div class="md3-select-value">
         <template v-if="multiple">
-          <span v-if="!hasSelected" class="md3-select-placeholder">{{ placeholder }}</span>
+          <span v-if="!hasSelected && !(label && !isOpen)" class="md3-select-placeholder">{{ placeholder }}</span>
           <template v-else>
             <span class="md3-select-chips">
               <span v-for="item in selectedItems" :key="item.value" class="md3-select-chip">
@@ -34,7 +34,7 @@
           </template>
         </template>
         <template v-else>
-          <span v-if="!hasSelected" class="md3-select-placeholder">{{ placeholder }}</span>
+          <span v-if="!hasSelected && !(label && !isOpen)" class="md3-select-placeholder">{{ placeholder }}</span>
           <span v-else>{{ selectedItem?.label }}</span>
         </template>
       </div>

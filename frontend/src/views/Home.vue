@@ -1,16 +1,16 @@
 <template>
   <div class="home">
     <template v-if="!loading && !accountsExist">
-      <Md3Empty description="开始使用前，请先配置您的第一个 SSH 远程服务器">
+      <Md3Empty description="未配置 SSH 服务器，请先添加 SSH 账户">
         <template #image>
           <div class="welcome-icon">
             <Md3Icon name="connection" class="icon-welcome" />
           </div>
         </template>
-        <template #title>OpsV-Kits 欢迎您</template>
+        <template #title>OpsV-Kits 功能不可用</template>
         <template #action>
-          <Md3Button variant="primary" size="lg" :icon="Plus" @click="dialogVisible = true">
-            添加 SSH 服务器
+          <Md3Button variant="primary" size="lg" :icon="Plus" @click="goToSshAccounts">
+            前往 SSH 账户管理
           </Md3Button>
         </template>
       </Md3Empty>
@@ -125,9 +125,10 @@
       v-model:visible="dialogVisible"
       title="首次配置 — 添加 SSH 服务器"
       width="520px"
-      :closable="accountsExist"
+      :closable="true"
       :close-on-mask-click="false"
       :close-on-esc="false"
+      @update:visible="handleDialogClose"
     >
       <Md3Alert
         type="info"
@@ -171,12 +172,16 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, h, defineComponent } from 'vue'
+import { useRouter } from 'vue-router'
 import { Md3Icon, Md3Empty, Md3PageHeader, Md3Divider, Md3Card, Md3Select, Md3Progress, Md3Table, Md3Dialog, Md3Alert, Md3Input, Md3Message } from '@/components/md3'
+import { Md3Confirm } from '@/components/md3/Md3Confirm'
 import Md3Button from '@/components/Md3Button.vue'
 import { useSshAccountStore } from '@/stores/sshAccountStore'
 import { useDockerStore } from '@/stores/dockerStore'
 import { useWebsshStore } from '@/stores/websshStore'
 import { request } from '@/api'
+
+const STORAGE_KEY = 'opskits_ssh_dismissed'
 
 const createIcon = (name: string) => defineComponent(() => () => h(Md3Icon, { name }))
 
@@ -195,6 +200,7 @@ const Terminal = createIcon('terminal')
 const sshStore = useSshAccountStore()
 const dockerStore = useDockerStore()
 const websshStore = useWebsshStore()
+const router = useRouter()
 
 const formRef = ref<HTMLElement>()
 const dialogVisible = ref(false)
@@ -204,6 +210,7 @@ const saving = ref(false)
 const testing = ref(false)
 const testResult = ref<{ success: boolean; message: string } | null>(null)
 const formErrors = ref({ alias: '', host: '', port: '', username: '', password: '' })
+const sshDismissed = ref(false)
 
 const form = ref({
   alias: '默认服务器', host: '', port: 22, username: 'root', password: '',
@@ -290,9 +297,35 @@ async function checkFirstLaunch() {
       }
     }
     accountsExist.value = exists
-    if (!exists) dialogVisible.value = true
+    const dismissed = localStorage.getItem(STORAGE_KEY) === 'true'
+    sshDismissed.value = dismissed
+    if (!exists && !dismissed) dialogVisible.value = true
   }
   loading.value = false
+}
+
+async function handleDialogClose(visible: boolean) {
+  if (visible) return
+  
+  if (!accountsExist.value && !sshDismissed.value) {
+    const confirmed = await Md3Confirm.show({
+      title: '关闭配置',
+      message: '关闭后将无法使用任何功能。如需登录，请重启前后端服务或前往SSH账户管理单独添加用户。',
+      confirmText: '关闭',
+      cancelText: '继续配置',
+      type: 'warning',
+    })
+    
+    if (!confirmed) {
+      dialogVisible.value = true
+      return
+    }
+    
+    sshDismissed.value = true
+    localStorage.setItem(STORAGE_KEY, 'true')
+  }
+  
+  dialogVisible.value = false
 }
 
 function validateForm() {
@@ -331,12 +364,18 @@ async function handleSave() {
     Md3Message.success(`SSH 账户「${form.value.alias}」已添加`)
     dialogVisible.value = false
     accountsExist.value = true
+    sshDismissed.value = false
+    localStorage.removeItem(STORAGE_KEY)
     await sshStore.fetchAccounts()
     dashboardAlias.value = form.value.alias
     loadDashboard()
   } catch (e: any) {
     Md3Message.error(e?.response?.data?.detail || '保存失败')
   } finally { saving.value = false }
+}
+
+function goToSshAccounts() {
+  router.push('/ssh-accounts')
 }
 
 onMounted(() => { checkFirstLaunch() })

@@ -63,10 +63,26 @@ export default defineConfig(async () => {
           target: `http://localhost:${backendPort}`,
           changeOrigin: true,
           ws: true,
+          configure: (proxy) => {
+            proxy.on('error', (err) => {
+              if ((err as any).code === 'ECONNREFUSED') {
+                return
+              }
+              console.error('[proxy error]', err)
+            })
+          },
         },
         '/ws': {
           target: `ws://localhost:${backendPort}`,
           ws: true,
+          configure: (proxy) => {
+            proxy.on('error', (err) => {
+              if ((err as any).code === 'ECONNREFUSED') {
+                return
+              }
+              console.error('[proxy error]', err)
+            })
+          },
         },
       },
     },

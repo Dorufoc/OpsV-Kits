@@ -86,8 +86,8 @@ const isFocused = ref(false)
 const computedType = computed(() => props.type)
 
 const computedPlaceholder = computed(() => {
-  if (props.label && (isFocused.value || props.modelValue)) {
-    return props.placeholder || ''
+  if (props.label && !isFocused.value && !props.modelValue) {
+    return ''
   }
   return props.placeholder || ''
 })

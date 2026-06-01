@@ -1,15 +1,44 @@
 import asyncio
+import json
 import logging
 import time
 from collections import defaultdict
 from pathlib import Path
 
+# ██ 启动进度报告（必须在任何可能阻塞的导入之前）██
+_PROGRESS_FILE = Path(__file__).resolve().parent.parent / ".startup_progress.json"
+
+def _report_progress(step: int, total: int, message: str) -> None:
+    try:
+        _PROGRESS_FILE.write_text(
+            json.dumps({"step": step, "total": total, "message": message, "done": False}),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
+
+def _mark_startup_done() -> None:
+    try:
+        if _PROGRESS_FILE.exists():
+            data = json.loads(_PROGRESS_FILE.read_text(encoding="utf-8"))
+            data["done"] = True
+            _PROGRESS_FILE.write_text(json.dumps(data), encoding="utf-8")
+    except Exception:
+        pass
+
+_MODULE_TOTAL = 5
+_report_progress(0, 10 + _MODULE_TOTAL, "正在加载后端模块...")
+
+# ── 第一阶段：基础库导入 ──
+_report_progress(1, 10 + _MODULE_TOTAL, "正在加载Web框架...")
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
+# ── 第二阶段：API路由导入 ──
+_report_progress(2, 10 + _MODULE_TOTAL, "正在加载API路由...")
 from app.api.routes import build
 from app.api.routes import db_toolkit
 from app.api.routes import docker
@@ -39,7 +68,8 @@ from app.api.routes import health_probe
 from app.core.audit_middleware import AuditMiddleware
 from app.services.sync_service import sync_service
 
-# --- Rate limiter: try slowapi, fallback to in-memory ---
+# ── 第三阶段：限流器 ──
+_report_progress(3, 10 + _MODULE_TOTAL, "正在配置限流器...")
 try:
     from slowapi import Limiter, _rate_limit_exceeded_handler
     from slowapi.util import get_remote_address
@@ -51,15 +81,19 @@ except Exception:
     limiter = None
     _RATE_LIMIT_BACKEND = "memory"
 
+# ── 第四阶段：日志配置 ──
+_report_progress(4, 10 + _MODULE_TOTAL, "正在配置日志系统...")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-# 抑制 APScheduler 的频繁成功日志，避免控制台刷屏
 logging.getLogger("apscheduler.executors.default").setLevel(logging.WARNING)
 logging.getLogger("apscheduler.scheduler").setLevel(logging.WARNING)
+
+# ── 第五阶段：FastAPI应用 ──
+_report_progress(5, 10 + _MODULE_TOTAL, "正在初始化FastAPI应用...")
 
 app = FastAPI(
     title="OpsV-Kits API",
@@ -67,7 +101,6 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Attach slowapi limiter state if available
 if limiter is not None:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -123,111 +156,94 @@ app.include_router(health_probe.router, prefix="/api", tags=["health-probe"])
 
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 
-if STATIC_DIR.is_dir():
-    app.mount(
-        "/assets",
-        StaticFiles(directory=str(STATIC_DIR / "assets")),
-        name="frontend-assets",
-    )
+
+# ── 健康检查 ──
+
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "timestamp": time.time()}
 
 
-# --- In-memory rate limiter fallback ---
-_MEMORY_LIMITS: dict[str, list[float]] = defaultdict(list)
-_SENSITIVE_PATHS = {
-    "/api/ssh-accounts/test-connection",
-    "/api/ssh-accounts/workplace/init",
-    "/api/webssh/test",
-    "/api/webssh/connect",
-    "/api/webssh/command",
-    "/api/security/network/ping",
-    "/api/security/network/traceroute",
-    "/api/security/network/portscan",
-    "/api/system/reboot",
-    "/api/system/shutdown",
-    "/api/system/reload/network",
-    "/api/system/reload/ssh",
-    "/api/build",
-    "/api/docker",
-    "/api/db-toolkit",
-    "/api/cron-backup",
-    "/api/git",
-    "/api/workflow",
-    "/api/scheduler",
-    "/api/event-trigger",
-}
+# ── SPA fallback ──
 
-
-def _is_sensitive(path: str) -> bool:
-    p = path.lower()
-    for sensitive in _SENSITIVE_PATHS:
-        if p.startswith(sensitive.lower()):
-            return True
-    return False
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    if STATIC_DIR.is_dir():
+        index = STATIC_DIR / "index.html"
+        if index.is_file():
+            from fastapi.responses import FileResponse as FR
+            return FR(str(index))
+    from fastapi.responses import JSONResponse as JR
+    return JR(status_code=404, content={"detail": "Not Found"})
 
 
 @app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    if _RATE_LIMIT_BACKEND == "slowapi" or not _is_sensitive(request.url.path):
-        return await call_next(request)
-
-    client_ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    window = 60
-    max_requests = 30
-    key = f"{client_ip}:{request.url.path}"
-
-    _MEMORY_LIMITS[key] = [t for t in _MEMORY_LIMITS[key] if now - t < window]
-    if len(_MEMORY_LIMITS[key]) >= max_requests:
-        return JSONResponse(
-            status_code=429,
-            content={"detail": "Rate limit exceeded. Too many requests."},
-        )
-    _MEMORY_LIMITS[key].append(now)
-    return await call_next(request)
-
-
-@app.middleware("http")
-async def spa_fallback_middleware(request, call_next):
+async def spa_fallback_middleware(request: Request, call_next):
     response = await call_next(request)
     if response.status_code == 404 and STATIC_DIR.is_dir():
-        path = request.url.path
-        if not path.startswith("/api") and not path.startswith("/assets"):
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept or not request.url.path.startswith("/api/"):
             index = STATIC_DIR / "index.html"
             if index.is_file():
-                return FileResponse(str(index))
+                from fastapi.responses import FileResponse as FR
+                return FR(str(index))
     return response
+
+
+# ── Uvicorn startup / shutdown ──
+
+from app.core.logging_config import patch_uvicorn_logging
+patch_uvicorn_logging()
+
+from app.services.sync_service import sync_service
 
 
 @app.on_event("startup")
 async def startup_event():
+    PROGRESS_TOTAL = 10 + _MODULE_TOTAL
+    OFFSET = _MODULE_TOTAL
+
     loop = asyncio.get_running_loop()
     sync_service.set_event_loop(loop)
+    _report_progress(OFFSET + 1, PROGRESS_TOTAL, "正在准备运行环境...")
 
     from app.services.remote_drive_service import remote_drive_service
     from app.services.settings_service import settings_service
     settings_service.update({"remote_drive_enabled": False})
+    _report_progress(OFFSET + 2, PROGRESS_TOTAL, "正在初始化远程驱动器服务...")
 
     from app.services.performance_collector import performance_collector
     asyncio.create_task(performance_collector.initialize_all())
+    _report_progress(OFFSET + 3, PROGRESS_TOTAL, "正在初始化性能采集器...")
 
     from app.core.git_sync_scheduler import git_sync_scheduler
     await git_sync_scheduler.start()
+    _report_progress(OFFSET + 4, PROGRESS_TOTAL, "正在启动Git同步调度器...")
 
     from app.services.audit_log_service import audit_log_service
     await audit_log_service.initialize()
+    _report_progress(OFFSET + 5, PROGRESS_TOTAL, "正在初始化审计日志服务...")
 
     from app.services.task_scheduler_service import task_scheduler_service
     task_scheduler_service.start()
+    _report_progress(OFFSET + 6, PROGRESS_TOTAL, "正在启动任务调度器...")
 
     from app.services.event_bus_service import event_bus_service
+    event_bus_service.start()
+    _report_progress(OFFSET + 7, PROGRESS_TOTAL, "正在启动事件总线...")
 
     from app.services.log_storage_service import log_storage_service
     from app.services.log_alert_service import log_alert_service
     await log_storage_service.initialize()
+    _report_progress(OFFSET + 8, PROGRESS_TOTAL, "正在初始化日志存储服务...")
     await log_alert_service.initialize()
+    _report_progress(OFFSET + 9, PROGRESS_TOTAL, "正在初始化日志告警服务...")
 
     from app.services.health_probe_service import health_probe_service
     await health_probe_service.initialize()
+    _report_progress(OFFSET + 10, PROGRESS_TOTAL, "正在初始化健康探针服务...")
+
+    _mark_startup_done()
 
 
 @app.on_event("shutdown")
@@ -240,23 +256,6 @@ async def shutdown_event():
 
     from app.services.performance_collector import performance_collector
     await performance_collector.shutdown()
-
-    from app.core.git_sync_scheduler import git_sync_scheduler
-    await git_sync_scheduler.stop()
-
-    from app.services.audit_log_service import audit_log_service
-    await audit_log_service.stop_queue_consumer()
-    await audit_log_service.shutdown()
-
-    from app.services.task_scheduler_service import task_scheduler_service
-    task_scheduler_service.shutdown()
-
-    from app.services.log_collector_service import log_collector_service
-    from app.services.log_alert_service import log_alert_service
-    from app.services.log_storage_service import log_storage_service
-    await log_collector_service.shutdown()
-    await log_alert_service.shutdown()
-    await log_storage_service.shutdown()
 
     from app.services.health_probe_service import health_probe_service
     await health_probe_service.shutdown()

@@ -45,6 +45,10 @@ FRONTEND_DIR = PROJECT_ROOT / "frontend"
 
 # 用于前后端端口通信的临时配置文件
 _PORT_CONFIG_PATH = PROJECT_ROOT / ".port_config.json"
+_STARTUP_PROGRESS_FILE = PROJECT_ROOT / ".startup_progress.json"
+
+# 后端进程引用，供等待循环检测进程状态
+_backend_process: subprocess.Popen | None = None
 
 def _save_backend_port(port: int) -> None:
     """保存后端实际端口到配置文件，供前端读取"""
@@ -64,10 +68,15 @@ def _get_backend_port() -> int:
     return 8000
 
 def _clear_port_config() -> None:
-    """清理端口配置文件"""
+    """清理端口配置和启动进度文件"""
     try:
         if _PORT_CONFIG_PATH.exists():
             _PORT_CONFIG_PATH.unlink()
+    except Exception:
+        pass
+    try:
+        if _STARTUP_PROGRESS_FILE.exists():
+            _STARTUP_PROGRESS_FILE.unlink()
     except Exception:
         pass
 
@@ -223,31 +232,75 @@ def start_backend(port: int = 8000, reload: bool = True, log_level: str = "info"
         print(f"    自动重载: 已启用")
     print()
 
+    global _backend_process
     proc = subprocess.Popen(
         backend_cmd,
         cwd=str(BACKEND_DIR),
         stdout=None,
         stderr=None,
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
     )
+    _backend_process = proc
     return proc, actual_port
 
 
+def _save_frontend_port(port: int) -> None:
+    """保存前端实际端口到配置文件"""
+    try:
+        data = {}
+        if _PORT_CONFIG_PATH.exists():
+            data = json.loads(_PORT_CONFIG_PATH.read_text(encoding="utf-8"))
+        data["frontend_port"] = port
+        _PORT_CONFIG_PATH.write_text(json.dumps(data), encoding="utf-8")
+    except Exception:
+        pass
+
+def _get_frontend_port() -> int:
+    """从配置文件读取前端实际端口"""
+    try:
+        if _PORT_CONFIG_PATH.exists():
+            data = json.loads(_PORT_CONFIG_PATH.read_text(encoding="utf-8"))
+            return data.get("frontend_port", 3000)
+    except Exception:
+        pass
+    return 3000
+
 def start_frontend_dev(port: int = 3000) -> subprocess.Popen:
-    # 读取后端实际端口
     actual_backend_port = _get_backend_port()
     print(f"  ▶ 前端开发服务器启动中（默认端口: {port}）")
     print(f"    API 代理: http://localhost:{port} -> http://localhost:{actual_backend_port}")
     print()
 
-    return subprocess.Popen(
+    proc = subprocess.Popen(
         ["npm", "run", "dev"],
         cwd=str(FRONTEND_DIR),
-        stdout=None,
-        stderr=None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         shell=True,
         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
     )
+
+    def _parse_vite_port():
+        """从 Vite 输出中解析实际端口并保存"""
+        import re as _re
+        if not proc.stdout:
+            return
+        try:
+            for line in iter(proc.stdout.readline, b''):
+                text = line.decode("utf-8", errors="replace").strip()
+                print(text)
+                match = _re.search(r"Local:\s+http://localhost:(\d+)", text)
+                if match:
+                    actual_port = int(match.group(1))
+                    _save_frontend_port(actual_port)
+                    if actual_port != port:
+                        print(f"  ⚠ 端口 {port} 已被占用，前端实际运行在端口 {actual_port}")
+                    break
+        except Exception:
+            pass
+
+    thread = threading.Thread(target=_parse_vite_port, daemon=True)
+    thread.start()
+    return proc
 
 
 def install_dependencies():
@@ -305,31 +358,100 @@ def build_frontend():
     print()
 
 
-def wait_for_backend_ready(base_url: str, timeout: float = 15.0, interval: float = 0.5) -> bool:
-    """轮询后端健康检查接口，等待后端完全就绪"""
+def _read_startup_progress() -> dict | None:
+    """读取后端启动进度"""
+    try:
+        if _STARTUP_PROGRESS_FILE.exists():
+            return json.loads(_STARTUP_PROGRESS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return None
+
+def _draw_progress_bar(percent: int, width: int = 20) -> str:
+    """绘制文本进度条"""
+    filled = int(width * percent / 100)
+    bar = "█" * filled + "░" * (width - filled)
+    return bar
+
+def wait_for_backend_ready(base_url: str, timeout: float = 30.0, interval: float = 0.5) -> bool:
+    """轮询后端健康检查接口，等待后端完全就绪，同时显示进度条"""
     health_url = f"{base_url}/api/health"
     start = time.time()
+    last_message = ""
+    last_percent = 0
+    printed = False
+
     while time.time() - start < timeout:
+        # 检测后端进程是否还活着
+        global _backend_process
+        if _backend_process is not None:
+            ret = _backend_process.poll()
+            if ret is not None:
+                if printed:
+                    print()
+                print(f"  ❌ 后端进程已退出（退出码={ret}）")
+                print(f"     请检查 backend/app/main.py 中是否有导入错误")
+                return False
+            pid = _backend_process.pid
+
         try:
             req = urllib.request.Request(health_url, method='GET')
             with urllib.request.urlopen(req, timeout=2.0) as resp:
                 if resp.status == 200:
+                    if printed:
+                        print()
+                    print(f"  ✅ 后端服务已就绪 ({time.time() - start:.1f}s)")
                     return True
         except (urllib.error.URLError, OSError, Exception):
             pass
+
+        elapsed = time.time() - start
+        progress = _read_startup_progress()
+        if progress:
+            if progress.get("done", False):
+                if printed:
+                    print("\033[K", end="\r")
+                print(f"  ⏳ 后端模块已加载完毕，等待服务就绪... ({elapsed:.0f}s)", end="\r", flush=True)
+                printed = True
+            else:
+                step = progress.get("step", 0)
+                total = progress.get("total", 1)
+                message = progress.get("message", "正在启动...")
+                percent = min(int(step * 100 / total), 99)
+                if percent == 0 and elapsed < 1:
+                    bar = _draw_progress_bar(0)
+                    line = f"  ⏳ 后端启动中 PID={pid} [{bar}] 0% - {message}"
+                else:
+                    bar = _draw_progress_bar(percent)
+                    line = f"  ⏳ 后端启动中 PID={pid} [{bar}] {percent}% - {message}"
+                if line != last_message or percent != last_percent:
+                    if printed:
+                        print("\033[K", end="\r")
+                    print(line, end="\r", flush=True)
+                    last_message = line
+                    last_percent = percent
+                    printed = True
+        elif elapsed > 0.5:
+            if printed:
+                print("\033[K", end="\r")
+            line = f"  ⏳ 正在等待后端进程启动... PID={pid} ({elapsed:.0f}s)"
+            if line != last_message:
+                print(line, end="\r", flush=True)
+                last_message = line
+                printed = True
         time.sleep(interval)
+
+    if printed:
+        print()
+    if _backend_process is not None and _backend_process.poll() is None:
+        print(f"  ⚠ 后端进程 PID={_backend_process.pid} 仍在运行但健康检查超时")
     return False
 
 
 def delayed_open_browser(url: str, backend_url: str | None = None, delay: float = 2.0) -> None:
     def _open():
         if backend_url:
-            time.sleep(delay)
-            print(f"  ⏳ 等待后端服务就绪...")
-            if wait_for_backend_ready(backend_url):
-                print(f"  ✅ 后端服务已就绪")
-            else:
-                print(f"  ⚠️ 后端服务启动超时，仍尝试打开浏览器...")
+            ready = wait_for_backend_ready(backend_url)
         else:
             time.sleep(delay)
         print(f"  正在打开浏览器: {url}")
@@ -347,19 +469,21 @@ def wait_for_shutdown(processes: list[subprocess.Popen]):
 
     def signal_handler(sig, frame):
         print("\n  ⏹ 正在停止所有服务...")
-        # 清理端口配置文件
         _clear_port_config()
         for proc in processes:
             if proc and proc.poll() is None:
-                if sys.platform == "win32":
-                    proc.send_signal(signal.CTRL_BREAK_EVENT)
-                else:
+                try:
                     proc.terminate()
+                except Exception:
+                    pass
         for proc in processes:
             try:
                 proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                proc.kill()
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
         print("  ✅ 所有服务已停止。")
         sys.exit(0)
 
@@ -436,7 +560,9 @@ def main():
     if start_frontend_svc and not args.prod:
         proc = start_frontend_dev(port=args.frontend_port)
         processes.append(proc)
-        frontend_url = f"http://localhost:{args.frontend_port}"
+        time.sleep(3)
+        actual_frontend_port = _get_frontend_port()
+        frontend_url = f"http://localhost:{actual_frontend_port}"
     elif args.prod and start_frontend_svc:
         dist_dir = FRONTEND_DIR / "dist"
         if not dist_dir.is_dir():

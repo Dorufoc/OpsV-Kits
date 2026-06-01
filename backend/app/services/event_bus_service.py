@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import re
 import sqlite3
 import threading
@@ -39,13 +40,20 @@ _DB_PATH = _PERSIST_DIR / "event_trigger.db"
 
 logger = logging.getLogger(__name__)
 
+# 全局错误计数器，用于抑制重复的错误日志
+_file_watcher_error_counts: dict[str, int] = {}
+_file_watcher_suppressed: set[str] = set()
+
 
 class EventBusService:
     def __init__(self):
         self._lock = threading.RLock()
         self._init_db()
         self._bg_tasks: list[asyncio.Task] = []
-        self._error_counts: dict[str, int] = {}
+        self._watcher_threads: dict[str, threading.Thread] = {}
+
+    def start(self) -> None:
+        """启动后台源监视器（在 startup_event 中调用）"""
         self._start_background_sources()
 
     def _init_db(self) -> None:
@@ -110,21 +118,33 @@ class EventBusService:
                         loop = asyncio.get_running_loop()
                         self._bg_tasks.append(loop.create_task(self._start_file_watcher(source)))
                     except RuntimeError:
-                        thread = threading.Thread(
-                            target=lambda: asyncio.run(self._start_file_watcher(source)),
-                            daemon=True,
-                        )
-                        thread.start()
+                        if source.id not in self._watcher_threads or not self._watcher_threads[source.id].is_alive():
+                            def _run_file_watcher(sid=source.id):
+                                s = self.get_source(sid)
+                                if s:
+                                    asyncio.run(self._start_file_watcher(s))
+                            thread = threading.Thread(
+                                target=_run_file_watcher,
+                                daemon=True,
+                            )
+                            self._watcher_threads[source.id] = thread
+                            thread.start()
                 elif source.source_type == EventSourceType.SYSTEM_METRIC:
                     try:
                         loop = asyncio.get_running_loop()
                         self._bg_tasks.append(loop.create_task(self._start_metric_watcher(source)))
                     except RuntimeError:
-                        thread = threading.Thread(
-                            target=lambda: asyncio.run(self._start_metric_watcher(source)),
-                            daemon=True,
-                        )
-                        thread.start()
+                        if source.id not in self._watcher_threads or not self._watcher_threads[source.id].is_alive():
+                            def _run_metric_watcher(sid=source.id):
+                                s = self.get_source(sid)
+                                if s:
+                                    asyncio.run(self._start_metric_watcher(s))
+                            thread = threading.Thread(
+                                target=_run_metric_watcher,
+                                daemon=True,
+                            )
+                            self._watcher_threads[source.id] = thread
+                            thread.start()
         except Exception as e:
             logger.error("Failed to start background sources: %s", e)
 
@@ -233,21 +253,33 @@ class EventBusService:
                         loop = asyncio.get_running_loop()
                         self._bg_tasks.append(loop.create_task(self._start_file_watcher(source)))
                     except RuntimeError:
-                        thread = threading.Thread(
-                            target=lambda: asyncio.run(self._start_file_watcher(source)),
-                            daemon=True,
-                        )
-                        thread.start()
+                        if source.id not in self._watcher_threads or not self._watcher_threads[source.id].is_alive():
+                            def _run_file_watcher(sid=source.id):
+                                s = self.get_source(sid)
+                                if s:
+                                    asyncio.run(self._start_file_watcher(s))
+                            thread = threading.Thread(
+                                target=_run_file_watcher,
+                                daemon=True,
+                            )
+                            self._watcher_threads[source.id] = thread
+                            thread.start()
                 elif source.source_type == EventSourceType.SYSTEM_METRIC:
                     try:
                         loop = asyncio.get_running_loop()
                         self._bg_tasks.append(loop.create_task(self._start_metric_watcher(source)))
                     except RuntimeError:
-                        thread = threading.Thread(
-                            target=lambda: asyncio.run(self._start_metric_watcher(source)),
-                            daemon=True,
-                        )
-                        thread.start()
+                        if source.id not in self._watcher_threads or not self._watcher_threads[source.id].is_alive():
+                            def _run_metric_watcher(sid=source.id):
+                                s = self.get_source(sid)
+                                if s:
+                                    asyncio.run(self._start_metric_watcher(s))
+                            thread = threading.Thread(
+                                target=_run_metric_watcher,
+                                daemon=True,
+                            )
+                            self._watcher_threads[source.id] = thread
+                            thread.start()
             return source
 
     def update_source(self, source_id: str, data: EventSourceUpdate) -> EventSource:
@@ -782,13 +814,15 @@ class EventBusService:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                err_key = f"file_watch:{source.id}"
-                self._error_counts[err_key] = self._error_counts.get(err_key, 0) + 1
-                err_count = self._error_counts[err_key]
+                global _file_watcher_error_counts, _file_watcher_suppressed
+                err_key = source.id
+                _file_watcher_error_counts[err_key] = _file_watcher_error_counts.get(err_key, 0) + 1
+                err_count = _file_watcher_error_counts[err_key]
                 if err_count <= 3:
                     logger.error("File watcher error for source %s: %s", source.id, e)
-                elif err_count == 4:
+                elif err_key not in _file_watcher_suppressed:
                     logger.warning("File watcher errors for source %s will be suppressed", source.id)
+                    _file_watcher_suppressed.add(err_key)
                 await asyncio.sleep(interval)
 
     def _detect_file_changes(

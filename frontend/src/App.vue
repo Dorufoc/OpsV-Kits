@@ -1,65 +1,53 @@
 <template>
   <div class="app-shell">
-    <header class="app-header">
-      <div class="header-left">
-        <button class="menu-toggle" @click="toggleDrawer" aria-label="切换菜单">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <line x1="4" y1="6" x2="20" y2="6"/>
-            <line x1="4" y1="12" x2="20" y2="12"/>
-            <line x1="4" y1="18" x2="20" y2="18"/>
-          </svg>
-        </button>
-        <div class="header-brand">
-          <div class="brand-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="3" width="20" height="14" rx="2"/>
-              <line x1="8" y1="21" x2="16" y2="21"/>
-              <line x1="12" y1="17" x2="12" y2="21"/>
-            </svg>
-          </div>
-          <span class="brand-title">OpsV-Kits</span>
+    <aside class="app-sidebar" :class="{ collapsed: sidebarCollapsed }">
+      <div class="sidebar-brand">
+        <div class="brand-logo">
+          <img src="./styles/opsV.png" alt="OpsV-Kits" />
         </div>
+        <span class="brand-title" v-show="!sidebarCollapsed">OpsV-Kits</span>
       </div>
-      <nav class="header-nav">
+
+      <Md3Divider />
+
+      <nav class="sidebar-nav">
         <router-link
-          v-for="item in navItems"
+          v-for="item in sidebarItems"
           :key="item.path"
           :to="item.path"
-          class="nav-link"
-          :class="{ active: isActiveRoute(route.path, item.path) }"
+          class="sidebar-link"
+          :class="{ active: isActiveRoute(route.path, item.path), disabled: !sshReady && item.path !== '/ssh-accounts' }"
+          :style="{ pointerEvents: !sshReady && item.path !== '/ssh-accounts' ? 'none' : 'auto', opacity: !sshReady && item.path !== '/ssh-accounts' ? 0.5 : 1 }"
         >
-          <Md3Icon :name="item.icon" class="nav-icon" />
-          <span class="nav-label">{{ item.label }}</span>
+          <Md3Icon :name="item.icon" class="sidebar-icon" />
+          <span class="sidebar-label" v-show="!sidebarCollapsed">{{ item.label }}</span>
         </router-link>
       </nav>
-      <div class="header-actions">
-        <ThemeToggle />
-      </div>
-    </header>
+    </aside>
 
-    <div class="app-body">
-      <aside class="app-sidebar" :class="{ open: drawerOpen }">
-        <div class="sidebar-header">
-          <span class="sidebar-title">导航菜单</span>
+    <div class="app-main">
+      <header class="app-header">
+        <button class="sidebar-toggle" @click="toggleSidebar" aria-label="切换侧边栏">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M3 12h18M3 6h18M3 18h18"/>
+          </svg>
+        </button>
+        <div class="header-actions">
+          <ThemeToggle />
         </div>
-        <nav class="sidebar-nav">
-          <router-link
-            v-for="item in sidebarItems"
-            :key="item.path"
-            :to="item.path"
-            class="sidebar-link"
-            :class="{ active: isActiveRoute(route.path, item.path) }"
-            @click="drawerOpen = false"
-          >
-            <Md3Icon :name="item.icon" class="sidebar-icon" />
-            <span class="sidebar-label">{{ item.label }}</span>
-          </router-link>
-        </nav>
-      </aside>
-
-      <div v-if="drawerOpen" class="drawer-overlay" @click="drawerOpen = false" />
+      </header>
 
       <main class="app-content">
+        <div v-if="!sshReady && currentRoute !== '/ssh-accounts'" class="app-mask">
+          <div class="mask-content">
+            <Md3Icon name="connection" class="mask-icon" />
+            <h2>功能不可用</h2>
+            <p>未配置 SSH 服务器，请先前往 SSH 账户管理页面添加账户</p>
+            <Md3Button variant="primary" size="lg" :icon="AccountIcon" @click="goToSshAccounts">
+              前往 SSH 账户管理
+            </Md3Button>
+          </div>
+        </div>
         <router-view v-slot="{ Component: RouteComponent }">
           <transition name="route" mode="out-in">
             <component :is="RouteComponent" />
@@ -71,44 +59,64 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { Md3Icon } from '@/components/md3'
+import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Md3Icon, Md3Divider } from '@/components/md3'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import Md3Button from '@/components/Md3Button.vue'
+import { useSshAccountStore } from '@/stores/sshAccountStore'
 
 const route = useRoute()
-const drawerOpen = ref(false)
+const router = useRouter()
+const sidebarCollapsed = ref(false)
+const sshAccountStore = useSshAccountStore()
+const sshReady = ref(true)
 
-function toggleDrawer() {
-  drawerOpen.value = !drawerOpen.value
+const STORAGE_KEY = 'opskits_ssh_dismissed'
+
+const currentRoute = computed(() => route.path)
+
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value
 }
 
-const isActiveRoute = (currentPath: string, targetPath: string): boolean => {
+const isActiveRoute = (currentPath: string | undefined, targetPath: string): boolean => {
+  if (!currentPath) return false
   if (targetPath === '/') return currentPath === '/'
   if (targetPath === '/docker') return currentPath === '/docker' || currentPath.startsWith('/docker/')
   return currentPath === targetPath || currentPath.startsWith(targetPath + '/')
 }
+
+const AccountIcon = 'account-box'
+
+function goToSshAccounts() {
+  router.push('/ssh-accounts')
+}
+
+async function checkSshStatus() {
+  const dismissed = localStorage.getItem(STORAGE_KEY) === 'true'
+  if (!dismissed) {
+    sshReady.value = true
+    return
+  }
+  
+  try {
+    await sshAccountStore.fetchAccounts()
+    sshReady.value = sshAccountStore.accounts.length > 0
+  } catch {
+    sshReady.value = false
+  }
+}
+
+onMounted(() => {
+  checkSshStatus()
+})
 
 interface NavItem {
   path: string
   label: string
   icon: string
 }
-
-const navItems: NavItem[] = [
-  { path: '/', label: '首页', icon: 'home' },
-  { path: '/project', label: '项目', icon: 'chart-line' },
-  { path: '/file-manager', label: '文件', icon: 'folder-open' },
-  { path: '/ssh-accounts', label: 'SSH', icon: 'account-box' },
-  { path: '/docker', label: 'Docker', icon: 'coin' },
-  { path: '/docker-store', label: '商店', icon: 'store' },
-  { path: '/webssh', label: '终端', icon: 'monitor' },
-  { path: '/monitor', label: '监控', icon: 'chart-bar' },
-  { path: '/process', label: '进程', icon: 'monitor' },
-  { path: '/security-network', label: '安全', icon: 'shield' },
-  { path: '/cron-backup', label: '计划', icon: 'schedule' },
-  { path: '/automation', label: '自动化', icon: 'account-cog' },
-]
 
 const sidebarItems: NavItem[] = [
   { path: '/', label: '控制台', icon: 'home' },
@@ -144,121 +152,8 @@ const sidebarItems: NavItem[] = [
 .app-shell {
   height: 100vh;
   display: flex;
-  flex-direction: column;
   background: var(--md3-gradient-surface);
   overflow: hidden;
-}
-
-/* ===== Header ===== */
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--md3-space-xl);
-  height: 64px;
-  flex-shrink: 0;
-  background: var(--md3-glass-bg);
-  backdrop-filter: var(--md3-glass-blur);
-  -webkit-backdrop-filter: var(--md3-glass-blur);
-  border-bottom: 1px solid var(--md3-glass-border);
-  position: relative;
-  z-index: 100;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: var(--md3-space-md);
-}
-
-.menu-toggle {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: transparent;
-  color: var(--md3-on-surface-variant);
-  cursor: pointer;
-  border-radius: var(--md3-shape-sm);
-  transition: background var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
-}
-
-.menu-toggle:hover {
-  background: var(--md3-surface-container-high);
-}
-
-.header-brand {
-  display: flex;
-  align-items: center;
-  gap: var(--md3-space-sm);
-}
-
-.brand-icon {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--md3-gradient-primary);
-  border-radius: var(--md3-shape-sm);
-  color: var(--md3-on-primary);
-}
-
-.brand-title {
-  font: var(--md3-type-title-large);
-  color: var(--md3-on-surface);
-  letter-spacing: -0.02em;
-}
-
-.header-nav {
-  display: flex;
-  align-items: center;
-  gap: var(--md3-space-xs);
-}
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: var(--md3-shape-full);
-  color: var(--md3-on-surface-variant);
-  text-decoration: none;
-  font: var(--md3-type-label-large);
-  transition: all var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
-}
-
-.nav-link:hover {
-  background: var(--md3-surface-container-high);
-  color: var(--md3-on-surface);
-}
-
-.nav-link.active {
-  background: var(--md3-primary-container);
-  color: var(--md3-on-primary-container);
-  font-weight: 600;
-}
-
-.nav-icon {
-  width: 18px;
-  height: 18px;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--md3-space-sm);
-  margin-left: auto;
-}
-
-/* ===== Body ===== */
-.app-body {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-  position: relative;
 }
 
 /* ===== Sidebar ===== */
@@ -272,27 +167,90 @@ const sidebarItems: NavItem[] = [
   -webkit-backdrop-filter: var(--md3-glass-blur);
   border-right: 1px solid var(--md3-glass-border);
   overflow-y: auto;
-  padding: var(--md3-space-md) 0;
+  overflow-x: hidden;
   z-index: 50;
-  transition: transform var(--md3-motion-duration-medium) var(--md3-motion-easing-emphasized-decelerate);
+  transition: width var(--md3-motion-duration-medium) var(--md3-motion-easing-emphasized-decelerate);
 }
 
-.sidebar-header {
-  padding: var(--md3-space-sm) var(--md3-space-xl) var(--md3-space-md);
+.app-sidebar.collapsed {
+  width: 64px;
 }
 
-.sidebar-title {
-  font: var(--md3-type-label-small);
-  color: var(--md3-outline);
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
+.app-sidebar :deep(.md3-divider--horizontal) {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--md3-space-sm);
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  padding: 0 var(--md3-space-lg);
+  flex-shrink: 0;
+}
+
+.app-sidebar.collapsed .sidebar-brand {
+  gap: 0;
+  justify-content: center;
+  padding: 0;
+}
+
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.brand-logo img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.brand-title {
+  font: var(--md3-type-title-large);
+  color: var(--md3-on-surface);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  line-height: 1;
+}
+
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--md3-on-surface-variant);
+  cursor: pointer;
+  border-radius: var(--md3-shape-sm);
+  transition: all var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+  flex-shrink: 0;
+}
+
+.sidebar-toggle:hover {
+  background: var(--md3-surface-container-high);
+  color: var(--md3-on-surface);
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 0 var(--md3-space-sm);
+  padding: var(--md3-space-xs) var(--md3-space-sm);
+  flex: 1;
 }
 
 .sidebar-link {
@@ -305,6 +263,13 @@ const sidebarItems: NavItem[] = [
   text-decoration: none;
   font: var(--md3-type-body-medium);
   transition: all var(--md3-motion-duration-short) var(--md3-motion-easing-standard);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.app-sidebar.collapsed .sidebar-link {
+  justify-content: center;
+  padding: 10px;
 }
 
 .sidebar-link:hover {
@@ -324,67 +289,82 @@ const sidebarItems: NavItem[] = [
   flex-shrink: 0;
 }
 
-/* ===== Main Content ===== */
+/* ===== Main ===== */
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--md3-space-lg);
+  height: 48px;
+  flex-shrink: 0;
+  background: var(--md3-glass-bg);
+  backdrop-filter: var(--md3-glass-blur);
+  -webkit-backdrop-filter: var(--md3-glass-blur);
+  border-bottom: 1px solid var(--md3-glass-border);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--md3-space-sm);
+}
+
 .app-content {
   flex: 1;
   overflow-y: auto;
   padding: var(--md3-space-xl);
+  position: relative;
 }
 
-/* ===== Drawer Overlay ===== */
-.drawer-overlay {
-  display: none;
-  position: fixed;
+/* ===== Mask ===== */
+.app-mask {
+  position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 49;
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* ===== Responsive ===== */
-@media (max-width: 1023px) {
-  .header-nav {
-    display: none;
-  }
-
-  .menu-toggle {
-    display: flex;
-  }
-
-  .app-sidebar {
-    position: fixed;
-    top: 64px;
-    left: 0;
-    bottom: 0;
-    transform: translateX(-100%);
-    z-index: 60;
-    width: 280px;
-  }
-
-  .app-sidebar.open {
-    transform: translateX(0);
-  }
-
-  .drawer-overlay {
-    display: block;
-  }
-
-  .app-content {
-    padding: var(--md3-space-lg);
-  }
+.mask-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--md3-space-lg);
+  padding: var(--md3-space-3xl);
+  background: var(--md3-surface-container);
+  border-radius: var(--md3-shape-xl);
+  box-shadow: var(--md3-elevation-level3);
+  max-width: 400px;
+  text-align: center;
 }
 
-@media (max-width: 767px) {
-  .app-header {
-    padding: 0 var(--md3-space-lg);
-  }
+.mask-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--md3-error);
+}
 
-  .brand-title {
-    font-size: 16px;
-  }
+.mask-content h2 {
+  margin: 0;
+  font: var(--md3-type-headline-medium);
+  color: var(--md3-on-surface);
+}
 
-  .app-content {
-    padding: var(--md3-space-md);
-  }
+.mask-content p {
+  margin: 0;
+  font: var(--md3-type-body-large);
+  color: var(--md3-on-surface-variant);
+  line-height: 1.5;
 }
 </style>
